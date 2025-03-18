@@ -14,6 +14,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const bookRoutes = require('./routes/book.routes');
 const libraryRoutes = require('./routes/library.routes');
 const userBookRoutes = require('./routes/userbook.routes');
+const reviewRoutes = require('./routes/review.routes');
 
 // Recupera la stringa di connessione MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/books', bookRoutes);
 app.use('/api/libraries', libraryRoutes);
 app.use('/api/user-books', userBookRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante!' });
