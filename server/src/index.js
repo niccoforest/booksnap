@@ -1,14 +1,21 @@
+const bookRoutes = require('./routes/book.routes');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
 const mongoose = require('mongoose');
+// Commentiamo temporaneamente le parti problematiche
+// const session = require('express-session');
+// const passport = require('./config/passport');
 
 // Carica le variabili d'ambiente
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-// Recupera la stringa di connessione MongoDB DOPO aver caricato le variabili d'ambiente
+// Importa le rotte (commentiamo temporaneamente le rotte di autenticazione)
+// const authRoutes = require('./routes/auth.routes');
+
+// Recupera la stringa di connessione MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
 
 console.log('Variabili d\'ambiente caricate:');
@@ -24,10 +31,27 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+// Commentiamo temporaneamente la configurazione di Passport
+/*
+app.use(session({
+  secret: process.env.JWT_SECRET || 'secret_di_fallback',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+app.use(passport.initialize());
+
+// Rotte di autenticazione
+app.use('/api/auth', authRoutes);
+*/
+
 // Rotte API di base
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante!' });
 });
+app.use('/api/books', bookRoutes);
 
 // Connessione MongoDB
 mongoose.connect(MONGODB_URI)
