@@ -3,7 +3,16 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const path = require('path');
-require('dotenv').config();
+const mongoose = require('mongoose');
+
+// Carica le variabili d'ambiente
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+
+// Recupera la stringa di connessione MongoDB DOPO aver caricato le variabili d'ambiente
+const MONGODB_URI = process.env.MONGODB_URI;
+
+console.log('Variabili d\'ambiente caricate:');
+console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Definito' : 'Non definito');
 
 // Inizializza l'app Express
 const app = express();
@@ -19,6 +28,11 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante!' });
 });
+
+// Connessione MongoDB
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connesso con successo a MongoDB Atlas'))
+  .catch(err => console.error('Errore connessione MongoDB:', err));
 
 // Gestione errori di base
 app.use((err, req, res, next) => {
@@ -42,11 +56,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server in esecuzione sulla porta ${PORT}`);
 });
-
-// Connessione MongoDB
-const mongoose = require('mongoose');
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/booksnap';
-
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connesso a MongoDB'))
-  .catch(err => console.error('Errore connessione MongoDB:', err));
