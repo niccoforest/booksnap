@@ -5,11 +5,14 @@ const morgan = require('morgan');
 const path = require('path');
 const mongoose = require('mongoose');
 
+
+
 // Carica le variabili d'ambiente
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 // Importa le rotte
 const bookRoutes = require('./routes/book.routes');
+const libraryRoutes = require('./routes/library.routes');
 
 // Recupera la stringa di connessione MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -29,6 +32,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotte API
 app.use('/api/books', bookRoutes);
+app.use('/api/libraries', libraryRoutes);
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante!' });
 });
