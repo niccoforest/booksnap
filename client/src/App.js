@@ -1,6 +1,6 @@
 // client/src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme/theme';
 
@@ -26,7 +26,8 @@ function App() {
             <Route path="library" element={<Library />} />
             <Route path="search" element={<Search />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="scan" element={<Scan />} />
+            {/* Redirector per /scan, ora gestito con overlay */}
+            <Route path="scan" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

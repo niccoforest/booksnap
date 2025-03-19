@@ -1,5 +1,5 @@
 // client/src/components/layout/Header.js
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -11,30 +11,35 @@ import {
   alpha,
   styled,
   Card,
-  useTheme
+  useTheme,
+  Popover,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider
 } from '@mui/material';
 import { 
   Search as SearchIcon, 
   Notifications as NotificationsIcon,
-  Menu as MenuIcon
+  Settings as SettingsIcon,
+  Logout as LogoutIcon,
+  Person as PersonIcon,
+  Clear as ClearIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 // Stile per la barra di ricerca
 const SearchContainer = styled('div')(({ theme }) => ({
   position: 'relative',
-  borderRadius: theme.shape.borderRadius,
+  borderRadius: theme.shape.borderRadius * 2,
   backgroundColor: alpha(theme.palette.common.black, 0.04),
   '&:hover': {
     backgroundColor: alpha(theme.palette.common.black, 0.06),
   },
-  marginRight: theme.spacing(2),
-  marginLeft: 0,
   width: '100%',
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(3),
-    width: 'auto',
-  },
+  display: 'flex',
+  alignItems: 'center'
 }));
 
 const SearchIconWrapper = styled('div')(({ theme }) => ({
@@ -45,6 +50,7 @@ const SearchIconWrapper = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  color: alpha(theme.palette.common.black, 0.5)
 }));
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
@@ -52,7 +58,6 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   width: '100%',
   '& .MuiInputBase-input': {
     padding: theme.spacing(1.5, 1, 1.5, 0),
-    // vertical padding + font size from searchIcon
     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
     transition: theme.transitions.create('width'),
     width: '100%',
@@ -62,29 +67,51 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 const Header = () => {
   const navigate = useNavigate();
   const theme = useTheme();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
 
-  const handleSearchFocus = () => {
-    navigate('/search');
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    // Qui in futuro implementeremo la logica di ricerca contestuale
   };
 
-  const handleProfileClick = () => {
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    // Focus nuovamente l'input dopo la cancellazione
+    document.getElementById('search-input').focus();
+  };
+
+  const handleProfileClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleProfilePageClick = () => {
     navigate('/profile');
+    handleProfileClose();
   };
+
+  const open = Boolean(anchorEl);
+  const id = open ? 'profile-popover' : undefined;
 
   return (
-    <AppBar position="fixed" elevation={0} color="transparent">
-      <Box sx={{ px: 2, pt: 1 }}>
+    <AppBar 
+      position="fixed" 
+      elevation={0} 
+      color="transparent"
+      sx={{
+        backdropFilter: 'blur(10px)',
+        backgroundColor: alpha(theme.palette.background.default, 0.8),
+        borderBottom: '1px solid',
+        borderColor: alpha(theme.palette.divider, 0.1)
+      }}
+    >
+      <Box sx={{ px: 2, pt: 1, pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 1 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          
+          {/* Logo e nome app */}
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
               BookSnap
@@ -94,10 +121,16 @@ const Header = () => {
             </Typography>
           </Box>
           
-          <IconButton color="primary" sx={{ mr: 1 }}>
+          {/* Notifiche */}
+          <IconButton 
+            color="primary" 
+            sx={{ mr: 1 }}
+            onClick={() => {/* Funzionalità notifiche future */}}
+          >
             <NotificationsIcon />
           </IconButton>
           
+          {/* Avatar utente con popover */}
           <Avatar 
             sx={{ 
               width: 40, 
@@ -106,15 +139,75 @@ const Header = () => {
               cursor: 'pointer'
             }}
             onClick={handleProfileClick}
+            aria-describedby={id}
           >
             U
           </Avatar>
+          
+          <Popover
+            id={id}
+            open={open}
+            anchorEl={anchorEl}
+            onClose={handleProfileClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+            PaperProps={{
+              elevation: 2,
+              sx: { borderRadius: 2, width: 220, mt: 1 }
+            }}
+          >
+            <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+              <Avatar sx={{ 
+                width: 40, 
+                height: 40, 
+                bgcolor: theme.palette.primary.main,
+                mr: 1.5
+              }}>
+                U
+              </Avatar>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                  Utente
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  utente@example.com
+                </Typography>
+              </Box>
+            </Box>
+            <Divider />
+            <List sx={{ p: 0 }}>
+            <ListItem component="li" onClick={handleProfilePageClick} sx={{ cursor: 'pointer' }}>
+                <ListItemIcon>
+                  <PersonIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Profilo" />
+              </ListItem>
+              <ListItem component="li" onClick={handleProfilePageClick} sx={{ cursor: 'pointer' }}>
+                <ListItemIcon>
+                  <SettingsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Impostazioni" />
+              </ListItem>
+              <Divider />
+              <ListItem component="li" onClick={handleProfilePageClick} sx={{ cursor: 'pointer' }}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText primary="Logout" />
+              </ListItem>
+            </List>
+          </Popover>
         </Box>
 
         {/* Barra di ricerca */}
         <Card 
           sx={{ 
-            mb: 2, 
             boxShadow: 'none', 
             backgroundColor: alpha(theme.palette.common.black, 0.04),
             borderRadius: 3,
@@ -122,13 +215,24 @@ const Header = () => {
         >
           <SearchContainer>
             <SearchIconWrapper>
-              <SearchIcon color="action" />
+              <SearchIcon />
             </SearchIconWrapper>
             <StyledInputBase
+              id="search-input"
               placeholder="Cerca libri..."
               inputProps={{ 'aria-label': 'search' }}
-              onFocus={handleSearchFocus}
+              value={searchQuery}
+              onChange={handleSearchChange}
             />
+            {searchQuery && (
+              <IconButton 
+                size="small" 
+                onClick={handleClearSearch}
+                sx={{ mr: 1 }}
+              >
+                <ClearIcon fontSize="small" />
+              </IconButton>
+            )}
           </SearchContainer>
         </Card>
       </Box>

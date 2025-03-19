@@ -1,6 +1,6 @@
 // client/src/components/layout/Layout.js
 import React from 'react';
-import { Box, Container, Toolbar } from '@mui/material';
+import { Box, Container } from '@mui/material';
 import Header from './Header';
 import BottomNavigation from './BottomNavigation';
 import { Outlet } from 'react-router-dom';
@@ -21,8 +21,9 @@ const Layout = () => {
         sx={{ 
           flexGrow: 1, 
           width: '100%', 
-          pt: 10, // Più spazio per il nuovo header
-          pb: 10, // Più spazio per la bottom navigation
+          // Aggiungiamo più padding top per evitare sovrapposizioni con l'header
+          pt: '120px', // Questo valore potrebbe dover essere regolato in base all'altezza effettiva dell'header
+          pb: '80px', // Leggermente più alto per dare più spazio
           px: 0
         }}
       >

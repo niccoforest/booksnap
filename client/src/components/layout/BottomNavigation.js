@@ -1,5 +1,5 @@
 // client/src/components/layout/BottomNavigation.js
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Paper, 
   BottomNavigation as MuiBottomNavigation, 
@@ -11,11 +11,10 @@ import {
 import { 
   Home as HomeIcon, 
   LibraryBooks as LibraryIcon,
-  Search as SearchIcon, 
-  Person as PersonIcon,
   QrCodeScanner as ScannerIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import ScannerOverlay from '../scan/ScannerOverlay';
 
 // Stile personalizzato per la bottom navigation
 const StyledBottomNavigation = styled(MuiBottomNavigation)(({ theme }) => ({
@@ -38,27 +37,32 @@ const ScanButton = styled(Fab)(({ theme }) => ({
   position: 'absolute',
   top: -25,
   left: 'calc(50% - 25px)',
-  width: 50,
-  height: 50,
+  width: 56,
+  height: 56,
   boxShadow: '0px 4px 10px rgba(93, 95, 239, 0.3)',
   backgroundColor: theme.palette.primary.main,
   '&:hover': {
     backgroundColor: theme.palette.primary.dark,
     boxShadow: '0px 6px 15px rgba(93, 95, 239, 0.4)',
   },
+  // Aggiunta di transizione per movimento fluido
+  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+  '&:active': {
+    transform: 'scale(0.95)', // Leggera riduzione quando premuto
+  }
 }));
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   
   // Determina quale tab è attivo basato sul percorso corrente
   const getActiveTab = (pathname) => {
-    if (pathname === '/') return 0;
+    if (pathname === '/' || pathname === '/home') return 0;
     if (pathname.startsWith('/library')) return 1;
-    if (pathname.startsWith('/search')) return 2;
-    if (pathname.startsWith('/profile')) return 3;
-    return 0;
+    return pathname === '/scan' ? -1 : 0; // -1 è un valore speciale per nessuna tab selezionata
   };
 
   const [value, setValue] = React.useState(getActiveTab(location.pathname));
@@ -79,80 +83,88 @@ const BottomNavigation = () => {
       case 1:
         navigate('/library');
         break;
-      case 2:
-        navigate('/search');
-        break;
-      case 3:
-        navigate('/profile');
-        break;
       default:
         navigate('/');
     }
   };
 
   const handleScanClick = () => {
-    navigate('/scan');
+    // Apre il scanner overlay invece di navigare
+    setScannerOpen(true);
+  };
+
+  const handleScannerClose = () => {
+    setScannerOpen(false);
   };
 
   return (
-    <Paper 
-      sx={{ 
-        position: 'fixed', 
-        bottom: 0, 
-        left: 0, 
-        right: 0,
-        zIndex: 1100,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        boxShadow: '0px -4px 20px rgba(0, 0, 0, 0.05)',
-        overflow: 'visible', // Importante per il pulsante FAB
-      }} 
-      elevation={0}
-    >
-      {/* Pulsante di scansione centrale */}
-      <ScanButton 
-        color="primary" 
-        aria-label="scan" 
-        onClick={handleScanClick}
+    <>
+      <Paper 
+        sx={{ 
+          position: 'fixed', 
+          bottom: 0, 
+          left: 0, 
+          right: 0,
+          zIndex: 1100,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          boxShadow: '0px -4px 20px rgba(0, 0, 0, 0.05)',
+          overflow: 'visible', // Importante per il pulsante FAB
+        }} 
+        elevation={0}
       >
-        <ScannerIcon />
-      </ScanButton>
+        {/* Pulsante di scansione centrale */}
+        <ScanButton 
+          color="primary" 
+          aria-label="scan" 
+          onClick={handleScanClick}
+        >
+          <ScannerIcon />
+        </ScanButton>
 
-      <StyledBottomNavigation
-        showLabels
-        value={value}
-        onChange={handleChange}
-      >
-        <BottomNavigationAction 
-          label="Home" 
-          icon={<HomeIcon />} 
-          sx={{ maxWidth: '25%' }}
-        />
-        <BottomNavigationAction 
-          label="Libreria" 
-          icon={<LibraryIcon />}
-          sx={{ maxWidth: '25%' }}
-        />
-        <BottomNavigationAction 
-          label="Cerca" 
-          icon={<SearchIcon />}
-          sx={{ 
-            maxWidth: '25%',
-            visibility: 'hidden', // Questo spazio è per il pulsante FAB centrale
-          }}
-        />
-        <BottomNavigationAction 
-          label="Cerca" 
-          icon={<SearchIcon />}
-          sx={{ maxWidth: '25%' }}
-        />
-        <BottomNavigationAction 
-          label="Profilo" 
-          icon={<PersonIcon />}
-          sx={{ maxWidth: '25%' }}
-        />
-      </StyledBottomNavigation>
-    </Paper>
+        <StyledBottomNavigation
+          value={value}
+          onChange={handleChange}
+          showLabels
+        >
+          {/* Home a sinistra */}
+          <BottomNavigationAction 
+            label="Home" 
+            icon={<HomeIcon />} 
+            sx={{ 
+              maxWidth: '50%', // Ora occupa metà dello spazio (escludendo lo spazio centrale)
+              flexGrow: 1
+            }}
+          />
+          
+          {/* Spazio centrale per il FAB */}
+          <BottomNavigationAction
+            sx={{
+              maxWidth: '0%',
+              padding: 0,
+              minWidth: '80px', // Spazio per il pulsante centrale
+              opacity: 0,
+              pointerEvents: 'none' // Disabilita interazioni su questo spazio
+            }}
+            disabled
+          />
+          
+          {/* Library a destra */}
+          <BottomNavigationAction 
+            label="Libreria" 
+            icon={<LibraryIcon />}
+            sx={{ 
+              maxWidth: '50%', // Ora occupa metà dello spazio (escludendo lo spazio centrale)
+              flexGrow: 1 
+            }}
+          />
+        </StyledBottomNavigation>
+      </Paper>
+      <ScannerOverlay 
+        open={scannerOpen} 
+        onClose={handleScannerClose} 
+      />
+    </>
   );
 };
 
