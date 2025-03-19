@@ -26,7 +26,12 @@ console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'Definito' : 'Non definito
 const app = express();
 
 // Middleware
-app.use(cors());
+// Configurazione CORS
+app.use(cors({
+  origin: '*',  // In produzione, usa un'origine specifica
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());

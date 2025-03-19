@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import Scan from './pages/Scan';
 import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';
+import ApiTest from './components/ApiTest';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             {/* Redirector per /scan, ora gestito con overlay */}
             <Route path="scan" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/test-api" element={<ApiTest />} />
           </Route>
         </Routes>
       </Router>
