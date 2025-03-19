@@ -4,7 +4,7 @@
  */
 
 const API_BASE_URL = 'https://www.googleapis.com/books/v1';
-const API_KEY = process.env.REACT_APP_GOOGLE_BOOKS_API_KEY || ''; // Configurare in .env
+const API_KEY = process.env.GOOGLE_BOOKS_API_KEY || ''; // Configurare in .env
 
 class GoogleBooksService {
   /**
