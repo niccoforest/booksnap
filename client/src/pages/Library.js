@@ -1,33 +1,51 @@
 // client/src/pages/Library.js
 import React from 'react';
-import { Typography, Box, Card, CardContent, Grid } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  Button,
+  Paper
+} from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 const Library = () => {
+  const navigate = useNavigate();
+
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h5" component="h1" gutterBottom>
         La mia libreria
       </Typography>
       
-      <Typography variant="body1" sx={{ mb: 3 }}>
-        Qui troverai tutti i tuoi libri organizzati in collezioni
-      </Typography>
-
-      <Grid container spacing={3}>
-        {/* Questo sarà sostituito con dati reali in futuro */}
-        <Grid item xs={12} md={6}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="h5" component="h2" gutterBottom>
-                Le tue collezioni saranno visualizzate qui
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Inizia a scansionare i tuoi libri e organizzali in collezioni personalizzate
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Box tratteggiato con pulsante aggiungi */}
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 3,
+          border: '2px dashed rgba(0, 0, 0, 0.12)',
+          borderRadius: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center'
+        }}
+      >
+        <Typography variant="body1" color="text.secondary" gutterBottom>
+          Non hai ancora aggiunto libri alla tua libreria
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/add-book')}
+          sx={{ mt: 2 }}
+        >
+          Aggiungi libro
+        </Button>
+      </Paper>
     </Box>
   );
 };

@@ -13,6 +13,7 @@ import Library from './pages/Library';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
 import Scan from './pages/Scan';
+import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
             <Route path="library" element={<Library />} />
             <Route path="search" element={<Search />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="add-book" element={<AddBook />} />
             {/* Redirector per /scan, ora gestito con overlay */}
             <Route path="scan" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />

@@ -1,105 +1,248 @@
 // client/src/pages/Scan.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Typography, 
   Box, 
-  Paper, 
-  Button,
-  Stack,
-  useTheme
+  Typography, 
+  CircularProgress, 
+  Button, 
+  Alert, 
+  Card, 
+  CardContent,
+  CardMedia,
+  CardActions,
+  Divider
 } from '@mui/material';
-import { CameraAlt as CameraIcon, ImageSearch as GalleryIcon } from '@mui/icons-material';
+import { Add as AddIcon, Camera as CameraIcon } from '@mui/icons-material';
+
+import ScannerOverlay from '../components/scan/ScannerOverlay';
+import barcodeService from '../services/barcode.service';
+import bookService from '../services/book.service';
 
 const Scan = () => {
-  const theme = useTheme();
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [scanResult, setScanResult] = useState(null);
+  const [error, setError] = useState(null);
+  
+  // Apre lo scanner automaticamente all'apertura della pagina
+  useEffect(() => {
+    setScannerOpen(true);
+  }, []);
+  
+  // Gestisce la pulizia delle risorse quando il componente viene smontato
+  useEffect(() => {
+    return () => {
+      barcodeService.destroy();
+    };
+  }, []);
+  
+  // Gestisce la cattura dall'overlay scanner
+  const handleCapture = async (captureData) => {
+    setIsProcessing(true);
+    setError(null);
+    setScanResult(null);
+    
+    try {
+      let isbn;
+      
+      // Gestione dei diversi tipi di cattura
+      if (captureData.type === 'manual') {
+        // Inserimento manuale dell'ISBN
+        isbn = captureData.isbn;
+      } else if (captureData.type === 'camera' || captureData.type === 'gallery') {
+        // Scansione da fotocamera o galleria
+        isbn = await barcodeService.decodeFromImage(captureData.image);
+      }
+      
+      if (!isbn) {
+        throw new Error('Nessun codice ISBN riconosciuto');
+      }
+      
+      // Cerca il libro con l'ISBN
+      const bookData = await bookService.findBookByIsbn(isbn);
+      
+      // Chiude lo scanner e imposta il risultato
+      setScannerOpen(false);
+      setScanResult(bookData);
+    } catch (err) {
+      console.error('Errore durante la scansione:', err);
+      setError(err.message || 'Si è verificato un errore durante la scansione');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Aggiunge il libro alla libreria personale
+  const handleAddToLibrary = async () => {
+    if (!scanResult) return;
+    
+    try {
+      setIsProcessing(true);
+      await bookService.addBookToLibrary(scanResult);
+      alert('Libro aggiunto alla libreria con successo!');
+      // Reset dello stato per una nuova scansione
+      setScanResult(null);
+      setScannerOpen(true);
+    } catch (err) {
+      console.error('Errore nell\'aggiunta del libro:', err);
+      setError('Impossibile aggiungere il libro alla libreria. Riprova più tardi.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  
+  // Apre lo scanner per una nuova scansione
+  const handleNewScan = () => {
+    setScanResult(null);
+    setError(null);
+    setScannerOpen(true);
+  };
 
   return (
-    <Box sx={{ mb: 4 }}>
-      <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>
-        Scansiona un libro
-      </Typography>
+    <Box sx={{ p: 2, height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
+      {/* Area errori */}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 2 }}
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
       
-      <Paper 
-        sx={{ 
+      {/* Area risultati scansione */}
+      {isProcessing ? (
+        <Box sx={{ 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
           justifyContent: 'center',
-          height: '60vh',
-          mb: 3,
-          p: 2,
-          bgcolor: 'background.paper',
-          borderRadius: 4
-        }}
-        elevation={0}
-      >
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            flexDirection: 'column',
-            width: '100%',
-            height: '100%',
-            border: '2px dashed',
-            borderColor: theme.palette.primary.light,
-            borderRadius: 3,
-            p: 2
-          }}
-        >
-          <Box
-            sx={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 2
-            }}
-          >
-            <CameraIcon sx={{ fontSize: 40, color: 'primary.main' }} />
-          </Box>
-          <Typography variant="body1" textAlign="center" gutterBottom>
-            Premi il pulsante qui sotto per attivare la fotocamera
-          </Typography>
-          <Typography variant="body2" color="text.secondary" textAlign="center">
-            Inquadra la copertina, la costa o il codice ISBN del libro
+          flex: 1 
+        }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Elaborazione in corso...
           </Typography>
         </Box>
-      </Paper>
+      ) : scanResult ? (
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <Typography variant="h5" gutterBottom>
+            Libro riconosciuto
+          </Typography>
+          
+          <Card sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, mb: 2 }}>
+            <CardMedia
+              component="img"
+              sx={{ 
+                width: { xs: '100%', sm: 140 },
+                height: { xs: 200, sm: 200 },
+                objectFit: 'contain',
+                bgcolor: '#f5f5f5'
+              }}
+              image={scanResult.coverImage}
+              alt={scanResult.title}
+            />
+            <CardContent sx={{ flex: '1 0 auto' }}>
+              <Typography component="h2" variant="h6">
+                {scanResult.title}
+              </Typography>
+              {scanResult.subtitle && (
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {scanResult.subtitle}
+                </Typography>
+              )}
+              <Typography variant="body1" color="text.primary">
+                {Array.isArray(scanResult.authors) 
+                  ? scanResult.authors.join(', ') 
+                  : scanResult.authors}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {scanResult.publisher} 
+                {scanResult.publishedDate && ` (${scanResult.publishedDate.slice(0, 4)})`}
+              </Typography>
+              
+              <Divider sx={{ my: 1 }} />
+              
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>ISBN:</strong> {scanResult.isbn}
+              </Typography>
+              {scanResult.pageCount > 0 && (
+                <Typography variant="body2">
+                  <strong>Pagine:</strong> {scanResult.pageCount}
+                </Typography>
+              )}
+              {scanResult.categories && scanResult.categories.length > 0 && (
+                <Typography variant="body2">
+                  <strong>Categorie:</strong> {scanResult.categories.join(', ')}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
+          
+          {scanResult.description && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Descrizione
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                maxHeight: '200px', 
+                overflow: 'auto' 
+              }}>
+                {scanResult.description.replace(/<[^>]*>?/gm, '')}
+              </Typography>
+            </Box>
+          )}
+          
+          <Box sx={{ mt: 'auto', display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              startIcon={<CameraIcon />}
+              onClick={handleNewScan}
+              fullWidth
+            >
+              Nuova scansione
+            </Button>
+            <Button 
+              variant="contained" 
+              color="primary"
+              startIcon={<AddIcon />}
+              onClick={handleAddToLibrary}
+              fullWidth
+            >
+              Aggiungi alla libreria
+            </Button>
+          </Box>
+        </Box>
+      ) : (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flex: 1 
+        }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom align="center">
+            Scansiona un libro per aggiungerlo alla tua libreria
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            startIcon={<CameraIcon />}
+            onClick={() => setScannerOpen(true)}
+            sx={{ mt: 2 }}
+          >
+            Apri scanner
+          </Button>
+        </Box>
+      )}
       
-      <Stack direction="column" spacing={2}>
-        <Button 
-          variant="contained" 
-          size="large" 
-          fullWidth
-          startIcon={<CameraIcon />}
-          sx={{ py: 1.5, borderRadius: 3 }}
-        >
-          Attiva fotocamera
-        </Button>
-        
-        <Button 
-          variant="outlined" 
-          size="large"
-          fullWidth
-          startIcon={<GalleryIcon />}
-          sx={{ py: 1.5, borderRadius: 3 }}
-        >
-          Seleziona dalla galleria
-        </Button>
-
-        <Button 
-          variant="text" 
-          size="large"
-          fullWidth
-          sx={{ py: 1.5 }}
-        >
-          Inserisci ISBN manualmente
-        </Button>
-      </Stack>
+      {/* Scanner overlay */}
+      <ScannerOverlay 
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onCapture={handleCapture}
+      />
     </Box>
   );
 };

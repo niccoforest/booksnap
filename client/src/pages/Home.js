@@ -8,11 +8,7 @@ import {
   CardMedia,
   Grid, 
   Button, 
-  Stack,
-  Chip,
-  Avatar,
   useTheme,
-  Divider,
   alpha
 } from '@mui/material';
 import { 
@@ -187,19 +183,13 @@ const Home = () => {
         </Grid>
       </Grid>
 
-      {/* Le mie librerie */}
+      {/* La mia libreria - sezione cambiata da "Le mie librerie" */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
-            Le mie librerie
+            La mia libreria
           </Typography>
-          <Button 
-            startIcon={<AddIcon />} 
-            variant="text" 
-            size="small"
-          >
-            Nuova
-          </Button>
+          {/* Rimosso il pulsante "Nuova" */}
         </Box>
         
         <Box sx={{ 
@@ -211,16 +201,16 @@ const Home = () => {
           borderColor: alpha(theme.palette.divider, 0.3)
         }}>
           <Typography variant="body1" color="text.secondary" gutterBottom>
-            Non hai ancora creato librerie
+            Non hai ancora aggiunto libri alla tua libreria
           </Typography>
           <Button 
             variant="contained" 
             color="primary"
             startIcon={<AddIcon />}
             sx={{ mt: 2 }}
-            onClick={() => navigate('/library')}
+            onClick={() => navigate('/add-book')} // Modificato per andare ad add-book
           >
-            Crea libreria
+            Aggiungi libro
           </Button>
         </Box>
       </Box>
@@ -271,7 +261,7 @@ const Home = () => {
               variant="contained" 
               color="secondary"
               sx={{ mt: 2 }}
-              onClick={() => navigate('/scan')}
+              onClick={() => navigate('/add-book')} // Modificato per andare ad add-book
             >
               Scansiona il primo libro
             </Button>

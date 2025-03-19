@@ -113,7 +113,9 @@ const Header = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           {/* Logo e nome app */}
           <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold',cursor: 'pointer' }}
+            onClick={() => navigate('/')}
+            >
               BookSnap
             </Typography>
             <Typography variant="body2" color="text.secondary">
