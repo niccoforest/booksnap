@@ -4,111 +4,122 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#26A69A', // Verde Teal per l'header
-      light: '#4DB6AC',
-      dark: '#00897B',
+      main: '#5D5FEF', // Viola principale
+      light: '#7879F1',
+      dark: '#4A4ADB',
       contrastText: '#FFFFFF',
     },
     secondary: {
-      main: '#42A5F5', // Azzurro per CTA
-      light: '#64B5F6',
-      dark: '#1E88E5',
+      main: '#FF576B', // Rosa/Rosso per accenti e CTA
+      light: '#FF8A9A',
+      dark: '#E5304A',
       contrastText: '#FFFFFF',
     },
     background: {
-      default: '#F5F5F5',
+      default: '#F8F9FE', // Grigio chiarissimo quasi bianco
       paper: '#FFFFFF',
     },
     text: {
-      primary: '#37474F',
-      secondary: '#546E7A',
+      primary: '#303146', // Grigio scuro quasi nero
+      secondary: '#6E7191', // Grigio medio
     },
     action: {
-      active: '#26A69A',
-      hover: 'rgba(38, 166, 154, 0.08)',
+      active: '#5D5FEF',
+      hover: 'rgba(93, 95, 239, 0.08)',
     },
     error: {
-      main: '#EF9A9A', // Rosso pastello
+      main: '#FF576B', // Rosso/Rosa
     },
     warning: {
-      main: '#FFB74D', // Arancione pastello
+      main: '#FFBD12', // Giallo/Arancione
     },
     info: {
-      main: '#90CAF9', // Blu pastello
+      main: '#5D5FEF', // Viola principale
     },
     success: {
-      main: '#A5D6A7', // Verde pastello
+      main: '#53D0EC', // Azzurro/Turchese
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '2rem',
       lineHeight: 1.2,
-      letterSpacing: '-0.01562em',
     },
     h2: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '1.75rem',
       lineHeight: 1.2,
-      letterSpacing: '-0.00833em',
     },
     h3: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '1.5rem',
       lineHeight: 1.2,
-      letterSpacing: '0em',
     },
     h4: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '1.25rem',
       lineHeight: 1.2,
-      letterSpacing: '0.00735em',
     },
     h5: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '1.1rem',
       lineHeight: 1.2,
-      letterSpacing: '0em',
     },
     h6: {
-      fontWeight: 500,
+      fontWeight: 600,
       fontSize: '1rem',
       lineHeight: 1.2,
-      letterSpacing: '0.0075em',
     },
     button: {
-      textTransform: 'none', // Evita il testo tutto maiuscolo nei pulsanti
+      textTransform: 'none',
+      fontWeight: 500,
     },
   },
   components: {
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.1)',
+          boxShadow: 'none',
+          background: '#FFFFFF',
+          color: '#303146',
         },
       },
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 12,
-          boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+          borderRadius: 16,
+          boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)',
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
+          borderRadius: 12,
           padding: '8px 16px',
+          boxShadow: 'none',
+        },
+        contained: {
+          boxShadow: '0px 4px 10px rgba(93, 95, 239, 0.2)',
+          '&:hover': {
+            boxShadow: '0px 6px 15px rgba(93, 95, 239, 0.3)',
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
         },
       },
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 12,
   },
 });
 

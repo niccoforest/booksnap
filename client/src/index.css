@@ -1,12 +1,14 @@
 /* client/src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', 'Oxygen',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Roboto', 'Segoe UI', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #F5F5F5;
+  background-color: #F8F9FE;
 }
 
 code {
@@ -39,8 +41,8 @@ code {
 
 /* Stili per le scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -49,12 +51,12 @@ code {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #26A69A;
+  background: #5D5FEF;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00897B;
+  background: #4A4ADB;
 }
 
 /* Miglioramenti per layout mobile */
@@ -72,13 +74,5 @@ code {
 
 .hover-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 16px rgba(93, 95, 239, 0.1);
 }
-
-/* Utility classi per spaziatura e margini rapidi */
-.mt-0 { margin-top: 0 !important; }
-.mb-0 { margin-bottom: 0 !important; }
-.ml-0 { margin-left: 0 !important; }
-.mr-0 { margin-right: 0 !important; }
-
-.p-0 { padding: 0 !important; }

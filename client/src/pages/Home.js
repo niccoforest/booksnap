@@ -1,62 +1,79 @@
 // client/src/pages/Home.js
 import React from 'react';
-import { Typography, Box, Card, CardContent, Grid, Button, Stack } from '@mui/material';
+import { 
+  Typography, 
+  Box, 
+  Card, 
+  CardContent, 
+  Grid, 
+  Button, 
+  Stack,
+  Chip,
+  Avatar,
+  useTheme
+} from '@mui/material';
+import { 
+  LibraryBooks as LibraryIcon,
+  Add as AddIcon,
+  LocalLibrary as ReadingIcon,
+  Check as CompletedIcon,
+  Bookmark as WishlistIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'medium', mb: 3 }}>
-        Benvenuto in BookSnap
-      </Typography>
-      
-      {/* Card di azione principale - Scansione */}
-      <Card sx={{ mb: 4, bgcolor: 'primary.main', color: 'white', position: 'relative', overflow: 'hidden' }}>
-        <CardContent sx={{ py: 3 }}>
-          <Box sx={{ position: 'absolute', right: -20, top: -20, opacity: 0.1, fontSize: '8rem' }}>
-            📸
-          </Box>
-          <Typography variant="h5" component="div" sx={{ mb: 2 }}>
-            Scansiona un libro
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            Scatta una foto della copertina, della costa o dell'ISBN per aggiungere un libro alla tua biblioteca.
-          </Typography>
-          <Button 
-            variant="contained" 
-            color="secondary" 
-            sx={{ mt: 1 }}
-            onClick={() => navigate('/scan')}
-          >
-            Scansiona ora
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Statistiche veloci */}
-      <Typography variant="h5" component="h2" gutterBottom>
+      <Typography 
+        variant="h5" 
+        component="h1" 
+        gutterBottom 
+        sx={{ fontWeight: 'bold', mb: 3 }}
+      >
         La tua attività
       </Typography>
       
+      {/* Statistiche a schede */}
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h3" color="primary">
+        <Grid item xs={6}>
+          <Card 
+            sx={{ 
+              bgcolor: theme.palette.primary.main, 
+              color: 'white', 
+              height: '100%',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <Box 
+              sx={{ 
+                position: 'absolute', 
+                top: -15, 
+                right: -15, 
+                fontSize: '5rem', 
+                opacity: 0.1,
+                transform: 'rotate(15deg)'
+              }}
+            >
+              <LibraryIcon fontSize="inherit" />
+            </Box>
+            <CardContent>
+              <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
                 0
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2">
                 Libri totali
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h3" color="primary">
+        <Grid item xs={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
                 0
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -65,10 +82,10 @@ const Home = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h3" color="primary">
+        <Grid item xs={6}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h3" color="primary" sx={{ fontWeight: 'bold', mb: 1 }}>
                 0
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -77,13 +94,19 @@ const Home = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={6} sm={3}>
-          <Card>
-            <CardContent sx={{ textAlign: 'center', py: 2 }}>
-              <Typography variant="h3" color="primary">
+        <Grid item xs={6}>
+          <Card 
+            sx={{ 
+              bgcolor: theme.palette.secondary.main, 
+              color: 'white',
+              height: '100%'
+            }}
+          >
+            <CardContent>
+              <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 1 }}>
                 0
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2">
                 Librerie
               </Typography>
             </CardContent>
@@ -91,31 +114,63 @@ const Home = () => {
         </Grid>
       </Grid>
 
-      {/* Sezione "In evidenza" o "Continua a leggere" */}
-      <Typography variant="h5" component="h2" gutterBottom>
-        Continua a leggere
-      </Typography>
+      {/* Le mie librerie */}
+      <Box sx={{ mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+            Le mie librerie
+          </Typography>
+          <Button 
+            startIcon={<AddIcon />} 
+            variant="text" 
+            size="small"
+          >
+            Nuova
+          </Button>
+        </Box>
+        
+        <Box sx={{ textAlign: 'center', py: 4, bgcolor: 'background.paper', borderRadius: 3 }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            Non hai ancora creato librerie
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary"
+            startIcon={<AddIcon />}
+            sx={{ mt: 2 }}
+            onClick={() => navigate('/library')}
+          >
+            Crea libreria
+          </Button>
+        </Box>
+      </Box>
 
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          Non hai ancora aggiunto libri alla tua libreria
+      {/* Continua a leggere */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', mb: 2 }}>
+          Continua a leggere
         </Typography>
-        <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 2 }}>
+
+        <Box sx={{ 
+          textAlign: 'center', 
+          py: 4, 
+          bgcolor: 'background.paper', 
+          borderRadius: 3,
+          border: '1px dashed',
+          borderColor: 'divider' 
+        }}>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            Non hai ancora libri in lettura
+          </Typography>
           <Button 
             variant="contained" 
             color="secondary"
+            sx={{ mt: 2 }}
             onClick={() => navigate('/scan')}
           >
-            Scansiona un libro
+            Aggiungi un libro
           </Button>
-          <Button 
-            variant="outlined" 
-            color="primary"
-            onClick={() => navigate('/search')}
-          >
-            Cerca libri
-          </Button>
-        </Stack>
+        </Box>
       </Box>
     </Box>
   );

@@ -7,11 +7,33 @@ import { Outlet } from 'react-router-dom';
 
 const Layout = () => {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        minHeight: '100vh',
+        backgroundColor: 'background.default'
+      }}
+    >
       <Header />
-      <Box component="main" sx={{ flexGrow: 1, width: '100%', pt: 2, pb: 9 }}>
-        <Toolbar /> {/* Spazio per compensare l'AppBar fixed */}
-        <Container maxWidth="lg" sx={{ mt: 1 }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          width: '100%', 
+          pt: 10, // Più spazio per il nuovo header
+          pb: 10, // Più spazio per la bottom navigation
+          px: 0
+        }}
+      >
+        <Container 
+          disableGutters 
+          maxWidth="lg" 
+          sx={{ 
+            px: 2, 
+            height: '100%'
+          }}
+        >
           <Outlet /> {/* Qui verranno inserite le pagine */}
         </Container>
       </Box>

@@ -9,18 +9,24 @@ import {
   Avatar,
   InputBase,
   alpha,
-  styled
+  styled,
+  Card,
+  useTheme
 } from '@mui/material';
-import { Search as SearchIcon, QrCodeScanner as ScannerIcon } from '@mui/icons-material';
+import { 
+  Search as SearchIcon, 
+  Notifications as NotificationsIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 // Stile per la barra di ricerca
 const SearchContainer = styled('div')(({ theme }) => ({
   position: 'relative',
   borderRadius: theme.shape.borderRadius,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  backgroundColor: alpha(theme.palette.common.black, 0.04),
   '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    backgroundColor: alpha(theme.palette.common.black, 0.06),
   },
   marginRight: theme.spacing(2),
   marginLeft: 0,
@@ -43,90 +49,89 @@ const SearchIconWrapper = styled('div')(({ theme }) => ({
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
   color: 'inherit',
+  width: '100%',
   '& .MuiInputBase-input': {
-    padding: theme.spacing(1, 1, 1, 0),
+    padding: theme.spacing(1.5, 1, 1.5, 0),
     // vertical padding + font size from searchIcon
     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
     transition: theme.transitions.create('width'),
     width: '100%',
-    [theme.breakpoints.up('md')]: {
-      width: '20ch',
-    },
   },
 }));
 
 const Header = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
 
-  const handleScanClick = () => {
-    navigate('/scan');
+  const handleSearchFocus = () => {
+    navigate('/search');
   };
 
   const handleProfileClick = () => {
     navigate('/profile');
   };
 
-  const handleSearchFocus = () => {
-    navigate('/search');
-  };
-
   return (
-    <AppBar position="fixed" color="primary">
-      <Toolbar>
-        {/* Logo e nome app */}
-        <Typography
-          variant="h6"
-          noWrap
-          component="div"
-          sx={{ display: { xs: 'none', sm: 'block' } }}
-        >
-          BookSnap
-        </Typography>
-
-        {/* Su mobile mostra solo un'icona come logo */}
-        <Box sx={{ display: { xs: 'flex', sm: 'none' }, alignItems: 'center' }}>
-          <Typography variant="h6" component="div">
-            📚
-          </Typography>
+    <AppBar position="fixed" elevation={0} color="transparent">
+      <Box sx={{ px: 2, pt: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <IconButton
+            size="large"
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            sx={{ mr: 1 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+              BookSnap
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Ciao, Utente
+            </Typography>
+          </Box>
+          
+          <IconButton color="primary" sx={{ mr: 1 }}>
+            <NotificationsIcon />
+          </IconButton>
+          
+          <Avatar 
+            sx={{ 
+              width: 40, 
+              height: 40, 
+              bgcolor: theme.palette.primary.main,
+              cursor: 'pointer'
+            }}
+            onClick={handleProfileClick}
+          >
+            U
+          </Avatar>
         </Box>
 
         {/* Barra di ricerca */}
-        <SearchContainer>
-          <SearchIconWrapper>
-            <SearchIcon />
-          </SearchIconWrapper>
-          <StyledInputBase
-            placeholder="Cerca libri..."
-            inputProps={{ 'aria-label': 'search' }}
-            onFocus={handleSearchFocus}
-          />
-        </SearchContainer>
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {/* Pulsante Scanner (stile Vivino camera) */}
-        <IconButton
-          size="large"
-          edge="end"
-          color="inherit"
-          aria-label="scan book"
-          onClick={handleScanClick}
-          sx={{ mr: 1 }}
+        <Card 
+          sx={{ 
+            mb: 2, 
+            boxShadow: 'none', 
+            backgroundColor: alpha(theme.palette.common.black, 0.04),
+            borderRadius: 3,
+          }}
         >
-          <ScannerIcon />
-        </IconButton>
-
-        {/* Avatar Profilo Utente */}
-        <IconButton
-          size="large"
-          edge="end"
-          aria-label="account of current user"
-          color="inherit"
-          onClick={handleProfileClick}
-        >
-          <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>U</Avatar>
-        </IconButton>
-      </Toolbar>
+          <SearchContainer>
+            <SearchIconWrapper>
+              <SearchIcon color="action" />
+            </SearchIconWrapper>
+            <StyledInputBase
+              placeholder="Cerca libri..."
+              inputProps={{ 'aria-label': 'search' }}
+              onFocus={handleSearchFocus}
+            />
+          </SearchContainer>
+        </Card>
+      </Box>
     </AppBar>
   );
 };

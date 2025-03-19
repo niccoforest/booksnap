@@ -1,8 +1,52 @@
 // client/src/components/layout/BottomNavigation.js
 import React from 'react';
-import { Paper, BottomNavigation as MuiBottomNavigation, BottomNavigationAction } from '@mui/material';
-import { Home as HomeIcon, LocalLibrary as LibraryIcon, Search as SearchIcon, Person as PersonIcon } from '@mui/icons-material';
+import { 
+  Paper, 
+  BottomNavigation as MuiBottomNavigation, 
+  BottomNavigationAction,
+  Box,
+  Fab,
+  styled
+} from '@mui/material';
+import { 
+  Home as HomeIcon, 
+  LibraryBooks as LibraryIcon,
+  Search as SearchIcon, 
+  Person as PersonIcon,
+  QrCodeScanner as ScannerIcon
+} from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+
+// Stile personalizzato per la bottom navigation
+const StyledBottomNavigation = styled(MuiBottomNavigation)(({ theme }) => ({
+  height: 70,
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  backgroundColor: theme.palette.background.paper,
+  '& .MuiBottomNavigationAction-root': {
+    minWidth: 'auto',
+    padding: '6px 0',
+    color: theme.palette.text.secondary,
+  },
+  '& .Mui-selected': {
+    color: theme.palette.primary.main,
+  },
+}));
+
+// FAB personalizzato per il pulsante di scansione
+const ScanButton = styled(Fab)(({ theme }) => ({
+  position: 'absolute',
+  top: -25,
+  left: 'calc(50% - 25px)',
+  width: 50,
+  height: 50,
+  boxShadow: '0px 4px 10px rgba(93, 95, 239, 0.3)',
+  backgroundColor: theme.palette.primary.main,
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+    boxShadow: '0px 6px 15px rgba(93, 95, 239, 0.4)',
+  },
+}));
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
@@ -46,6 +90,10 @@ const BottomNavigation = () => {
     }
   };
 
+  const handleScanClick = () => {
+    navigate('/scan');
+  };
+
   return (
     <Paper 
       sx={{ 
@@ -53,29 +101,57 @@ const BottomNavigation = () => {
         bottom: 0, 
         left: 0, 
         right: 0,
-        zIndex: 1100, // Assicura che sia sopra ad altri elementi
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        boxShadow: '0px -2px 10px rgba(0, 0, 0, 0.1)'
+        zIndex: 1100,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        boxShadow: '0px -4px 20px rgba(0, 0, 0, 0.05)',
+        overflow: 'visible', // Importante per il pulsante FAB
       }} 
-      elevation={3}
+      elevation={0}
     >
-      <MuiBottomNavigation
+      {/* Pulsante di scansione centrale */}
+      <ScanButton 
+        color="primary" 
+        aria-label="scan" 
+        onClick={handleScanClick}
+      >
+        <ScannerIcon />
+      </ScanButton>
+
+      <StyledBottomNavigation
         showLabels
         value={value}
         onChange={handleChange}
-        sx={{
-          '& .MuiBottomNavigationAction-root': {
-            minWidth: 'auto',
-            padding: '6px 0',
-          },
-        }}
       >
-        <BottomNavigationAction label="Home" icon={<HomeIcon />} />
-        <BottomNavigationAction label="Libreria" icon={<LibraryIcon />} />
-        <BottomNavigationAction label="Cerca" icon={<SearchIcon />} />
-        <BottomNavigationAction label="Profilo" icon={<PersonIcon />} />
-      </MuiBottomNavigation>
+        <BottomNavigationAction 
+          label="Home" 
+          icon={<HomeIcon />} 
+          sx={{ maxWidth: '25%' }}
+        />
+        <BottomNavigationAction 
+          label="Libreria" 
+          icon={<LibraryIcon />}
+          sx={{ maxWidth: '25%' }}
+        />
+        <BottomNavigationAction 
+          label="Cerca" 
+          icon={<SearchIcon />}
+          sx={{ 
+            maxWidth: '25%',
+            visibility: 'hidden', // Questo spazio è per il pulsante FAB centrale
+          }}
+        />
+        <BottomNavigationAction 
+          label="Cerca" 
+          icon={<SearchIcon />}
+          sx={{ maxWidth: '25%' }}
+        />
+        <BottomNavigationAction 
+          label="Profilo" 
+          icon={<PersonIcon />}
+          sx={{ maxWidth: '25%' }}
+        />
+      </StyledBottomNavigation>
     </Paper>
   );
 };

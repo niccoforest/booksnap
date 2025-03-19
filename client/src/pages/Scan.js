@@ -6,16 +6,16 @@ import {
   Paper, 
   Button,
   Stack,
-  CircularProgress
+  useTheme
 } from '@mui/material';
-import { CameraAlt as CameraIcon } from '@mui/icons-material';
+import { CameraAlt as CameraIcon, ImageSearch as GalleryIcon } from '@mui/icons-material';
 
-// Questo è un placeholder per la pagina di scansione
-// In futuro, integreremo react-webcam e le funzionalità di scansione
 const Scan = () => {
+  const theme = useTheme();
+
   return (
     <Box sx={{ mb: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
+      <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', mb: 3 }}>
         Scansiona un libro
       </Typography>
       
@@ -25,11 +25,13 @@ const Scan = () => {
           flexDirection: 'column', 
           alignItems: 'center', 
           justifyContent: 'center',
-          height: '50vh',
+          height: '60vh',
           mb: 3,
           p: 2,
-          bgcolor: 'grey.100'
+          bgcolor: 'background.paper',
+          borderRadius: 4
         }}
+        elevation={0}
       >
         <Box 
           sx={{ 
@@ -40,12 +42,25 @@ const Scan = () => {
             width: '100%',
             height: '100%',
             border: '2px dashed',
-            borderColor: 'primary.main',
-            borderRadius: 2,
+            borderColor: theme.palette.primary.light,
+            borderRadius: 3,
             p: 2
           }}
         >
-          <CameraIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+          <Box
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 2
+            }}
+          >
+            <CameraIcon sx={{ fontSize: 40, color: 'primary.main' }} />
+          </Box>
           <Typography variant="body1" textAlign="center" gutterBottom>
             Premi il pulsante qui sotto per attivare la fotocamera
           </Typography>
@@ -61,13 +76,23 @@ const Scan = () => {
           size="large" 
           fullWidth
           startIcon={<CameraIcon />}
-          sx={{ py: 1.5 }}
+          sx={{ py: 1.5, borderRadius: 3 }}
         >
           Attiva fotocamera
         </Button>
         
         <Button 
           variant="outlined" 
+          size="large"
+          fullWidth
+          startIcon={<GalleryIcon />}
+          sx={{ py: 1.5, borderRadius: 3 }}
+        >
+          Seleziona dalla galleria
+        </Button>
+
+        <Button 
+          variant="text" 
           size="large"
           fullWidth
           sx={{ py: 1.5 }}
