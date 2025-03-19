@@ -43,19 +43,27 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ScannerOverlay from '../components/scan/ScannerOverlay';
 import googleBooksService from '../services/googleBooks.service';
+import bookService from '../services/book.service';
+import apiService from '../services/api.service';
+
 
 const AddBook = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [scannerOpen, setScannerOpen] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
-  
+  const [booksInLibrary, setBooksInLibrary] = useState({});
+
+
   // Stato per la ricerca libri
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedBook, setSelectedBook] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loadingBookId, setLoadingBookId] = useState(null);
+
+  const [tempUserId] = useState('655e9e1b07910b7d21dea350')
   
   // Stato per la creazione manuale di un libro
   const [isManualCreation, setIsManualCreation] = useState(false);
@@ -72,13 +80,11 @@ const AddBook = () => {
   
   // Stato per la personalizzazione del libro
   const [userBookData, setUserBookData] = useState({
-    rating: 0,
-    readStatus: 'to-read', // 'to-read', 'reading', 'completed', 'abandoned'
+    rating: null,  // Cambiato da 0 a null
+    readStatus: 'to-read',
     notes: ''
   });
   
-  // Stato per i libri nella libreria (simulato)
-  const [libraryBooks, setLibraryBooks] = useState({});
   
   // Stato per notifiche
   const [snackbar, setSnackbar] = useState({
@@ -103,34 +109,205 @@ const AddBook = () => {
     // Pulisci il timer quando la query cambia
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  
-  // Funzione per cercare libri
-  const searchBooks = async (query) => {
-    try {
-      setLoading(true);
-      setError('');
-      const results = await googleBooksService.searchBooks(query);
-      setSearchResults(results);
-    } catch (err) {
-      console.error('Errore durante la ricerca:', err);
-      setError('Si è verificato un errore durante la ricerca. Riprova.');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Funzione per selezionare un libro
-  const handleSelectBook = (book) => {
-    setSelectedBook(book);
-    // Resetta i dati utente quando si seleziona un nuovo libro
-    setUserBookData({
-      rating: 0,
-      readStatus: 'to-read',
-      notes: ''
+
+
+
+   // Effetto per controllare se i libri sono già nella libreria
+   useEffect(() => {
+    // Verifica solo se ci sono risultati di ricerca
+    if (searchResults.length === 0) return;
+    
+    // Limitiamo le verifiche per non sovraccaricare l'API
+    // Creiamo un array delle verifiche da effettuare (max 5 contemporaneamente)
+    const booksToCheck = searchResults
+      .filter(book => book.googleBooksId && booksInLibrary[book.googleBooksId] === undefined)
+      .slice(0, 5);
+    
+    if (booksToCheck.length === 0) return;
+    
+    // Funzione asincrona per verificare i libri
+    const checkBooks = async () => {
+      for (const book of booksToCheck) {
+        try {
+          // Imposta stato "in verifica"
+          setBooksInLibrary(prev => ({
+            ...prev,
+            [book.googleBooksId]: 'checking'
+          }));
+          
+          const isInLibrary = await bookService.checkBookInUserLibrary(book.googleBooksId, tempUserId);
+          
+          // Aggiorna lo stato con il risultato finale
+          setBooksInLibrary(prev => ({
+            ...prev,
+            [book.googleBooksId]: isInLibrary
+          }));
+        } catch (err) {
+          console.error(`Errore nella verifica del libro ${book.title}:`, err);
+          // In caso di errore, imposta a false
+          setBooksInLibrary(prev => ({
+            ...prev,
+            [book.googleBooksId]: false
+          }));
+        }
+      }
+    };
+    
+    checkBooks();
+  }, [searchResults, tempUserId]);
+  useEffect(() => {
+    // Verifica dell'inizializzazione di booksInLibrary
+    console.log('VERIFICA INIZIALIZZAZIONE: Stato booksInLibrary:', booksInLibrary);
+    
+    // Test della funzione isBookInLibrary
+    const testBookId = 'test-book-id';
+    
+    // Test con valore true
+    setBooksInLibrary(prev => {
+      const result = {...prev, [testBookId]: true};
+      console.log('VERIFICA TEST: Impostazione test libro a true');
+      return result;
     });
-    console.log('Libro selezionato:', book);
-  };
+    
+    // Verifica dopo una modifica
+    setTimeout(() => {
+      console.log('VERIFICA TEST: Stato dopo impostazione true:', booksInLibrary);
+      console.log('VERIFICA TEST: isBookInLibrary con true:', isBookInLibrary(testBookId));
+      
+      // Test con valore false
+      setBooksInLibrary(prev => {
+        const result = {...prev, [testBookId]: false};
+        console.log('VERIFICA TEST: Impostazione test libro a false');
+        return result;
+      });
+      
+      // Seconda verifica
+      setTimeout(() => {
+        console.log('VERIFICA TEST: Stato dopo impostazione false:', booksInLibrary);
+        console.log('VERIFICA TEST: isBookInLibrary con false:', isBookInLibrary(testBookId));
+        
+        // Pulizia
+        setBooksInLibrary(prev => {
+          const newState = {...prev};
+          delete newState[testBookId];
+          return newState;
+        });
+      }, 500);
+    }, 500);
+  }, []); // Solo all'inizializzazione
+
+// Funzione per cercare libri completamente rivista
+const searchBooks = async (query) => {
+  try {
+    setLoading(true);
+    setError('');
+    
+    // IMPORTANTE: Resetta lo stato dei libri in libreria
+    // per evitare che valori precedenti influenzino la nuova ricerca
+    setBooksInLibrary({});
+    
+    // Esegui la ricerca
+    const results = await googleBooksService.searchBooks(query);
+    console.log(`Ricevuti ${results.length} risultati per la query "${query}"`);
+    setSearchResults(results);
+    
+    // Verifica quali libri sono già nella libreria dell'utente
+    if (results.length > 0) {
+      // Processa i libri in batch per evitare troppe chiamate simultanee
+      const batchSize = 3;
+      for (let i = 0; i < results.length; i += batchSize) {
+        const batch = results.slice(i, i + batchSize);
+        
+        // Processa i libri in parallelo all'interno del batch
+        await Promise.all(batch.map(async (book) => {
+          if (!book.googleBooksId) return;
+          
+          try {
+            // Imposta stato iniziale esplicitamente a false mentre verifichiamo
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [book.googleBooksId]: false
+            }));
+            
+            console.log(`Verifica libro "${book.title}" (${book.googleBooksId})`);
+            
+            const isInLibrary = await bookService.checkBookInUserLibrary(book.googleBooksId, tempUserId);
+            console.log(`Risultato verifica "${book.title}": ${isInLibrary}`);
+            
+            // Aggiorna lo stato con il risultato ESPLICITO della verifica
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [book.googleBooksId]: isInLibrary === true
+            }));
+          } catch (err) {
+            console.error(`Errore nella verifica del libro ${book.title}:`, err);
+            
+            // In caso di errore, imposta esplicitamente a false
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [book.googleBooksId]: false
+            }));
+          }
+        }));
+      }
+    }
+  } catch (err) {
+    console.error('Errore durante la ricerca:', err);
+    setError('Si è verificato un errore durante la ricerca. Riprova.');
+    setSearchResults([]);
+  } finally {
+    setLoading(false);
+  }
+};
+  
+ // Funzione per aggiornare lo stato di un libro nella libreria
+ const updateBookInLibraryStatus = (bookId, status) => {
+  setBooksInLibrary(prev => ({
+    ...prev,
+    [bookId]: status
+  }));
+};
+
+// Funzione per selezionare un libro
+const handleSelectBook = async (book) => {
+  setSelectedBook(book);
+  // Resetta i dati utente quando si seleziona un nuovo libro
+  setUserBookData({
+    rating: null,
+    readStatus: 'to-read',
+    notes: ''
+  });
+  console.log('Libro selezionato:', book);
+  
+  // Verifica se il libro è già nella libreria
+  if (book.googleBooksId) {
+    try {
+      // Imposta lo stato temporaneo "checking"
+      setBooksInLibrary(prev => ({
+        ...prev,
+        [book.googleBooksId]: 'checking'
+      }));
+      
+      const isInLibrary = await bookService.checkBookInUserLibrary(book.googleBooksId, tempUserId);
+      
+      // Aggiorna lo stato con il risultato finale
+      setBooksInLibrary(prev => ({
+        ...prev,
+        [book.googleBooksId]: isInLibrary
+      }));
+      
+      console.log(`Libro "${book.title}" in libreria: ${isInLibrary}`);
+    } catch (err) {
+      console.error(`Errore nella verifica del libro ${book.title}:`, err);
+      
+      // In caso di errore, imposta a false
+      setBooksInLibrary(prev => ({
+        ...prev,
+        [book.googleBooksId]: false
+      }));
+    }
+  }
+};
   
   // Funzione per tornare ai risultati di ricerca
   const handleBackToResults = () => {
@@ -171,40 +348,147 @@ const AddBook = () => {
   
   // Funzione per aggiornare i dati utente (rating, status, notes)
   const handleUserBookDataChange = (field, value) => {
-    setUserBookData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (field === 'rating' && value === 0) {
+      // Se il rating è 0, impostiamo null
+      setUserBookData(prev => ({
+        ...prev,
+        rating: null
+      }));
+    } else {
+      setUserBookData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
   
-  // Funzione per aggiungere libro alla libreria
-  const handleAddToLibrary = (book, fromResults = false) => {
+
+// Funzione per verificare in modo asincrono se un libro è nella libreria
+const checkBookInLibrary = (bookId) => {
+  // Utilizziamo solo lo stato locale per verificare se un libro è nella libreria
+  const isInLibrary = libraryBooks[bookId] === true;
+  
+  // Aggiorna lo stato checkedBooks
+  setCheckedBooks(prev => ({
+    ...prev,
+    [bookId]: isInLibrary
+  }));
+  
+  return isInLibrary;
+};
+
+ 
+ // Funzione per aggiungere libro alla libreria (aggiornata)
+ const handleAddToLibrary = async (book, fromResults = false) => {
+  try {
+    // Mostra stato di caricamento
+    setLoading(true);
+    setLoadingBookId(fromResults ? book.googleBooksId : null);
     // Determina quale libro aggiungere (selezionato o creato manualmente)
     const bookToAdd = isManualCreation ? newBook : book;
     console.log('Aggiungi alla libreria:', bookToAdd);
-    console.log('Dati personalizzati:', userBookData);
     
-    // Qui in futuro implementeremo la chiamata all'API per salvare il libro
-    // Per ora, simuliamo l'aggiunta alla libreria
-    setLibraryBooks(prev => ({
-      ...prev,
-      [bookToAdd.googleBooksId || `manual-${Date.now()}`]: true
-    }));
+    // Verifica se il libro è già nella libreria
+    if (bookToAdd.googleBooksId && isBookInLibrary(bookToAdd.googleBooksId)) {
+      setSnackbar({
+        open: true,
+        message: 'Questo libro è già presente nella tua libreria',
+        severity: 'info'
+      });
+      
+      // Se non siamo nei risultati, torna ai risultati
+      if (!fromResults) {
+        handleBackToResults();
+      }
+      
+      setLoading(false);
+      return;
+    }
     
-    // Mostro notifica di successo
+    // Assicurati che ci siano almeno titolo e autore
+    if (isManualCreation && (!bookToAdd.title || !bookToAdd.author)) {
+      throw new Error('Titolo e autore sono campi obbligatori');
+    }
+    
+    // Gestisci correttamente il rating
+    const adjustedUserBookData = { ...userBookData };
+    
+    if (!adjustedUserBookData.rating || adjustedUserBookData.rating === 0) {
+      delete adjustedUserBookData.rating;
+    }
+    
+    // Chiamata al servizio per salvare il libro e aggiungerlo alla libreria
+    const result = await bookService.addBookToLibrary(
+      bookToAdd, 
+      adjustedUserBookData,
+      null, // libraryId (opzionale) 
+      tempUserId
+    );
+    
+    console.log('Risultato aggiunta libro:', result);
+    
+    // Aggiorna lo stato dei libri nella libreria
+    if (bookToAdd.googleBooksId) {
+      updateBookInLibraryStatus(bookToAdd.googleBooksId, true);
+    }
+    
+    // Mostra notifica di successo
     setSnackbar({
       open: true,
       message: 'Libro aggiunto alla libreria con successo!',
       severity: 'success'
     });
     
-    // Se siamo nei risultati, non facciamo nulla
-    // Se siamo nei dettagli o creazione manuale, torniamo ai risultati
+    // Se non siamo nei risultati, torna ai risultati
     if (!fromResults) {
       handleBackToResults();
     }
-  };
-  
+  } catch (error) {
+    console.error('Errore durante l\'aggiunta del libro:', error);
+    
+    // Gestione degli errori
+    let errorMessage = 'Si è verificato un errore durante l\'aggiunta del libro.';
+    let errorSeverity = 'error';
+    
+    // Verifica se l'errore indica che il libro è già nella libreria
+    if (error.response?.status === 400 && 
+        error.response?.data?.error?.includes('già nella tua biblioteca')) {
+      
+      errorMessage = 'Questo libro è già presente nella tua libreria';
+      errorSeverity = 'info';
+      
+      // Aggiorna lo stato locale
+      if (bookToAdd.googleBooksId) {
+        updateBookInLibraryStatus(bookToAdd.googleBooksId, true);
+      }
+      
+      // Se non siamo nei risultati, torna ai risultati
+      if (!fromResults) {
+        handleBackToResults();
+      }
+    } else {
+      // Per altri tipi di errori, estrai messaggi utili
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+    }
+    
+    // Mostra errore
+    setSnackbar({
+      open: true,
+      message: errorSeverity === 'info' ? errorMessage : `Errore: ${errorMessage}`,
+      severity: errorSeverity
+    });
+  } finally {
+    setLoading(false);
+    setLoadingBookId(null);
+  }
+};
+
   // Funzione per chiudere lo snackbar
   const handleCloseSnackbar = () => {
     setSnackbar(prev => ({
@@ -261,11 +545,19 @@ const AddBook = () => {
     setIsManualCreation(false);
   };
 
-  // Funzione per verificare se un libro è già nella libreria
-  const isBookInLibrary = (bookId) => {
-    // Verifica se il libro è nell'oggetto libraryBooks
-    return libraryBooks[bookId] === true;
-  };
+  
+  
+ // Funzione per verificare se un libro è nella libreria con debug
+const isBookInLibrary = (bookId) => {
+  // Aggiungiamo log per debug
+  console.log(`Verifica isBookInLibrary per ${bookId}: ${JSON.stringify(booksInLibrary[bookId])}`);
+  
+  // Verifica esplicita che il valore sia esattamente true (non truthy)
+  const result = booksInLibrary[bookId] === true;
+  console.log(`Risultato isBookInLibrary per ${bookId}: ${result}`);
+  
+  return result;
+};
 
   // Funzione per renderizzare gli stati di lettura
   const getReadStatusLabel = (status) => {
@@ -592,17 +884,17 @@ const AddBook = () => {
                 </CardContent>
                 
                 <CardActions sx={{ p: 3, pt: 0 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    fullWidth
-                    startIcon={<AddIcon />}
-                    onClick={() => handleAddToLibrary(newBook)}
-                    disabled={!newBook.title || !newBook.author}
-                    sx={{ borderRadius: '8px' }}
-                  >
-                    Aggiungi alla libreria
-                  </Button>
+                <Button
+  variant="contained"
+  color="primary"
+  fullWidth
+  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+  onClick={() => handleAddToLibrary(newBook)}
+  disabled={loading || !newBook.title || !newBook.author}
+  sx={{ borderRadius: '8px' }}
+>
+  {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+</Button>
                 </CardActions>
               </Card>
             </Box>
@@ -779,6 +1071,13 @@ const AddBook = () => {
                             
                             {/* Pulsante azione (aggiungi o nella libreria) */}
                             <Box sx={{ ml: 1 }}>
+                              {/* DEBUG */}
+                              {/* <Typography variant="caption">{
+                                typeof booksInLibrary[book.googleBooksId] === 'undefined' 
+                                  ? 'undefined' 
+                                  : String(booksInLibrary[book.googleBooksId])
+                              }</Typography> */}
+                              
                               {isBookInLibrary(book.googleBooksId) ? (
                                 <Tooltip title="Libro già nella tua libreria">
                                   <IconButton 
@@ -795,22 +1094,29 @@ const AddBook = () => {
                                     <CheckIcon />
                                   </IconButton>
                                 </Tooltip>
+                              ) : booksInLibrary[book.googleBooksId] === 'checking' ? (
+                                <CircularProgress size={24} color="primary" />
                               ) : (
                                 <Button 
                                   variant="contained"
                                   color="primary"
                                   size="small"
-                                  startIcon={<AddIcon />}
+                                  startIcon={loading && loadingBookId === book.googleBooksId ? 
+                                    <CircularProgress size={16} color="inherit" /> : 
+                                    <AddIcon />
+                                  }
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setLoadingBookId(book.googleBooksId);
                                     handleAddToLibrary(book, true);
                                   }}
+                                  disabled={loading}
                                   sx={{ 
                                     borderRadius: '8px',
                                     minWidth: 'auto'
                                   }}
                                 >
-                                  Aggiungi
+                                  {loading && loadingBookId === book.googleBooksId ? 'Aggiunta...' : 'Aggiungi'}
                                 </Button>
                               )}
                             </Box>
@@ -1010,30 +1316,31 @@ const AddBook = () => {
                     </CardContent>
                     
                     <CardActions sx={{ p: 3, pt: 0 }}>
-                      {isBookInLibrary(selectedBook.googleBooksId) ? (
-                        <Button
-                          variant="outlined"
-                          color="success"
-                          fullWidth
-                          startIcon={<LibraryIcon />}
-                          onClick={() => navigate('/library')}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          Visualizza nella libreria
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          fullWidth
-                          startIcon={<AddIcon />}
-                          onClick={() => handleAddToLibrary(selectedBook)}
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          Aggiungi alla libreria
-                        </Button>
-                      )}
-                    </CardActions>
+  {isBookInLibrary(selectedBook.googleBooksId) ? (
+    <Button
+      variant="outlined"
+      color="success"
+      fullWidth
+      startIcon={<LibraryIcon />}
+      onClick={() => navigate('/library')}
+      sx={{ borderRadius: '8px' }}
+    >
+      Visualizza nella libreria
+    </Button>
+  ) : (
+    <Button
+      variant="contained"
+      color="primary"
+      fullWidth
+      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+      onClick={() => handleAddToLibrary(selectedBook)}
+      disabled={loading}
+      sx={{ borderRadius: '8px' }}
+    >
+      {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+    </Button>
+  )}
+</CardActions>
                   </Card>
                 </Box>
               )}

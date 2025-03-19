@@ -67,21 +67,44 @@ class ApiService {
     }
   }
 
-  /**
-   * Esegue una richiesta GET
-   * @param {string} url - URL endpoint
-   * @param {Object} params - Parametri query string
-   * @returns {Promise} Promise con i dati della risposta
-   */
-  async get(url, params = {}) {
-    try {
-      const response = await this.client.get(url, { params });
-      return response.data;
-    } catch (error) {
-      this._handleError(error);
-      throw error;
+ /**
+ * Esegue una richiesta GET
+ * @param {string} url - URL endpoint
+ * @param {Object} params - Parametri query string
+ * @returns {Promise} Promise con i dati della risposta
+ */
+async get(url, params = {}) {
+  try {
+    console.log(`Chiamata API GET: ${url}`, params);
+    
+    // Verifica validità dei parametri
+    const validParams = {};
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        validParams[key] = value;
+      }
+    });
+    
+    // Assicuriamoci di passare params direttamente all'oggetto config di axios
+    const response = await this.client.get(url, { params: validParams });
+    
+    // Log della risposta per debug
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`Risposta API GET ${url}:`, response.status, 
+                  response.data ? (typeof response.data === 'object' ? 'Dati ricevuti' : response.data) : 'Nessun dato');
     }
+    
+    return response.data;
+  } catch (error) {
+    console.error(`Errore in GET ${url}:`, error.message);
+    if (error.response) {
+      console.error('Stato risposta:', error.response.status);
+      console.error('Dati risposta:', error.response.data);
+    }
+    this._handleError(error);
+    throw error;
   }
+}
 
   /**
    * Esegue una richiesta POST

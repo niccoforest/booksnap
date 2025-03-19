@@ -1,4 +1,5 @@
 const Book = require('../models/book.model');
+const UserBook = require('../models/userbook.model');
 
 // Recupera tutti i libri (con paginazione e filtri)
 const getBooks = async (req, res) => {
@@ -153,6 +154,66 @@ const updateBook = async (req, res) => {
   }
 };
 
+/**
+ * Verifica se un libro è nella libreria dell'utente
+ * @param {Object} req - Request
+ * @param {Object} res - Response
+ */
+const checkBookInLibrary = async (req, res) => {
+  try {
+    const { googleBooksId, userId } = req.params;
+    
+    if (!googleBooksId || !userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID libro e ID utente sono richiesti',
+        inLibrary: false
+      });
+    }
+    
+    console.log(`Verifica se libro ${googleBooksId} è nella libreria dell'utente ${userId}`);
+    
+    // Cerca prima il libro nel database
+    const book = await Book.findOne({ googleBooksId });
+    
+    if (!book) {
+      console.log(`Libro con googleBooksId ${googleBooksId} non trovato nel database`);
+      return res.json({
+        success: true,
+        inLibrary: false,
+        message: 'Libro non presente nel database'
+      });
+    }
+    
+    console.log(`Libro trovato con ID: ${book._id}`);
+    
+    // Ora verifica se l'utente ha questo libro nella sua libreria
+    const userBook = await UserBook.findOne({
+      bookId: book._id,
+      userId
+    });
+    
+    const isInLibrary = !!userBook;
+    console.log(`Libro in libreria: ${isInLibrary}`);
+    
+    return res.json({
+      success: true,
+      inLibrary: isInLibrary,
+      bookId: book._id,
+      userBookId: userBook ? userBook._id : null
+    });
+  } catch (error) {
+    console.error('Errore nella verifica del libro nella libreria:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Errore nella verifica del libro nella libreria',
+      inLibrary: false
+    });
+  }
+};
+
+
+
 // Elimina un libro
 const deleteBook = async (req, res) => {
   try {
@@ -214,11 +275,13 @@ const searchBooks = async (req, res) => {
   }
 };
 
+
 module.exports = {
   getBooks,
   getBookById,
   createBook,
   updateBook,
   deleteBook,
-  searchBooks
+  searchBooks,
+  checkBookInLibrary  
 };
