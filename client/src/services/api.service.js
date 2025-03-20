@@ -67,31 +67,34 @@ class ApiService {
     }
   }
 
- /**
+/**
  * Esegue una richiesta GET
  * @param {string} url - URL endpoint
- * @param {Object} params - Parametri query string
+ * @param {Object} options - Opzioni aggiuntive, inclusi i parametri
  * @returns {Promise} Promise con i dati della risposta
  */
-async get(url, params = {}) {
+async get(url, options = {}) {
   try {
-    console.log(`Chiamata API GET: ${url}`, params);
+    console.log(`Chiamata API GET: ${url}`, options);
     
-    // Verifica validità dei parametri
-    const validParams = {};
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        validParams[key] = value;
-      }
-    });
+    // Estrai i parametri se presenti
+    let config = {};
+    if (options.params) {
+      config.params = options.params; // Passa direttamente l'oggetto params
+    }
+    
+    // Aggiungi altre opzioni se necessario
+    if (options.headers) {
+      config.headers = options.headers;
+    }
     
     // Assicuriamoci di passare params direttamente all'oggetto config di axios
-    const response = await this.client.get(url, { params: validParams });
+    const response = await this.client.get(url, config);
     
     // Log della risposta per debug
     if (process.env.NODE_ENV !== 'production') {
       console.log(`Risposta API GET ${url}:`, response.status, 
-                  response.data ? (typeof response.data === 'object' ? 'Dati ricevuti' : response.data) : 'Nessun dato');
+                response.data ? (typeof response.data === 'object' ? 'Dati ricevuti' : response.data) : 'Nessun dato');
     }
     
     return response.data;

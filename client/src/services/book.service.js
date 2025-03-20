@@ -453,81 +453,171 @@ async _checkBookInUserLibraryOld(googleBooksId, userId) {
   }
 }
   
-  /**
-   * Recupera i libri dalla libreria dell'utente
-   * @param {Object} filters - Filtri opzionali (libraryId, readStatus, etc.)
-   * @param {number} page - Numero di pagina
-   * @param {number} limit - Numero di risultati per pagina
-   * @returns {Promise<Object>} - Lista di libri con metadati di paginazione
-   */
-  async getUserBooks(filters = {}, page = 1, limit = 10) {
-    try {
-      // Prepara i parametri di query
-      const params = {
-        page,
-        limit,
-        ...filters
+/**
+ * Recupera i dettagli di un libro specifico dalla libreria dell'utente
+ * @param {string} userBookId - ID della relazione userBook
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise<Object>} - Dati completi del libro
+ */
+async getUserBookById(userBookId, userId) {
+  try {
+    console.log(`Recupero dettagli per libro ${userBookId}`);
+    
+    // Costruisci l'URL con i parametri
+    const url = `/user-books/${userBookId}?userId=${encodeURIComponent(userId)}`;
+    
+    // Richiesta per ottenere i dettagli del libro
+    const response = await apiService.get(url);
+    
+    console.log('Risposta getUserBookById:', response);
+    
+    if (response.success) {
+      return response;
+    } else {
+      throw new Error(response.message || 'Errore nel recupero dei dettagli del libro');
+    }
+  } catch (error) {
+    console.error('Errore nel recupero dei dettagli del libro:', error);
+    throw error;
+  }
+}
+
+/**
+ * Rimuove un libro dalla biblioteca dell'utente
+ * @param {string} userBookId - ID della relazione utente-libro
+ * @param {string} userId - ID dell'utente (opzionale, usa TEMP_USER_ID come default)
+ * @returns {Promise<Object>} - Esito dell'operazione
+ */
+async removeFromLibrary(userBookId, userId = '655e9e1b07910b7d21dea350') {
+  try {
+    console.log(`Rimozione libro ${userBookId} dalla libreria dell'utente ${userId}`);
+    
+    // Costruisci l'URL con i parametri userId per evitare errori di autorizzazione
+    const url = `/user-books/${userBookId}?userId=${encodeURIComponent(userId)}`;
+    
+    // Richiesta per rimuovere il libro
+    const response = await apiService.delete(url);
+    
+    console.log('Risposta rimozione libro:', response);
+    
+    if (response.success) {
+      return { 
+        success: true, 
+        message: 'Libro rimosso dalla libreria con successo' 
       };
-      
-      // Richiesta per ottenere i libri dell'utente
-      const response = await apiService.get('/user-books', { params });
-      
-      if (response.success) {
-        return {
-          books: response.data,
-          totalBooks: response.total,
-          totalPages: response.totalPages,
-          currentPage: response.currentPage
-        };
-      } else {
-        throw new Error(response.message || 'Errore nel recupero dei libri');
-      }
-    } catch (error) {
-      console.error('Errore nel recupero dei libri dell\'utente:', error);
-      throw error;
+    } else {
+      throw new Error(response.message || 'Errore nella rimozione del libro');
     }
+  } catch (error) {
+    console.error('Errore nella rimozione del libro dalla libreria:', error);
+    throw error;
   }
-  
+}
+
+
   /**
-   * Aggiorna i dati personalizzati di un libro nella libreria dell'utente
-   * @param {string} userBookId - ID della relazione utente-libro
-   * @param {Object} updateData - Dati da aggiornare (readStatus, rating, notes, etc.)
-   * @returns {Promise<Object>} - Dati aggiornati
-   */
-  async updateUserBook(userBookId, updateData) {
-    try {
-      const response = await apiService.put(`/user-books/${userBookId}`, updateData);
-      
-      if (response.success) {
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Errore nell\'aggiornamento del libro');
-      }
-    } catch (error) {
-      console.error('Errore nell\'aggiornamento del libro dell\'utente:', error);
-      throw error;
+ * Recupera i libri dalla libreria dell'utente
+ * @param {Object} filters - Filtri opzionali (libraryId, readStatus, etc.)
+ * @param {number} page - Numero di pagina
+ * @param {number} limit - Numero di risultati per pagina
+ * @returns {Promise<Object>} - Lista di libri con metadati di paginazione
+ */
+async getUserBooks(filters = {}, page = 1, limit = 20) {
+  try {
+    console.log('Recupero libri con filtri:', filters);
+    
+    // Prepara i parametri di query
+    const params = {
+      page,
+      limit,
+      ...filters
+    };
+    
+    // Richiesta per ottenere i libri dell'utente
+    const response = await apiService.get('/user-books', { params });
+    
+    console.log('Risposta getUserBooks:', response);
+    
+    if (response.success) {
+      return {
+        books: response.data,
+        totalBooks: response.total,
+        totalPages: response.totalPages,
+        currentPage: response.currentPage
+      };
+    } else {
+      throw new Error(response.message || 'Errore nel recupero dei libri');
     }
+  } catch (error) {
+    console.error('Errore nel recupero dei libri dell\'utente:', error);
+    throw error;
   }
+}
   
-  /**
-   * Rimuove un libro dalla libreria dell'utente
-   * @param {string} userBookId - ID della relazione utente-libro
-   * @returns {Promise<Object>} - Esito dell'operazione
-   */
-  async removeFromLibrary(userBookId) {
-    try {
-      const response = await apiService.delete(`/user-books/${userBookId}`);
-      
-      if (response.success) {
-        return { success: true, message: 'Libro rimosso dalla libreria con successo' };
-      } else {
-        throw new Error(response.message || 'Errore nella rimozione del libro');
-      }
-    } catch (error) {
-      console.error('Errore nella rimozione del libro dalla libreria:', error);
-      throw error;
+ /**
+ * Aggiorna il record UserBook di un utente
+ * @param {string} userBookId - ID della relazione utente-libro
+ * @param {Object} updateData - Dati da aggiornare (readStatus, rating, notes, etc.)
+ * @param {string} userId - ID dell'utente (opzionale)
+ * @returns {Promise<Object>} - Dati aggiornati
+ */
+async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350') {
+  try {
+    console.log(`Aggiornamento libro ${userBookId} con dati:`, updateData);
+    
+    // Aggiungi userId ai dati di aggiornamento
+    const dataToSend = {
+      ...updateData,
+      userId
+    };
+    
+    // Costruisci l'URL con il parametro userId per l'autorizzazione
+    const url = `/user-books/${userBookId}?userId=${encodeURIComponent(userId)}`;
+    
+    const response = await apiService.put(url, dataToSend);
+    
+    if (response.success) {
+      return response.data;
+    } else {
+      throw new Error(response.message || 'Errore nell\'aggiornamento del libro');
     }
+  } catch (error) {
+    console.error('Errore nell\'aggiornamento del libro dell\'utente:', error);
+    throw error;
   }
+}
+
+/**
+ * Rimuove un libro dalla biblioteca dell'utente
+ * @param {string} userBookId - ID della relazione utente-libro
+ * @param {string} userId - ID dell'utente (opzionale)
+ * @returns {Promise<Object>} - Esito dell'operazione
+ */
+async removeFromLibrary(userBookId, userId = '655e9e1b07910b7d21dea350') {
+  try {
+    console.log(`Rimozione libro ${userBookId} dalla libreria dell'utente ${userId}`);
+    
+    // Costruisci l'URL con il parametro userId per evitare errori di autorizzazione
+    const url = `/user-books/${userBookId}?userId=${encodeURIComponent(userId)}`;
+    
+    // Richiesta per rimuovere il libro
+    const response = await apiService.delete(url);
+    
+    console.log('Risposta rimozione libro:', response);
+    
+    if (response.success) {
+      return { 
+        success: true, 
+        message: 'Libro rimosso dalla libreria con successo' 
+      };
+    } else {
+      throw new Error(response.message || 'Errore nella rimozione del libro');
+    }
+  } catch (error) {
+    console.error('Errore nella rimozione del libro dalla libreria:', error);
+    throw error;
+  }
+}
 }
 
 const bookServiceInstance = new BookService();

@@ -12,7 +12,8 @@ import Home from './pages/Home';
 import Library from './pages/Library';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
-import Scan from './pages/Scan';
+import Book from './pages/Book';           // Nuova pagina dettaglio libro
+import EditBook from './pages/EditBook';  
 import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';
 import ApiTest from './components/ApiTest';
@@ -29,7 +30,8 @@ function App() {
             <Route path="search" element={<Search />} />
             <Route path="profile" element={<Profile />} />
             <Route path="add-book" element={<AddBook />} />
-            {/* Redirector per /scan, ora gestito con overlay */}
+            <Route path="book/:id" element={<Book />} />        
+            <Route path="edit-book/:id" element={<EditBook />} /> 
             <Route path="scan" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
             <Route path="/test-api" element={<ApiTest />} />
