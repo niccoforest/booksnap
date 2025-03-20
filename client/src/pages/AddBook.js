@@ -1026,207 +1026,22 @@ return (
             
             {/* Dettagli libro selezionato */}
             {selectedBook && (
-              <Box sx={{ mt: 2 }}>
-                <Card
-                  elevation={1}
-                  sx={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
-                    backgroundColor: theme.palette.background.paper
-                  }}
-                >
-                  {/* Copertina libro */}
-                  <Box sx={{ 
-                    position: 'relative', 
-                    height: 250, 
-                    background: `linear-gradient(to bottom, ${alpha(theme.palette.primary.light, 0.2)}, ${alpha(theme.palette.background.paper, 0.8)})`,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    p: 3
-                  }}>
-                    {selectedBook.largeImage ? (
-                      <CardMedia
-                        component="img"
-                        image={selectedBook.largeImage}
-                        alt={selectedBook.title}
-                        sx={{ 
-                          height: '100%',
-                          width: 'auto',
-                          maxWidth: '40%',
-                          objectFit: 'contain',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          height: '100%',
-                          width: '40%',
-                          maxWidth: 140,
-                          bgcolor: 'rgba(0,0,0,0.08)',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-                        }}
-                      >
-                        <NoImageIcon sx={{ fontSize: 50 }} />
-                      </Box>
-                    )}
-                  </Box>
-                  
-                  <CardContent sx={{ px: 3, py: 2 }}>
-                    {/* Titolo e autore */}
-                    <Typography variant="h5" component="h2" gutterBottom>
-                      {selectedBook.title}
-                    </Typography>
-                    <Typography variant="subtitle1" color="text.primary" gutterBottom>
-                      {selectedBook.author}
-                    </Typography>
-                    
-                    {/* Informazioni libro */}
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                      {selectedBook.publisher && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Editore:</strong> {selectedBook.publisher}
-                          </Typography>
-                        </Grid>
-                      )}
-                      {selectedBook.publishedYear && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Anno:</strong> {selectedBook.publishedYear}
-                          </Typography>
-                        </Grid>
-                      )}
-                      {selectedBook.pageCount > 0 && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Pagine:</strong> {selectedBook.pageCount}
-                          </Typography>
-                        </Grid>
-                      )}
-                      {selectedBook.isbn && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>ISBN:</strong> {selectedBook.isbn}
-                          </Typography>
-                        </Grid>
-                      )}
-                      {selectedBook.language && (
-                        <Grid item xs={12} sm={6}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Lingua:</strong> {selectedBook.language}
-                          </Typography>
-                        </Grid>
-                      )}
-                    </Grid>
-                    
-                    {/* Descrizione */}
-                    {selectedBook.description && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Descrizione:
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {selectedBook.description.length > 300
-                            ? `${selectedBook.description.substring(0, 300)}...`
-                            : selectedBook.description}
-                        </Typography>
-                      </Box>
-                    )}
-                    
-                    {/* Sezione personalizzazione */}
-                    <Divider sx={{ my: 3 }} />
-                    
-                    <Typography variant="h6" gutterBottom>
-                      Personalizzazione
-                    </Typography>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        La tua valutazione
-                      </Typography>
-                      <Rating
-                        value={userBookData.rating}
-                        onChange={(event, newValue) => {
-                          handleUserBookDataChange('rating', newValue || 0);
-                        }}
-                        precision={0.5}
-                        size="large"
-                      />
-                    </Box>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                        <InputLabel id="read-status-label">Stato lettura</InputLabel>
-                        <Select
-                          labelId="read-status-label"
-                          value={userBookData.readStatus}
-                          onChange={(e) => handleUserBookDataChange('readStatus', e.target.value)}
-                          label="Stato lettura"
-                          sx={{ borderRadius: '8px' }}
-                        >
-                          <MenuItem value="to-read">Da leggere</MenuItem>
-                          <MenuItem value="reading">In lettura</MenuItem>
-                          <MenuItem value="completed">Completato</MenuItem>
-                          <MenuItem value="abandoned">Abbandonato</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Box>
-                    
-                    <Box sx={{ mb: 2 }}>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Note personali
-                      </Typography>
-                      <TextField
-                        fullWidth
-                        multiline
-                        rows={4}
-                        placeholder="Aggiungi le tue note personali sul libro..."
-                        value={userBookData.notes}
-                        onChange={(e) => handleUserBookDataChange('notes', e.target.value)}
-                        variant="outlined"
-                        InputProps={{
-                          sx: { borderRadius: '8px' }
-                        }}
-                      />
-                    </Box>
-                  </CardContent>
-                  
-                  <CardActions sx={{ p: 3, pt: 0 }}>
-                    {isBookInLibrary(selectedBook.googleBooksId) ? (
-                      <Button
-                        variant="outlined"
-                        color="success"
-                        fullWidth
-                        startIcon={<LibraryIcon />}
-                        onClick={() => navigate('/library')}
-                        sx={{ borderRadius: '8px' }}
-                      >
-                        Visualizza nella libreria
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
-                        onClick={() => handleAddToLibrary(selectedBook)}
-                        disabled={loading}
-                        sx={{ borderRadius: '8px' }}
-                      >
-                        {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
-                      </Button>
-                    )}
-                  </CardActions>
-                </Card>
-              </Box>
-            )}
+  <Box sx={{ mt: 2 }}>
+    <BookCard
+      variant="detail"
+      book={selectedBook}
+      isInLibrary={isBookInLibrary(selectedBook.googleBooksId)}
+      loading={loading && loadingBookId === selectedBook.googleBooksId}
+      showPersonalization={true}
+      onRatingChange={(value) => handleUserBookDataChange('rating', value)}
+      onStatusChange={(value) => handleUserBookDataChange('readStatus', value)}
+      onNotesChange={(value) => handleUserBookDataChange('notes', value)}
+      onAddBook={() => handleAddToLibrary(selectedBook)}
+      onViewInLibrary={() => navigate('/library')}
+      notes={userBookData.notes}
+    />
+  </Box>
+)}
             
             {/* Nessun risultato */}
             {!selectedBook && searchQuery.trim().length >= 3 && searchResults.length === 0 && !loading && !error && (

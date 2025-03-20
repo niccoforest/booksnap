@@ -7,6 +7,7 @@ import {
   CardActions,
   Typography,
   Box,
+  Button,  
   IconButton,
   Tooltip,
   Paper,
@@ -15,7 +16,13 @@ import {
   useTheme,
   alpha,
   Chip,
-  CircularProgress
+  CircularProgress,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Divider
 } from '@mui/material';
 import { 
   Favorite as FavoriteIcon,
@@ -29,6 +36,7 @@ import {
   PeopleAlt as LentIcon,
   CheckCircleOutline as CheckIcon,
   CheckCircle as CheckCircleIcon,
+  MenuBook as LibraryIcon,
   Add as AddIcon
 } from '@mui/icons-material';
 
@@ -57,10 +65,23 @@ const BookCard = ({
   onFavoriteToggle,
   onMenuOpen,
   onBookClick,
-  onAddBook
-}) => {
-  const theme = useTheme();
+  onAddBook,
   
+  // Props per variante detail
+  showPersonalization = false,
+  notes = '',
+  onRatingChange,
+  onStatusChange, 
+  onNotesChange,
+  onViewInLibrary,
+  
+  // Props per modifica
+  editable = false,
+  onSave,
+  onDelete
+}) => {
+  
+  const theme = useTheme();
   // Estrai i dati in base al tipo di oggetto ricevuto
   // Questo è necessario perché a volte riceviamo l'oggetto libro direttamente,
   // altre volte tramite userBook che ha bookId come proprietà
@@ -554,6 +575,313 @@ const BookCard = ({
     );
   }
   
+// Per la variante "detail"
+// Implementazione della variante "detail" in BookCard.js
+
+// Quando variant === 'detail'
+if (variant === 'detail') {
+  return (
+    <Card
+      elevation={1}
+      sx={{
+        borderRadius: '12px',
+        overflow: 'hidden',
+        boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.05)',
+        backgroundColor: theme.palette.background.paper
+      }}
+    >
+      {/* Layout superiore con copertina e informazioni base */}
+      <Box sx={{ 
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: 'center',
+        p: 3,
+        background: `linear-gradient(to bottom, ${alpha(theme.palette.primary.light, 0.1)}, ${alpha(theme.palette.background.paper, 0.8)})`
+      }}>
+        {/* Copertina */}
+        <Box sx={{ 
+          width: { xs: '40%', sm: '25%', md: '15%' },
+          minWidth: { xs: 120, sm: 150 },
+          maxWidth: 200,
+          mb: { xs: 2, sm: 0 },
+          mr: { xs: 0, sm: 3 },
+          position: 'relative'
+        }}>
+          {coverImage ? (
+            <Box
+              component="img"
+              src={coverImage}
+              alt={title}
+              sx={{
+                width: '100%',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: '100%',
+                pb: '140%', // Proporzione copertina libro
+                bgcolor: 'rgba(0,0,0,0.08)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+              }}
+            >
+              <NoImageIcon sx={{ fontSize: 50, position: 'absolute' }} />
+            </Box>
+          )}
+          
+          {/* Badge stato di lettura */}
+          <Chip
+            label={getReadStatusLabel(readStatus)}
+            size="small"
+            icon={getReadStatusIcon(readStatus)}
+            sx={{
+              position: 'absolute',
+              top: -10,
+              right: -10,
+              backgroundColor: 'white',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+          />
+        </Box>
+        
+        {/* Informazioni libro */}
+        <Box sx={{ flex: 1, width: '100%' }}>
+          <Typography variant="h5" component="h1" gutterBottom>
+            {title}
+          </Typography>
+          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+            {author}
+          </Typography>
+          
+          {/* Rating (se disponibile) */}
+          {rating > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, mb: 1 }}>
+              <Rating
+                value={rating}
+                readOnly
+                precision={0.5}
+              />
+              <Typography variant="body2" sx={{ ml: 1 }}>
+                ({rating})
+              </Typography>
+            </Box>
+          )}
+          
+          {/* Riga di azioni */}
+          <Box sx={{ 
+            display: 'flex', 
+            mt: 2,
+            gap: 1,
+            flexWrap: 'wrap'
+          }}>
+            <IconButton 
+              color={isFavorite ? "error" : "default"}
+              onClick={handleFavoriteToggle}
+              sx={{ 
+                bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.1),
+                '&:hover': {
+                  bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.2),
+                }
+              }}
+            >
+              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+            </IconButton>
+            
+            {/* Altre azioni che possono variare in base alla pagina */}
+            {onMenuOpen && (
+              <IconButton onClick={handleMenuOpen}>
+                <MoreIcon />
+              </IconButton>
+            )}
+          </Box>
+        </Box>
+      </Box>
+      
+      {/* Dettagli libro */}
+      <CardContent sx={{ px: 3, py: 2 }}>
+        {/* Visualizza altre informazioni come editore, pagine, ecc. */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {bookData.publisher && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2">
+                <strong>Editore:</strong> {bookData.publisher}
+              </Typography>
+            </Grid>
+          )}
+          {bookData.publishedYear && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2">
+                <strong>Anno:</strong> {bookData.publishedYear}
+              </Typography>
+            </Grid>
+          )}
+          {bookData.pageCount > 0 && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2">
+                <strong>Pagine:</strong> {bookData.pageCount}
+              </Typography>
+            </Grid>
+          )}
+          {bookData.isbn && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2">
+                <strong>ISBN:</strong> {bookData.isbn}
+              </Typography>
+            </Grid>
+          )}
+          {bookData.language && (
+            <Grid item xs={12} sm={6}>
+              <Typography variant="body2">
+                <strong>Lingua:</strong> {bookData.language}
+              </Typography>
+            </Grid>
+          )}
+        </Grid>
+        
+        {/* Descrizione */}
+        {bookData.description && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Descrizione:
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {bookData.description.length > 300
+                ? `${bookData.description.substring(0, 300)}...`
+                : bookData.description}
+            </Typography>
+          </Box>
+        )}
+        
+        {/* Note personali (solo se ci sono) */}
+        {notes && !showPersonalization && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Note personali:
+            </Typography>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 1,
+                bgcolor: alpha(theme.palette.primary.light, 0.05),
+                border: `1px solid ${alpha(theme.palette.primary.light, 0.2)}`
+              }}
+            >
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                {notes}
+              </Typography>
+            </Paper>
+          </Box>
+        )}
+        
+        {/* Sezione di personalizzazione - mostrata solo se necessario */}
+        {showPersonalization && (
+          <>
+            <Divider sx={{ my: 3 }} />
+            
+            <Typography variant="h6" gutterBottom>
+              Personalizzazione
+            </Typography>
+            
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                La tua valutazione
+              </Typography>
+              <Rating
+                value={rating || 0}
+                onChange={(event, newValue) => {
+                  if (onRatingChange) onRatingChange(newValue);
+                }}
+                precision={0.5}
+                size="large"
+                readOnly={!onRatingChange}
+              />
+            </Box>
+            
+            {onStatusChange && (
+  <Box sx={{ mb: 2 }}>
+    <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
+      <InputLabel id="read-status-label">Stato lettura</InputLabel>
+      <Select
+        labelId="read-status-label"
+        value={readStatus || 'to-read'}
+        onChange={(e) => onStatusChange(e.target.value)}
+        label="Stato lettura"
+        sx={{ borderRadius: '8px' }}
+      >
+        <MenuItem value="to-read">Da leggere</MenuItem>
+        <MenuItem value="reading">In lettura</MenuItem>
+        <MenuItem value="completed">Completato</MenuItem>
+        <MenuItem value="abandoned">Abbandonato</MenuItem>
+        <MenuItem value="lent">Prestato</MenuItem>
+      </Select>
+    </FormControl>
+  </Box>
+)}
+
+{onNotesChange && (
+  <Box sx={{ mb: 2 }}>
+    <Typography variant="subtitle2" gutterBottom>
+      Note personali
+    </Typography>
+    <TextField
+      fullWidth
+      multiline
+      rows={4}
+      placeholder="Aggiungi le tue note personali sul libro..."
+      value={notes || ''}
+      onChange={(e) => onNotesChange(e.target.value)}
+      variant="outlined"
+      InputProps={{
+        sx: { borderRadius: '8px' }
+      }}
+    />
+  </Box>
+)}
+</>
+)}
+</CardContent>
+
+{/* Pulsanti azione principale */}
+{(onAddBook || onViewInLibrary) && (
+  <CardActions sx={{ p: 3, pt: 0 }}>
+    {isInLibrary && onViewInLibrary ? (
+      <Button
+        variant="outlined"
+        color="success"
+        fullWidth
+        startIcon={<LibraryIcon />}
+        onClick={onViewInLibrary}
+        sx={{ borderRadius: '8px' }}
+      >
+        Visualizza nella libreria
+      </Button>
+    ) : onAddBook ? (
+      <Button
+        variant="contained"
+        color="primary"
+        fullWidth
+        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+        onClick={handleAddBook}
+        disabled={loading}
+        sx={{ borderRadius: '8px' }}
+      >
+        {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+      </Button>
+    ) : null}
+  </CardActions>
+)}
+</Card>
+);
+}
+
   // Per altre varianti o default, ritorna la variante 'grid'
   return (
     <Card 
