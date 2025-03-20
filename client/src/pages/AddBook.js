@@ -347,20 +347,26 @@ const handleSelectBook = async (book) => {
   };
   
   // Funzione per aggiornare i dati utente (rating, status, notes)
-  const handleUserBookDataChange = (field, value) => {
-    if (field === 'rating' && value === 0) {
-      // Se il rating è 0, impostiamo null
-      setUserBookData(prev => ({
-        ...prev,
-        rating: null
-      }));
-    } else {
-      setUserBookData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-  };
+  // In AddBook.js, funzione handleUserBookDataChange
+const handleUserBookDataChange = (field, value) => {
+  console.log(`Cambio ${field}:`, value); // Debug
+  
+  if (field === 'rating') {
+    // Usa direttamente il valore, Material UI Rating restituisce numeri
+    setUserBookData(prev => ({
+      ...prev,
+      rating: value === null ? 0 : value
+    }));
+  } else {
+    setUserBookData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }
+};
+
+// Verifica anche che la prop onRatingChange sia correttamente passata a BookCard
+
   
 
 // Funzione per verificare in modo asincrono se un libro è nella libreria
@@ -388,7 +394,6 @@ const handleSelectBook = async (book) => {
     // Determina quale libro aggiungere (selezionato o creato manualmente)
     const bookToAdd = isManualCreation ? newBook : book;
     console.log('Aggiungi alla libreria:', bookToAdd);
-    
     // Verifica se il libro è già nella libreria
     if (bookToAdd.googleBooksId && isBookInLibrary(bookToAdd.googleBooksId)) {
       setSnackbar({
@@ -444,6 +449,7 @@ const handleSelectBook = async (book) => {
     if (!fromResults) {
       handleBackToResults();
     }
+    
   } catch (error) {
     console.error('Errore durante l\'aggiunta del libro:', error);
     
@@ -489,6 +495,17 @@ const handleSelectBook = async (book) => {
     setLoading(false);
     setLoadingBookId(null);
   }
+};
+
+// Funzione per condividere un libro
+const handleShare = () => {
+  
+  // Per ora, mostra solo un messaggio che la funzione sarà disponibile in futuro
+  setSnackbar({
+    open: true,
+    message: 'La funzione di condivisione sarà disponibile prossimamente',
+    severity: 'info'
+  });
 };
 
   // Funzione per chiudere lo snackbar
@@ -817,7 +834,7 @@ return (
                       value={newBook.coverImage}
                       onChange={(e) => handleNewBookChange('coverImage', e.target.value)}
                       variant="outlined"
-                      placeholder="https://example.com/cover.jpg"
+                      placeholder="https://bookstoreromanceday.org/wp-content/uploads/2020/08/book-cover-placeholder.png"
                       sx={{ mb: 2 }}
                       InputProps={{
                         sx: { borderRadius: '8px' }
@@ -885,20 +902,21 @@ return (
                 </Box>
               </CardContent>
               
-              <CardActions sx={{ p: 3, pt: 0 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
-                  onClick={() => handleAddToLibrary(newBook)}
-                  disabled={loading || !newBook.title || !newBook.author}
-                  sx={{ borderRadius: '8px' }}
-                >
-                  {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
-                </Button>
-              </CardActions>
+              
             </Card>
+            <Box sx={{ mt: 3 }}>
+      <Button
+        variant="contained"
+        color="primary"
+        fullWidth
+        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+        onClick={() => handleAddToLibrary(newBook)}
+        disabled={loading || !newBook.title || !newBook.author}
+        sx={{ borderRadius: '8px' }}
+      >
+        {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+      </Button>
+    </Box>
           </Box>
         ) : (
           // Modalità ricerca e dettaglio
@@ -1028,18 +1046,55 @@ return (
             {selectedBook && (
   <Box sx={{ mt: 2 }}>
     <BookCard
-      variant="detail"
-      book={selectedBook}
-      isInLibrary={isBookInLibrary(selectedBook.googleBooksId)}
-      loading={loading && loadingBookId === selectedBook.googleBooksId}
-      showPersonalization={true}
-      onRatingChange={(value) => handleUserBookDataChange('rating', value)}
-      onStatusChange={(value) => handleUserBookDataChange('readStatus', value)}
-      onNotesChange={(value) => handleUserBookDataChange('notes', value)}
-      onAddBook={() => handleAddToLibrary(selectedBook)}
-      onViewInLibrary={() => navigate('/library')}
-      notes={userBookData.notes}
-    />
+  variant="detail"
+  book={selectedBook}
+  isInLibrary={isBookInLibrary(selectedBook.googleBooksId)}
+  loading={loading && loadingBookId === selectedBook.googleBooksId}
+  showPersonalization={true}
+  showExpandableDescription={true}
+  showFavoriteButton={false} // Imposta a false per rimuovere l'icona del cuore
+  showShareButton={true}
+  onShareClick={handleShare}
+  onRatingChange={(newValue) => {
+    console.log("Nuovo rating:", newValue);
+    // Esplicita e diretta, senza passare per il gestore generico
+    setUserBookData(prev => ({
+      ...prev,
+      rating: newValue === null ? 0 : newValue
+    }));
+  }}
+  onStatusChange={(value) => handleUserBookDataChange('readStatus', value)}
+  onNotesChange={(value) => handleUserBookDataChange('notes', value)}
+  notes={userBookData.notes}
+/>
+    
+    {/* Pulsante esterno */}
+    <Box sx={{ mt: 3 }}>
+      {isBookInLibrary(selectedBook.googleBooksId) ? (
+        <Button
+          variant="outlined"
+          color="success"
+          fullWidth
+          startIcon={<LibraryIcon />}
+          onClick={() => navigate('/library')}
+          sx={{ borderRadius: '8px' }}
+        >
+          Visualizza nella libreria
+        </Button>
+      ) : (
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+          onClick={() => handleAddToLibrary(selectedBook)}
+          disabled={loading}
+          sx={{ borderRadius: '8px' }}
+        >
+          {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+        </Button>
+      )}
+    </Box>
   </Box>
 )}
             

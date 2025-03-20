@@ -26,6 +26,11 @@ import {
   Snackbar,
   Alert,
   useTheme,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   alpha
 } from '@mui/material';
 import { 
@@ -69,7 +74,10 @@ const Library = () => {
   const { isFavorite, toggleFavorite } = useFavorites(TEMP_USER_ID);
   
   // Stati per la visualizzazione
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
+  const [viewMode, setViewMode] = useState(() => {
+    const savedViewMode = localStorage.getItem('booksnap_view_mode');
+    return savedViewMode || 'grid'; // Default a grid se non c'è preferenza salvata
+  });
   const [currentTab, setCurrentTab] = useState('all'); // 'all', 'reading', 'to-read', 'completed', 'abandoned', 'lent'
   
   // Stati per sorting e filtering
@@ -79,6 +87,8 @@ const Library = () => {
   // Menu contestuale
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [selectedBookId, setSelectedBookId] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const [bookToDelete, setBookToDelete] = useState(null);
   
   // Snackbar per notifiche
   const [snackbar, setSnackbar] = useState({
@@ -86,6 +96,7 @@ const Library = () => {
     message: '',
     severity: 'success'
   });
+  
   
   // Carica i libri dell'utente all'avvio
   useEffect(() => {
@@ -101,7 +112,7 @@ const Library = () => {
       // Costruisci i filtri in base al tab corrente
       const filters = { userId: TEMP_USER_ID };
       
-      if (currentTab !== 'all') {
+      if (currentTab !== 'all' && currentTab !== 'favorites') {
         filters.readStatus = currentTab;
       }
       
@@ -110,8 +121,15 @@ const Library = () => {
       
       console.log('Libri recuperati:', response);
       
-      // Ordina i libri in base alle opzioni correnti
-      const sortedBooks = sortBooks(response.books || []);
+      let booksToShow = response.books || [];
+      
+      // Filtra per preferiti se necessario
+      if (currentTab === 'favorites') {
+        booksToShow = booksToShow.filter(book => isFavorite(book._id));
+      }
+      
+      // Ordina i libri
+      const sortedBooks = sortBooks(booksToShow);
       setBooks(sortedBooks);
     } catch (err) {
       console.error('Errore nel recupero dei libri:', err);
@@ -164,7 +182,9 @@ const Library = () => {
   
   // Cambia la modalità di visualizzazione (griglia/lista)
   const handleViewModeChange = (mode) => {
+    console.log(`Cambiando visualizzazione a: ${mode}`);
     setViewMode(mode);
+    localStorage.setItem('booksnap_view_mode', mode);
   };
   
 
@@ -265,18 +285,33 @@ const Library = () => {
   };
   
   // Funzione per rimuovere un libro dalla libreria
-  const handleRemoveBook = async (userBookId) => {
+  const handleRemoveBook = (userBookId) => {
+    console.log("Richiesta eliminazione libro:", userBookId);
+    
+    // Chiudi il menu
+    handleBookMenuClose();
+    
+    // Imposta il libro da eliminare e apri il dialog
+    setBookToDelete(userBookId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    console.log("Conferma eliminazione libro:", bookToDelete);
+    
+    if (!bookToDelete) {
+      console.error("bookToDelete è null o undefined");
+      return;
+    }
+    
     try {
       setLoading(true);
       
-      // Chiudi il menu
-      handleBookMenuClose();
-      
-      // Chiama l'API per rimuovere il libro
-      await bookService.removeFromLibrary(userBookId);
+      // Rimuovi il libro tramite API
+      await bookService.removeFromLibrary(bookToDelete);
       
       // Aggiorna la lista di libri
-      setBooks(books.filter(book => book._id !== userBookId));
+      setBooks(books.filter(book => book._id !== bookToDelete));
       
       // Mostra notifica di successo
       setSnackbar({
@@ -295,6 +330,8 @@ const Library = () => {
       });
     } finally {
       setLoading(false);
+      setDeleteDialogOpen(false);
+      setBookToDelete(null);
     }
   };
   
@@ -349,22 +386,34 @@ const Library = () => {
         <Box>
           {/* Controlli visualizzazione */}
           <Tooltip title="Vista griglia">
-            <IconButton 
-              onClick={() => handleViewModeChange('grid')}
-              color={viewMode === 'grid' ? 'primary' : 'default'}
-            >
-              <GridViewIcon />
-            </IconButton>
-          </Tooltip>
+    <IconButton 
+      onClick={() => handleViewModeChange('grid')}
+      color={viewMode === 'grid' ? 'primary' : 'default'}
+      sx={{ 
+        bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+        '&:hover': {
+          bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+        }
+      }}
+    >
+      <GridViewIcon />
+    </IconButton>
+  </Tooltip>
           
-          <Tooltip title="Vista lista">
-            <IconButton 
-              onClick={() => handleViewModeChange('list')}
-              color={viewMode === 'list' ? 'primary' : 'default'}
-            >
-              <ListViewIcon />
-            </IconButton>
-          </Tooltip>
+  <Tooltip title="Vista lista">
+    <IconButton 
+      onClick={() => handleViewModeChange('list')}
+      color={viewMode === 'list' ? 'primary' : 'default'}
+      sx={{ 
+        bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+        '&:hover': {
+          bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+        }
+      }}
+    >
+      <ListViewIcon />
+    </IconButton>
+  </Tooltip>
           
           {/* Menu ordinamento */}
           <Tooltip title="Ordina">
@@ -417,20 +466,26 @@ const Library = () => {
       
       {/* Tab per filtrare per stato di lettura */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs 
-          value={currentTab} 
-          onChange={handleTabChange}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab label="Tutti" value="all" />
-          <Tab label="In lettura" value="reading" />
-          <Tab label="Da leggere" value="to-read" />
-          <Tab label="Completati" value="completed" />
-          <Tab label="Abbandonati" value="abandoned" />
-          <Tab label="Prestati" value="lent" />
-        </Tabs>
-      </Box>
+  <Tabs 
+    value={currentTab} 
+    onChange={handleTabChange}
+    variant="scrollable"
+    scrollButtons="auto"
+  >
+    <Tab label="Tutti" value="all" />
+    <Tab 
+      label="Preferiti" 
+      value="favorites" 
+      
+    />
+    <Tab label="In lettura" value="reading" />
+    <Tab label="Da leggere" value="to-read" />
+    <Tab label="Completati" value="completed" />
+    <Tab label="Abbandonati" value="abandoned" />
+    <Tab label="Prestati" value="lent" />
+  </Tabs>
+</Box>
+
       
       {/* Contenuto principale */}
       {loading ? (
@@ -626,6 +681,40 @@ const Library = () => {
         </MenuItem>
       </Menu>
       
+      <Dialog
+  open={deleteDialogOpen}
+  onClose={() => {
+    console.log("Chiusura dialog senza eliminare");
+    setDeleteDialogOpen(false);
+    setBookToDelete(null);
+  }}
+>
+  <DialogTitle>Conferma eliminazione</DialogTitle>
+  <DialogContent>
+    <DialogContentText>
+      Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata.
+    </DialogContentText>
+  </DialogContent>
+  <DialogActions>
+    <Button 
+      onClick={() => {
+        setDeleteDialogOpen(false);
+        setBookToDelete(null);
+      }} 
+      color="primary"
+    >
+      Annulla
+    </Button>
+    <Button 
+      onClick={handleConfirmDelete} 
+      color="error" 
+      variant="contained"
+    >
+      Elimina
+    </Button>
+  </DialogActions>
+</Dialog>
+
       {/* Snackbar per notifiche */}
       <Snackbar
         open={snackbar.open}
@@ -643,7 +732,10 @@ const Library = () => {
         </Alert>
       </Snackbar>
     </Box>
+    
   );
+  
+
 };
 
 export default Library;

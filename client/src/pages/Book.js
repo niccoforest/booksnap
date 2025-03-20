@@ -17,6 +17,8 @@ import {
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
+  Share as ShareIcon,
+  Delete as DeleteIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -130,19 +132,84 @@ const Book = () => {
   };
   
   const handleMenuOpen = (e) => {
-    // Implementa menu contestuale (o usa un menu Material UI)
+    // Prevenire la propagazione dell'evento
+    e.stopPropagation();
+    
+    // Crea gli elementi del menu
+    const menu = document.createElement('div');
+    menu.style.position = 'absolute';
+    menu.style.top = `${e.clientY}px`;
+    menu.style.left = `${e.clientX}px`;
+    menu.style.zIndex = '1000';
+    menu.style.backgroundColor = 'white';
+    menu.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+    menu.style.borderRadius = '8px';
+    menu.style.padding = '8px 0';
+    
+    // Opzioni menu
     const options = [
-      { label: 'Modifica', action: handleEdit },
-      { label: 'Rimuovi', action: handleOpenDeleteDialog }
+      { label: 'Modifica', icon: <EditIcon />, action: handleEdit },
+      { label: 'Condividi', icon: <ShareIcon />, action: handleShare },
+      { label: 'Elimina', icon: <DeleteIcon />, action: handleOpenDeleteDialog }
     ];
     
-    // Per semplicità, mostriamo direttamente le opzioni
-    console.log('Menu options:', options);
+    // Aggiungi le opzioni al menu
+    options.forEach(option => {
+      const item = document.createElement('div');
+      item.textContent = option.label;
+      item.style.padding = '10px 20px';
+      item.style.cursor = 'pointer';
+      item.style.display = 'flex';
+      item.style.alignItems = 'center';
+      item.onclick = () => {
+        document.body.removeChild(menu);
+        option.action();
+      };
+      menu.appendChild(item);
+    });
     
-    // Qui puoi implementare un menu contestuale o una modale
-    // Per ora, non facciamo nulla
+    // Aggiungi il menu al body
+    document.body.appendChild(menu);
+    
+    // Chiudi il menu quando si fa clic altrove
+    const handleClickOutside = (event) => {
+      if (!menu.contains(event.target)) {
+        document.body.removeChild(menu);
+        document.removeEventListener('click', handleClickOutside);
+      }
+    };
+    
+    // Usa setTimeout per evitare che il menu si chiuda immediatamente
+    setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 0);
   };
   
+  const handleShare = () => {
+    // Per ora, mostriamo un semplice avviso
+    alert('Funzionalità di condivisione disponibile prossimamente');
+    
+    // Quando implementerai la condivisione reale, potrai usare
+    // Web Share API o un'altra soluzione
+    /*
+    if (navigator.share) {
+      navigator.share({
+        title: book.bookId?.title || 'BookSnap',
+        text: `Dai un'occhiata a questo libro: ${book.bookId?.title} di ${book.bookId?.author}`,
+        url: window.location.href,
+      });
+    } else {
+      // Fallback per browser che non supportano l'API Share
+      alert('Condivisione non supportata dal tuo browser, copia il link manualmente');
+    }
+    */
+  };
+
+  const handleBack = () => {
+    // Naviga sempre alla libreria indipendentemente dalla provenienza
+    navigate('/library');
+  };
+
   const handleCloseSnackbar = () => {
     setSnackbar({
       ...snackbar,
@@ -157,7 +224,7 @@ const Book = () => {
         <IconButton 
           edge="start" 
           color="inherit" 
-          onClick={() => navigate(-1)}
+          onClick= {handleBack}
           sx={{ mr: 1 }}
         >
           <ArrowBackIcon />
@@ -188,13 +255,19 @@ const Book = () => {
         <>
           {/* Utilizziamo BookCard con variante detail */}
           <BookCard
-            variant="detail"
-            userBook={book}
-            isFavorite={favorite}
-            isInLibrary={true}
-            onFavoriteToggle={handleToggleFavorite}
-            onMenuOpen={handleMenuOpen}
-            showPersonalization={false}
+             variant="detail"
+             userBook={book}
+             isFavorite={favorite}
+             isInLibrary={true}
+             onFavoriteToggle={handleToggleFavorite}
+             showMenuIcon={false}
+             showShareButton={true}
+             showDeleteButton={true}
+             onShareClick={handleShare}
+             onDeleteClick={handleOpenDeleteDialog}
+             showExpandableDescription={true}
+             showPersonalization={false}
+             notes={book.notes}
           />
           
           {/* Pulsanti azione */}

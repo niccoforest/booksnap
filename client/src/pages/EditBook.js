@@ -124,6 +124,9 @@ const EditBook = () => {
       ...prev,
       notes: value
     }));
+    
+    // Per debug
+    console.log("Note aggiornate:", value);
   };
   
   const handleSubmit = async (e) => {
@@ -254,20 +257,23 @@ const EditBook = () => {
         <Box component="form" onSubmit={handleSubmit}>
           {/* Utilizziamo BookCard con variante detail e personalizzazione */}
           <BookCard
-            variant="detail"
-            userBook={{
-              ...book,
-              rating: formData.rating,
-              readStatus: formData.readStatus,
-              notes: formData.notes
-            }}
-            isFavorite={favorite}
-            isInLibrary={true}
-            onFavoriteToggle={handleToggleFavorite}
-            showPersonalization={true}
-            onRatingChange={handleRatingChange}
-            onStatusChange={handleStatusChange}
-            onNotesChange={handleNotesChange}
+             variant="detail"
+             userBook={{
+               ...book,
+               rating: formData.rating,
+               readStatus: formData.readStatus,
+               notes: formData.notes
+             }}
+             isFavorite={favorite}
+             isInLibrary={true}
+             onFavoriteToggle={handleToggleFavorite}
+             showMenuIcon={false} // Nascondi icona menu
+             showFullDescription={true} // Mostra intera descrizione
+             showPersonalization={true}
+             onRatingChange={handleRatingChange}
+             onStatusChange={handleStatusChange}
+             onNotesChange={handleNotesChange}
+             notes={formData.notes} // Assicurati di passare le note correnti
           />
           
           {/* Pulsanti azione */}

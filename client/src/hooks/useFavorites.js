@@ -17,29 +17,28 @@ const useFavorites = (userId) => {
     const loadFavorites = async () => {
       try {
         setLoading(true);
-        setError(null);
         
-        // Prima carica da localStorage per avere una risposta immediata
-        const localFavorites = localStorage.getItem('booksnap_favorites');
-        const localFavoritesObj = localFavorites ? JSON.parse(localFavorites) : {};
-        setFavorites(localFavoritesObj);
+        let favoritesResult = { data: [] };
         
-        // Poi recupera dal server e aggiorna
-        const response = await bookService.getFavorites(userId);
-        const serverFavoritesObj = {};
+        try {
+          favoritesResult = await bookService.getFavorites(userId);
+        } catch (error) {
+          console.error('Errore nel caricamento dei preferiti:', error);
+          // Continua con un array vuoto
+        }
         
-        response.data.forEach(userBook => {
-          serverFavoritesObj[userBook._id] = true;
+        const favoriteObj = {};
+        
+        // Usa un array vuoto se data non è disponibile
+        const favoritesData = favoritesResult.data || [];
+        
+        favoritesData.forEach(userBook => {
+          favoriteObj[userBook._id] = true;
         });
         
-        // Aggiorna lo stato con i dati dal server
-        setFavorites(serverFavoritesObj);
-        
-        // Aggiorna localStorage
-        localStorage.setItem('booksnap_favorites', JSON.stringify(serverFavoritesObj));
-      } catch (err) {
-        console.error('Errore nel caricamento dei preferiti:', err);
-        setError(err);
+        setFavorites(favoriteObj);
+      } catch (error) {
+        console.error('Errore nel caricamento dei preferiti:', error);
       } finally {
         setLoading(false);
       }

@@ -1,5 +1,5 @@
 // client/src/components/book/BookCard.js
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Card, 
   CardMedia, 
@@ -37,6 +37,8 @@ import {
   CheckCircleOutline as CheckIcon,
   CheckCircle as CheckCircleIcon,
   MenuBook as LibraryIcon,
+  Share as ShareIcon,
+  Delete as DeleteIcon,
   Add as AddIcon
 } from '@mui/icons-material';
 
@@ -67,6 +69,17 @@ const BookCard = ({
   onBookClick,
   onAddBook,
   
+
+  showMenuIcon = true,
+  showFavoriteButton = true,
+  showShareButton = false,
+  showExpandableDescription = false,
+  showFullDescription = false,
+  showActionButtons = true,
+  onShareClick,
+  showDeleteButton = false,
+  onDeleteClick,
+  
   // Props per variante detail
   showPersonalization = false,
   notes = '',
@@ -88,7 +101,11 @@ const BookCard = ({
   const bookData = userBook?.bookId || book;
   const userBookId = userBook?._id;
   const bookId = bookData?.googleBooksId || bookData?._id;
-  
+  const [expandedDescription, setExpandedDescription] = useState(false);
+
+  const toggleDescription = () => {
+    setExpandedDescription(!expandedDescription);
+  };
   // Estrai le informazioni dal libro
   const {
     title = 'Titolo sconosciuto',
@@ -351,110 +368,109 @@ const BookCard = ({
   }
   
   // Visualizzazione lista (usata in Library.js)
-  if (variant === 'list') {
-    return (
-      <Paper
-        elevation={0}
-        sx={{
-          mb: 2,
-          p: 2,
-          borderRadius: '12px',
-          border: `1px solid ${theme.palette.divider}`,
-          '&:hover': {
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)'
-          },
-          cursor: 'pointer',
-          position: 'relative'
-        }}
-        onClick={handleBookClick}
-      >
-        <Grid container spacing={2} alignItems="center">
-          {/* Copertina */}
-          <Grid item xs={3} sm={1}>
-            {coverImage ? (
-              <Box
-                component="img"
-                src={coverImage}
-                alt={title}
-                sx={{
-                  width: { xs: '100%', sm: 50 },
-                  height: { xs: 'auto', sm: 70 },
-                  maxHeight: 70,
-                  objectFit: 'contain',
-                  borderRadius: 1
-                }}
-              />
-            ) : (
-              <Box
-                sx={{
-                  width: { xs: '100%', sm: 50 },
-                  height: { xs: 70, sm: 70 },
-                  bgcolor: 'rgba(0, 0, 0, 0.04)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 1
-                }}
-              >
-                <NoImageIcon sx={{ color: 'rgba(0, 0, 0, 0.3)' }} />
-              </Box>
-            )}
-          </Grid>
-          
-          {/* Info libro */}
-          <Grid item xs={7} sm={9}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                {title}
-              </Typography>
-              
-              {/* Badge stato lettura */}
-              <Tooltip title={getReadStatusLabel(readStatus)}>
-                <Box sx={{ display: 'inline-flex' }}>
-                  {getReadStatusIcon(readStatus)}
-                </Box>
-              </Tooltip>
+  
+if (variant === 'list') {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        mb: 2,
+        p: 2,
+        borderRadius: '12px',
+        border: `1px solid ${theme.palette.divider}`,
+        '&:hover': {
+          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)'
+        },
+        cursor: 'pointer',
+        position: 'relative'
+      }}
+      onClick={handleBookClick}
+    >
+      <Grid container spacing={2} alignItems="center">
+        {/* Copertina */}
+        <Grid item xs={3} sm={1}>
+          {coverImage ? (
+            <Box
+              component="img"
+              src={coverImage}
+              alt={title}
+              sx={{
+                width: { xs: '100%', sm: 50 },
+                height: { xs: 'auto', sm: 70 },
+                maxHeight: 70,
+                objectFit: 'contain',
+                borderRadius: 1
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: { xs: '100%', sm: 50 },
+                height: { xs: 70, sm: 70 },
+                bgcolor: 'rgba(0, 0, 0, 0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 1
+              }}
+            >
+              <NoImageIcon sx={{ color: 'rgba(0, 0, 0, 0.3)' }} />
             </Box>
-            
-            <Typography variant="body2" color="text.secondary">
-              {author}
-            </Typography>
-            
-            {/* Valutazione */}
-            {rating > 0 && (
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <Rating 
-                  value={rating} 
-                  readOnly 
-                  size="small" 
-                  precision={0.5}
-                />
-              </Box>
-            )}
-          </Grid>
-          
-          {/* Azioni */}
-          <Grid item xs={2} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-            <IconButton 
-              size="small"
-              onClick={handleFavoriteToggle}
-              color={isFavorite ? "error" : "default"}
-              sx={{ mr: 1 }}
-            >
-              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            </IconButton>
-            
-            <IconButton 
-              size="small"
-              onClick={handleMenuOpen}
-            >
-              <MoreIcon />
-            </IconButton>
-          </Grid>
+          )}
         </Grid>
-      </Paper>
-    );
-  }
+        
+        {/* Info libro */}
+        <Grid item xs={7} sm={9}>
+          {/* Badge stato lettura sopra il titolo */}
+          <Tooltip title={getReadStatusLabel(readStatus)}>
+            <Box sx={{ display: 'inline-flex', mb: 1 }}>
+              {getReadStatusIcon(readStatus)}
+            </Box>
+          </Tooltip>
+          
+          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+            {title}
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary">
+            {author}
+          </Typography>
+          
+          {/* Valutazione */}
+          {rating > 0 && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Rating 
+                value={rating} 
+                readOnly 
+                size="small" 
+                precision={0.5}
+              />
+            </Box>
+          )}
+        </Grid>
+        
+        {/* Azioni */}
+        <Grid item xs={2} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <IconButton 
+            size="small"
+            onClick={handleFavoriteToggle}
+            color={isFavorite ? "error" : "default"}
+            sx={{ mr: 1 }}
+          >
+            {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+          </IconButton>
+          
+          <IconButton 
+            size="small"
+            onClick={handleMenuOpen}
+          >
+            <MoreIcon />
+          </IconButton>
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+}
   
   // Visualizzazione risultato ricerca (usata in AddBook.js)
   if (variant === 'search') {
@@ -574,9 +590,7 @@ const BookCard = ({
       </Card>
     );
   }
-  
-// Per la variante "detail"
-// Implementazione della variante "detail" in BookCard.js
+
 
 // Quando variant === 'detail'
 if (variant === 'detail') {
@@ -676,31 +690,70 @@ if (variant === 'detail') {
           
           {/* Riga di azioni */}
           <Box sx={{ 
-            display: 'flex', 
-            mt: 2,
-            gap: 1,
-            flexWrap: 'wrap'
-          }}>
-            <IconButton 
-              color={isFavorite ? "error" : "default"}
-              onClick={handleFavoriteToggle}
-              sx={{ 
-                bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.1),
-                '&:hover': {
-                  bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.2),
-                }
-              }}
-            >
-              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            </IconButton>
-            
-            {/* Altre azioni che possono variare in base alla pagina */}
-            {onMenuOpen && (
-              <IconButton onClick={handleMenuOpen}>
-                <MoreIcon />
-              </IconButton>
-            )}
-          </Box>
+  display: 'flex', 
+  mt: 2,
+  gap: 1,
+  flexWrap: 'wrap'
+}}>
+  {showFavoriteButton && (
+    <IconButton 
+      color={isFavorite ? "error" : "default"}
+      onClick={handleFavoriteToggle}
+      sx={{ 
+        bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.1),
+        '&:hover': {
+          bgcolor: alpha(isFavorite ? theme.palette.error.main : theme.palette.action.hover, 0.2),
+        }
+      }}
+    >
+      {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+    </IconButton>
+  )}
+  
+  {showShareButton && onShareClick && (
+    <IconButton
+      onClick={(e) => {
+        e.stopPropagation();
+        onShareClick();
+      }}
+      sx={{ 
+        bgcolor: alpha(theme.palette.action.hover, 0.1),
+        '&:hover': {
+          bgcolor: alpha(theme.palette.action.hover, 0.2),
+        }
+      }}
+    >
+      <ShareIcon />
+    </IconButton>
+  )}
+  
+  {showDeleteButton && onDeleteClick && (
+    <IconButton
+      onClick={(e) => {
+        e.stopPropagation();
+        onDeleteClick();
+      }}
+      color="error"
+      sx={{ 
+        bgcolor: alpha(theme.palette.error.light, 0.1),
+        '&:hover': {
+          bgcolor: alpha(theme.palette.error.light, 0.2),
+        }
+      }}
+    >
+      <DeleteIcon />
+    </IconButton>
+  )}
+  
+  {showMenuIcon && onMenuOpen && (
+    <IconButton onClick={handleMenuOpen}>
+      <MoreIcon />
+    </IconButton>
+  )}
+
+
+ 
+</Box>
         </Box>
       </Box>
       
@@ -747,17 +800,34 @@ if (variant === 'detail') {
         
         {/* Descrizione */}
         {bookData.description && (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Descrizione:
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {bookData.description.length > 300
-                ? `${bookData.description.substring(0, 300)}...`
-                : bookData.description}
-            </Typography>
-          </Box>
-        )}
+  <Box sx={{ mt: 2 }}>
+    <Typography variant="subtitle2" gutterBottom>
+      Descrizione:
+    </Typography>
+    <Typography variant="body2" color="text.secondary">
+      {showFullDescription 
+        ? bookData.description 
+        : showExpandableDescription 
+          ? expandedDescription 
+            ? bookData.description 
+            : `${bookData.description.substring(0, 300)}${bookData.description.length > 300 ? '...' : ''}`
+          : bookData.description.length > 300
+            ? `${bookData.description.substring(0, 300)}...`
+            : bookData.description
+      }
+    </Typography>
+    
+    {showExpandableDescription && bookData.description.length > 300 && (
+      <Button 
+        onClick={toggleDescription} 
+        sx={{ mt: 1, p: 0 }}
+        color="primary"
+      >
+        {expandedDescription ? 'Mostra meno' : 'Leggi tutto'}
+      </Button>
+    )}
+  </Box>
+)}
         
         {/* Note personali (solo se ci sono) */}
         {notes && !showPersonalization && (
@@ -781,6 +851,8 @@ if (variant === 'detail') {
           </Box>
         )}
         
+       
+
         {/* Sezione di personalizzazione - mostrata solo se necessario */}
         {showPersonalization && (
           <>
@@ -850,7 +922,7 @@ if (variant === 'detail') {
 </CardContent>
 
 {/* Pulsanti azione principale */}
-{(onAddBook || onViewInLibrary) && (
+{showActionButtons && (onAddBook || onViewInLibrary) && (
   <CardActions sx={{ p: 3, pt: 0 }}>
     {isInLibrary && onViewInLibrary ? (
       <Button

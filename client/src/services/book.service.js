@@ -611,11 +611,21 @@ async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350'
    */
   async getFavorites(userId) {
     try {
-      const response = await apiService.get('/user-books/favorites', { params: { userId } });
-      return response.data;
+      if (!userId) {
+        console.log("getFavorites: userId non fornito");
+        return { data: [] };  // Ritorna un array vuoto se manca l'userId
+      }
+      
+      const response = await apiService.get('/user-books/favorites', { 
+        params: { userId: userId } 
+      });
+      
+      return response;
     } catch (error) {
       console.error('Errore durante il recupero dei preferiti:', error);
-      throw error;
+      
+      // Invece di propagare l'errore, ritorniamo un risultato vuoto
+      return { data: [] };
     }
   }
 
