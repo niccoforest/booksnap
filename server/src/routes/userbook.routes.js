@@ -11,4 +11,7 @@ router.get('/:id', userBookController.getUserBookById);
 router.put('/:id', userBookController.updateUserBook);
 router.delete('/:id', userBookController.removeUserBook);
 
+router.get('/favorites', userBookController.getFavorites);
+router.put('/:id/favorite', userBookController.toggleFavorite);
+
 module.exports = router;

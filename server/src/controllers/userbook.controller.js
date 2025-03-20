@@ -423,6 +423,86 @@ const getRecentlyReadBooks = async (req, res) => {
 };
 
 /**
+ * Aggiorna lo stato preferito di un libro nella libreria dell'utente
+ */
+exports.toggleFavorite = async (req, res) => {
+  try {
+    const userBookId = req.params.id;
+    const { isFavorite } = req.body;
+    
+    // Verifica che isFavorite sia definito e sia un boolean
+    if (typeof isFavorite !== 'boolean') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Il parametro isFavorite deve essere un valore booleano'
+      });
+    }
+    
+    // Aggiorna lo stato preferito del libro
+    const userBook = await UserBook.findByIdAndUpdate(
+      userBookId, 
+      { isFavorite, updatedAt: Date.now() },
+      { new: true }
+    );
+    
+    if (!userBook) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Libro non trovato nella libreria dell\'utente'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      data: userBook
+    });
+  } catch (error) {
+    console.error('Errore durante l\'aggiornamento dei preferiti:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Si è verificato un errore durante l\'aggiornamento dei preferiti'
+    });
+  }
+};
+
+/**
+ * Ottiene tutti i libri preferiti dell'utente
+ */
+exports.getFavorites = async (req, res) => {
+  try {
+    const userId = req.query.userId || (req.user && req.user._id);
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID utente richiesto' 
+      });
+    }
+    
+    // Trova tutti i libri preferiti dell'utente
+    const favorites = await UserBook.find({
+      userId,
+      isFavorite: true
+    })
+    .populate('bookId')
+    .sort({ updatedAt: -1 });
+    
+    return res.status(200).json({
+      success: true,
+      count: favorites.length,
+      data: favorites
+    });
+  } catch (error) {
+    console.error('Errore durante il recupero dei preferiti:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Si è verificato un errore durante il recupero dei preferiti'
+    });
+  }
+};
+
+
+/**
  * Trova i libri attualmente in lettura dall'utente
  */
 const getCurrentlyReadingBooks = async (req, res) => {
@@ -467,5 +547,8 @@ module.exports = {
   updateUserBook,
   removeUserBook,
   getRecentlyReadBooks,
-  getCurrentlyReadingBooks
+  getCurrentlyReadingBooks,
+  // Aggiungi queste due funzioni all'esportazione
+  toggleFavorite: exports.toggleFavorite,
+  getFavorites: exports.getFavorites
 };

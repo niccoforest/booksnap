@@ -552,7 +552,7 @@ async getUserBooks(filters = {}, page = 1, limit = 20) {
     console.error('Errore nel recupero dei libri dell\'utente:', error);
     throw error;
   }
-}
+};
   
  /**
  * Aggiorna il record UserBook di un utente
@@ -585,39 +585,89 @@ async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350'
     console.error('Errore nell\'aggiornamento del libro dell\'utente:', error);
     throw error;
   }
-}
+};
+
+
+  /**
+   * Aggiorna lo stato preferito di un libro
+   * @param {string} userBookId - ID della relazione userBook
+   * @param {boolean} isFavorite - Nuovo stato preferito
+   * @returns {Promise} Risultato dell'operazione
+   */
+  async toggleFavorite(userBookId, isFavorite) {
+    try {
+      const response = await apiService.put(`/user-books/${userBookId}/favorite`, { isFavorite });
+      return response.data;
+    } catch (error) {
+      console.error('Errore durante l\'aggiornamento dei preferiti:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ottiene tutti i libri preferiti dell'utente
+   * @param {string} userId - ID dell'utente
+   * @returns {Promise} Lista dei libri preferiti
+   */
+  async getFavorites(userId) {
+    try {
+      const response = await apiService.get('/user-books/favorites', { params: { userId } });
+      return response.data;
+    } catch (error) {
+      console.error('Errore durante il recupero dei preferiti:', error);
+      throw error;
+    }
+  }
+
 
 /**
- * Rimuove un libro dalla biblioteca dell'utente
- * @param {string} userBookId - ID della relazione utente-libro
- * @param {string} userId - ID dell'utente (opzionale)
- * @returns {Promise<Object>} - Esito dell'operazione
+ * Sincronizza i preferiti tra localStorage e server
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise} Risultato dell'operazione
  */
-async removeFromLibrary(userBookId, userId = '655e9e1b07910b7d21dea350') {
+async syncFavorites(userId) {
   try {
-    console.log(`Rimozione libro ${userBookId} dalla libreria dell'utente ${userId}`);
+    // Recupera i preferiti da localStorage
+    const localFavorites = localStorage.getItem('booksnap_favorites');
+    const favoriteObj = localFavorites ? JSON.parse(localFavorites) : {};
     
-    // Costruisci l'URL con il parametro userId per evitare errori di autorizzazione
-    const url = `/user-books/${userBookId}?userId=${encodeURIComponent(userId)}`;
+    // Recupera i libri dell'utente
+    const response = await this.getUserBooks({ userId });
+    const userBooks = response.books || [];
     
-    // Richiesta per rimuovere il libro
-    const response = await apiService.delete(url);
+    // Aggiorna i preferiti sul server in base a localStorage
+    const updatePromises = userBooks.map(userBook => {
+      const shouldBeFavorite = !!favoriteObj[userBook._id];
+      
+      // Aggiorna solo se lo stato è diverso
+      if (userBook.isFavorite !== shouldBeFavorite) {
+        return this.toggleFavorite(userBook._id, shouldBeFavorite);
+      }
+      
+      return Promise.resolve();
+    });
     
-    console.log('Risposta rimozione libro:', response);
+    await Promise.all(updatePromises);
     
-    if (response.success) {
-      return { 
-        success: true, 
-        message: 'Libro rimosso dalla libreria con successo' 
-      };
-    } else {
-      throw new Error(response.message || 'Errore nella rimozione del libro');
-    }
+    // Aggiorna localStorage con i dati dal server
+    const serverFavorites = await this.getFavorites(userId);
+    const newFavoriteObj = {};
+    
+    serverFavorites.data.forEach(userBook => {
+      newFavoriteObj[userBook._id] = true;
+    });
+    
+    localStorage.setItem('booksnap_favorites', JSON.stringify(newFavoriteObj));
+    
+    return { success: true };
   } catch (error) {
-    console.error('Errore nella rimozione del libro dalla libreria:', error);
+    console.error('Errore durante la sincronizzazione dei preferiti:', error);
     throw error;
   }
 }
+
+
+
 }
 
 const bookServiceInstance = new BookService();

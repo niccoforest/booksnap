@@ -22,6 +22,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
+import BookCard from '../components/book/BookCard';
+import useFavorites from '../hooks/useFavorites';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -77,6 +79,8 @@ const Home = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   
+  const { isFavorite } = useFavorites(TEMP_USER_ID);
+
   // Stati per i dati della libreria
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -325,23 +329,19 @@ const Home = () => {
               )}
             </Box>
             
-            {hasBooks ? (
-              <Grid container spacing={2}>
-                {libraryBooks.slice(0, 3).map((book) => (
-                  <Grid item xs={4} key={book._id}>
-                    <BookPreview 
-                      book={{
-                        id: book._id,
-                        title: book.bookId?.title || 'Titolo sconosciuto',
-                        author: book.bookId?.author || 'Autore sconosciuto',
-                        coverImage: book.bookId?.coverImage
-                      }} 
-                      onClick={() => handleBookClick(book._id)}
-                    />
-                  </Grid>
-                ))}
+           {hasBooks ? (
+          <Grid container spacing={2}>
+            {libraryBooks.slice(0, 3).map((book) => (
+              <Grid item xs={4} key={book._id}>
+                <BookCard 
+                  userBook={book}
+                  variant="preview"
+                  onBookClick={() => handleBookClick(book._id)}
+                />
               </Grid>
-            ) : (
+            ))}
+          </Grid>
+        ) : (
               <Box sx={{ 
                 textAlign: 'center', 
                 py: 4, 

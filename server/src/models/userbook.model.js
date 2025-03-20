@@ -1,19 +1,19 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const userBookSchema = new Schema({
+const userBookSchema = new mongoose.Schema({
   userId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
   bookId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Book',
     required: true
   },
   libraryId: {
-    type: Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     ref: 'Library'
   },
   readStatus: {
@@ -23,20 +23,27 @@ const userBookSchema = new Schema({
   },
   rating: {
     type: Number,
-    min: 1,
+    min: 0,
     max: 5
   },
-  notes: {
-    type: String
+  notes: String,
+  startedReading: Date,
+  finishedReading: Date,
+  
+  // Nuovo campo per i preferiti
+  isFavorite: {
+    type: Boolean,
+    default: false
   },
-  startedReading: {
-    type: Date
+  
+  createdAt: {
+    type: Date,
+    default: Date.now
   },
-  finishedReading: {
-    type: Date
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, { 
-  timestamps: true
 });
 
 // Indici per ottimizzare le ricerche

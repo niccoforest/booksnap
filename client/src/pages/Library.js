@@ -51,6 +51,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import Rating from '@mui/material/Rating';
+import BookCard from '../components/book/BookCard';
+import useFavorites from '../hooks/useFavorites';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -64,6 +66,7 @@ const Library = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [favorites, setFavorites] = useState({});
+  const { isFavorite, toggleFavorite } = useFavorites(TEMP_USER_ID);
   
   // Stati per la visualizzazione
   const [viewMode, setViewMode] = useState('grid'); // 'grid' o 'list'
@@ -165,22 +168,29 @@ const Library = () => {
   };
   
 
-  const handleToggleFavorite = (e, bookId) => {
-    e.stopPropagation(); // Previene il click sul libro
-    setFavorites(prev => ({
-      ...prev,
-      [bookId]: !prev[bookId]
-    }));
-    
-    // In futuro, qui chiameremo l'API per salvare lo stato dei preferiti
-    setSnackbar({
-      open: true,
-      message: favorites[bookId] 
-        ? 'Libro rimosso dai preferiti' 
-        : 'Libro aggiunto ai preferiti',
-      severity: 'success'
-    });
-  };  
+  const handleToggleFavorite = async (bookId) => {
+    try {
+      await toggleFavorite(bookId);
+      
+      // Mostra notifica
+      setSnackbar({
+        open: true,
+        message: isFavorite(bookId) 
+          ? 'Libro aggiunto ai preferiti' 
+          : 'Libro rimosso dai preferiti',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('Errore nella gestione dei preferiti:', err);
+      
+      // Mostra errore
+      setSnackbar({
+        open: true,
+        message: 'Errore nella gestione dei preferiti',
+        severity: 'error'
+      });
+    }
+  };
   // Gestione menu di ordinamento
   const [sortMenuAnchorEl, setSortMenuAnchorEl] = useState(null);
   
@@ -523,127 +533,14 @@ const Library = () => {
             {/* Libri nella griglia */}
             {books.map((book) => (
               <Grid item xs={6} sm={4} md={3} lg={2} key={book._id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    borderRadius: '12px',
-                    '&:hover': {
-                      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
-                    },
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => handleViewBookDetails(book._id)}
-                >
-                  {/* Stato di lettura - badge superiore */}
-                  <Box 
-                    sx={{ 
-                      position: 'absolute', 
-                      top: 8, 
-                      right: 8, 
-                      zIndex: 1,
-                      bgcolor: 'white',
-                      borderRadius: '50%',
-                      p: 0.5,
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                    }}
-                  >
-                    <Tooltip title={getReadStatusLabel(book.readStatus || 'to-read')}>
-                      {getReadStatusIcon(book.readStatus || 'to-read')}
-                    </Tooltip>
-                  </Box>
-                  
-                  {/* Copertina */}
-                  {book.bookId?.coverImage ? (
-                    <CardMedia
-                      component="img"
-                      height="200"
-                      image={book.bookId.coverImage}
-                      alt={book.bookId.title}
-                      sx={{ objectFit: 'contain', p: 1 }}
-                    />
-                  ) : (
-                    <Box 
-                      sx={{ 
-                        height: 200, 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        bgcolor: 'rgba(0, 0, 0, 0.04)'
-                      }}
-                    >
-                      <NoImageIcon sx={{ fontSize: 40, color: 'rgba(0, 0, 0, 0.3)' }} />
-                    </Box>
-                  )}
-                  
-                  {/* Info libro */}
-                  <CardContent sx={{ flexGrow: 1, pt: 1 }}>
-                    <Typography 
-                      variant="subtitle1" 
-                      component="div" 
-                      sx={{ 
-                        fontWeight: 'medium',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        lineHeight: 1.2,
-                        mb: 0.5
-                      }}
-                    >
-                      {book.bookId?.title || 'Titolo sconosciuto'}
-                    </Typography>
-                    
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{ 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 1,
-                        WebkitBoxOrient: 'vertical'
-                      }}
-                    >
-                      {book.bookId?.author || 'Autore sconosciuto'}
-                    </Typography>
-                    
-                    {/* Valutazione */}
-                    {book.rating > 0 && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <Rating 
-                          value={book.rating} 
-                          readOnly 
-                          size="small" 
-                          precision={0.5}
-                        />
-                      </Box>
-                    )}
-                  </CardContent>
-                  
-                  {/* Aggiungi icona preferiti e menu */}
-                  <CardActions sx={{ justifyContent: 'space-between', pt: 0 }}>
-                    <IconButton 
-                      size="small"
-                      onClick={(e) => handleToggleFavorite(e, book._id)}
-                      color={favorites[book._id] ? "error" : "default"}
-                    >
-                      {favorites[book._id] ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                    </IconButton>
-                    
-                    <IconButton 
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleBookMenuOpen(e, book._id);
-                      }}
-                    >
-                      <MoreIcon />
-                    </IconButton>
-                  </CardActions>
-                </Card>
+                <BookCard 
+                  userBook={book}
+                  variant="grid"
+                  isFavorite={isFavorite(book._id)}
+                  onFavoriteToggle={() => handleToggleFavorite(book._id)}
+                  onMenuOpen={(e) => handleBookMenuOpen(e, book._id)}
+                  onBookClick={() => handleViewBookDetails(book._id)}
+                />
               </Grid>
             ))}
           </Grid>
@@ -685,110 +582,15 @@ const Library = () => {
             
             {/* Lista libri */}
             {books.map((book) => (
-              <Paper
+              <BookCard 
                 key={book._id}
-                elevation={0}
-                sx={{
-                  mb: 2,
-                  p: 2,
-                  borderRadius: '12px',
-                  border: `1px solid ${theme.palette.divider}`,
-                  '&:hover': {
-                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)'
-                  },
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-                onClick={() => handleViewBookDetails(book._id)}
-              >
-                <Grid container spacing={2} alignItems="center">
-                  {/* Copertina */}
-                  <Grid item xs={3} sm={1}>
-                    {book.bookId?.coverImage ? (
-                      <Box
-                        component="img"
-                        src={book.bookId.coverImage}
-                        alt={book.bookId.title}
-                        sx={{
-                          width: { xs: '100%', sm: 50 },
-                          height: { xs: 'auto', sm: 70 },
-                          maxHeight: 70,
-                          objectFit: 'contain',
-                          borderRadius: 1
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          width: { xs: '100%', sm: 50 },
-                          height: { xs: 70, sm: 70 },
-                          bgcolor: 'rgba(0, 0, 0, 0.04)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 1
-                        }}
-                      >
-                        <NoImageIcon sx={{ color: 'rgba(0, 0, 0, 0.3)' }} />
-                      </Box>
-                    )}
-                  </Grid>
-                  
-                  {/* Info libro */}
-                  <Grid item xs={7} sm={9}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-                        {book.bookId?.title || 'Titolo sconosciuto'}
-                      </Typography>
-                      
-                      {/* Badge stato lettura */}
-                      <Tooltip title={getReadStatusLabel(book.readStatus || 'to-read')}>
-                        <Box sx={{ display: 'inline-flex' }}>
-                          {getReadStatusIcon(book.readStatus || 'to-read')}
-                        </Box>
-                      </Tooltip>
-                    </Box>
-                    
-                    <Typography variant="body2" color="text.secondary">
-                      {book.bookId?.author || 'Autore sconosciuto'}
-                    </Typography>
-                    
-                    {/* Valutazione */}
-                    {book.rating > 0 && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                        <Rating 
-                          value={book.rating} 
-                          readOnly 
-                          size="small" 
-                          precision={0.5}
-                        />
-                      </Box>
-                    )}
-                  </Grid>
-                  
-                  {/* Azioni */}
-                  <Grid item xs={2} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-  <IconButton 
-    size="small"
-    onClick={(e) => handleToggleFavorite(e, book._id)}
-    color={favorites[book._id] ? "error" : "default"}
-    sx={{ mr: 1 }}
-  >
-    {favorites[book._id] ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-  </IconButton>
-  
-  <IconButton 
-    size="small"
-    onClick={(e) => {
-      e.stopPropagation();
-      handleBookMenuOpen(e, book._id);
-    }}
-  >
-    <MoreIcon />
-  </IconButton>
-</Grid>
-                </Grid>
-              </Paper>
+                userBook={book}
+                variant="list"
+                isFavorite={isFavorite(book._id)}
+                onFavoriteToggle={() => handleToggleFavorite(book._id)}
+                onMenuOpen={(e) => handleBookMenuOpen(e, book._id)}
+                onBookClick={() => handleViewBookDetails(book._id)}
+              />
             ))}
           </Box>
         )
