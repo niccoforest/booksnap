@@ -33,6 +33,7 @@ import ScannerOverlay from '../components/scan/ScannerOverlay';
 import googleBooksService from '../services/googleBooks.service';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
+import BookForm from '../components/book/BookForm';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -325,9 +326,18 @@ const AddBook = () => {
       setLoading(true);
       setLoadingBookId(fromResults ? book.googleBooksId : null);
       
-      // Determina quale libro aggiungere (selezionato o creato manualmente)
-      const bookToAdd = isManualCreation ? newBook : book;
-      console.log('Aggiungi alla libreria:', bookToAdd);
+      // Usa direttamente l'oggetto book passato, senza dipendere da newBook
+      const bookToAdd = book;
+      console.log('Libro da aggiungere:', bookToAdd);
+      
+      // Verifica che il libro abbia titolo e autore
+      if (!bookToAdd.title || !bookToAdd.author) {
+        throw new Error('Titolo e autore sono campi obbligatori');
+      }
+      
+      // Pulizia dei campi (trim)
+      bookToAdd.title = bookToAdd.title.trim();
+      bookToAdd.author = bookToAdd.author.trim();
       
       // Verifica se il libro è già nella libreria
       if (bookToAdd.googleBooksId && isBookInLibrary(bookToAdd.googleBooksId)) {
@@ -344,11 +354,6 @@ const AddBook = () => {
         
         setLoading(false);
         return;
-      }
-      
-      // Assicurati che ci siano almeno titolo e autore
-      if (isManualCreation && (!bookToAdd.title || !bookToAdd.author)) {
-        throw new Error('Titolo e autore sono campi obbligatori');
       }
       
       // Gestisci correttamente il rating
@@ -399,10 +404,9 @@ const AddBook = () => {
         errorMessage = 'Questo libro è già presente nella tua libreria';
         errorSeverity = 'info';
         
-        // Aggiorna lo stato locale - assicurati che bookToAdd sia definito qui
-        const updatedBookId = (isManualCreation ? newBook.googleBooksId : book.googleBooksId);
-        if (updatedBookId) {
-          updateBookInLibraryStatus(updatedBookId, true);
+        // Aggiorna lo stato locale - usa direttamente book.googleBooksId
+        if (book.googleBooksId) {
+          updateBookInLibraryStatus(book.googleBooksId, true);
         }
         
         // Se non siamo nei risultati, torna ai risultati
@@ -431,6 +435,7 @@ const AddBook = () => {
       setLoadingBookId(null);
     }
   };
+
 
   // Funzione per condividere un libro
   const handleShare = () => {
@@ -629,11 +634,26 @@ const AddBook = () => {
         <Box sx={{ mt: 2 }}>
           {/* Form creazione manuale */}
           {isManualCreation ? (
-            <>
-              {/* Formulario di creazione libro manuale */}
-              {/* ... mantieni il tuo formulario esistente ... */}
-            </>
-          ) : (
+  <BookForm
+  initialData={newBook}
+  userBookData={userBookData}
+  onSubmit={({ bookData, personalData }) => {
+    console.log("Form sottomesso con successo:", bookData, personalData);
+    
+    // Importante: invece di aggiornare lo stato e poi usare newBook
+    // passa direttamente bookData alla funzione
+    handleAddToLibrary(bookData);
+    
+    // Aggiorna comunque gli stati per mantenere la coerenza
+    setNewBook(bookData);
+    setUserBookData(personalData);
+  }}
+  onCancel={handleBackToResults}
+  loading={loading}
+  submitLabel="Aggiungi alla libreria"
+/>
+) : (
+  
             // Modalità ricerca e dettaglio
             <>
               {/* Mostra campo di ricerca solo se non è stato selezionato un libro */}
