@@ -415,60 +415,97 @@ const handleFilterChange = (filterKey, value) => {
     <Box sx={{ p: 2 }}>
       {/* Header */}
       <Box 
+  sx={{ 
+    display: 'flex', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    mb: 2
+  }}
+>
+  <Typography variant="h5" component="h1">
+    La mia libreria
+  </Typography>
+  
+  {/* Controlli per la visualizzazione griglia/lista */}
+  <Box>
+    <Tooltip title="Vista griglia">
+      <IconButton 
+        onClick={() => handleViewModeChange('grid')}
+        color={viewMode === 'grid' ? 'primary' : 'default'}
         sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          mb: 2
+          bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+          '&:hover': {
+            bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+          }
         }}
       >
-        <Typography variant="h5" component="h1">
-          La mia libreria
-        </Typography>
-        
-        <FilterBar 
-          sortOptions={sortOptions}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSortChange={handleSortChange}
-          filterOptions={filterOptions}
-          selectedFilters={{ readStatus: currentTab === 'all' ? 'all' : currentTab }}
-          onFilterChange={handleFilterChange}
-          extraActions={
-            <Box>
-              <Tooltip title="Vista griglia">
-                <IconButton 
-                  onClick={() => handleViewModeChange('grid')}
-                  color={viewMode === 'grid' ? 'primary' : 'default'}
-                  sx={{ 
-                    bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                    '&:hover': {
-                      bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-                    }
-                  }}
-                >
-                  <GridViewIcon />
-                </IconButton>
-              </Tooltip>
-              
-              <Tooltip title="Vista lista">
-                <IconButton 
-                  onClick={() => handleViewModeChange('list')}
-                  color={viewMode === 'list' ? 'primary' : 'default'}
-                  sx={{ 
-                    bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                    '&:hover': {
-                      bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-                    }
-                  }}
-                >
-                  <ViewListIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
+        <GridViewIcon />
+      </IconButton>
+    </Tooltip>
+    
+    <Tooltip title="Vista lista">
+      <IconButton 
+        onClick={() => handleViewModeChange('list')}
+        color={viewMode === 'list' ? 'primary' : 'default'}
+        sx={{ 
+          bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+          '&:hover': {
+            bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
           }
-        />
-      </Box>
+        }}
+      >
+        <ViewListIcon />
+      </IconButton>
+    </Tooltip>
+    
+    {/* Pulsante ordinamento */}
+    <Tooltip title="Ordina">
+      <IconButton 
+        onClick={handleSortMenuOpen}
+        aria-controls="sort-menu"
+        aria-haspopup="true"
+      >
+        <SortIcon />
+      </IconButton>
+    </Tooltip>
+    <Menu
+      id="sort-menu"
+      anchorEl={sortMenuAnchorEl}
+      keepMounted
+      open={Boolean(sortMenuAnchorEl)}
+      onClose={handleSortMenuClose}
+    >
+      <MenuItem 
+        onClick={() => handleSortChange('dateAdded')}
+        selected={sortBy === 'dateAdded'}
+      >
+        {sortBy === 'dateAdded' && sortOrder === 'desc' ? '↓ ' : sortBy === 'dateAdded' && sortOrder === 'asc' ? '↑ ' : ''}
+        Data aggiunta
+      </MenuItem>
+      <MenuItem 
+        onClick={() => handleSortChange('title')} 
+        selected={sortBy === 'title'}
+      >
+        {sortBy === 'title' && sortOrder === 'desc' ? '↓ ' : sortBy === 'title' && sortOrder === 'asc' ? '↑ ' : ''}
+        Titolo
+      </MenuItem>
+      <MenuItem 
+        onClick={() => handleSortChange('author')} 
+        selected={sortBy === 'author'}
+      >
+        {sortBy === 'author' && sortOrder === 'desc' ? '↓ ' : sortBy === 'author' && sortOrder === 'asc' ? '↑ ' : ''}
+        Autore
+      </MenuItem>
+      <MenuItem 
+        onClick={() => handleSortChange('rating')} 
+        selected={sortBy === 'rating'}
+      >
+        {sortBy === 'rating' && sortOrder === 'desc' ? '↓ ' : sortBy === 'rating' && sortOrder === 'asc' ? '↑ ' : ''}
+        Valutazione
+      </MenuItem>
+    </Menu>
+  </Box>
+</Box>
       
       {/* Tab per filtrare per stato di lettura */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>

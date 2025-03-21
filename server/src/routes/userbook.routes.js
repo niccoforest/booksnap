@@ -12,6 +12,7 @@ router.put('/:id', userBookController.updateUserBook);
 router.delete('/:id', userBookController.removeUserBook);
 
 router.get('/favorites', userBookController.getFavorites);
+router.post('/sync-favorites', userBookController.syncFavorites);
 router.put('/:id/favorite', userBookController.toggleFavorite);
 
 module.exports = router;

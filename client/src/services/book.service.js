@@ -588,63 +588,61 @@ async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350'
 };
 
 
-  /**
-   * Aggiorna lo stato preferito di un libro
-   * @param {string} userBookId - ID della relazione userBook
-   * @param {boolean} isFavorite - Nuovo stato preferito
-   * @returns {Promise} Risultato dell'operazione
-   */
-  async toggleFavorite(userBookId, isFavorite) {
-    try {
-      const response = await apiService.put(`/user-books/${userBookId}/favorite`, { isFavorite });
-      return response.data;
-    } catch (error) {
-      console.error('Errore durante l\'aggiornamento dei preferiti:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Ottiene tutti i libri preferiti dell'utente
-   * @param {string} userId - ID dell'utente
-   * @returns {Promise} Lista dei libri preferiti
-   */
-  async getFavorites(userId) {
-    try {
-      if (!userId) {
-        console.warn("getFavorites: userId non fornito");
-        return { data: [] }; // Ritorna un array vuoto se manca l'userId
+ /**
+ * Aggiorna lo stato preferito di un libro
+ * @param {string} userBookId - ID della relazione userBook
+ * @param {boolean} isFavorite - Nuovo stato preferito
+ * @returns {Promise} Risultato dell'operazione
+ */
+async toggleFavorite(userBookId, isFavorite) {
+  try {
+    const response = await apiService.put(`/user-books/${userBookId}/favorite`, { isFavorite });
+    
+    // Se la chiamata API ha successo, salva anche in localStorage per ottimizzare
+    if (response.success) {
+      // Mantieni anche una cache locale
+      const savedFavorites = localStorage.getItem('booksnap_favorites') || '{}';
+      const favoritesObj = JSON.parse(savedFavorites);
+      
+      if (isFavorite) {
+        favoritesObj[userBookId] = true;
+      } else {
+        delete favoritesObj[userBookId];
       }
       
-      try {
-        const response = await apiService.get('/user-books/favorites', { 
-          params: { userId }
-        });
-        
-        return response;
-      } catch (error) {
-        console.warn('Errore API in getFavorites, utilizzo fallback locale');
-        
-        // Fallback: usa localStorage per i preferiti
-        const savedFavorites = localStorage.getItem('booksnap_favorites');
-        const favorites = savedFavorites ? JSON.parse(savedFavorites) : {};
-        
-        // Trasforma in un formato compatibile con l'API
-        const fakeApiResponse = {
-          success: true,
-          data: Object.keys(favorites)
-            .filter(key => favorites[key] === true)
-            .map(id => ({ _id: id }))
-        };
-        
-        return fakeApiResponse;
-      }
-    } catch (error) {
-      console.error('Errore durante il recupero dei preferiti:', error);
-      // Ritorna un array vuoto invece di propagare l'errore
-      return { success: true, data: [] };
+      localStorage.setItem('booksnap_favorites', JSON.stringify(favoritesObj));
     }
+    
+    return response;
+  } catch (error) {
+    console.error('Errore durante l\'aggiornamento dei preferiti:', error);
+    throw error;
   }
+}
+
+/**
+ * Ottiene tutti i libri preferiti dell'utente
+ * @param {string} userId - ID dell'utente
+ * @returns {Promise} Lista dei libri preferiti
+ */
+async getFavorites(userId) {
+  try {
+    if (!userId) {
+      console.warn("getFavorites: userId non fornito");
+      return { success: true, data: [] }; // Ritorna un array vuoto se manca l'userId
+    }
+    
+    // Prima prova a ottenere i preferiti dal server
+    const response = await apiService.get('/user-books/favorites', { 
+      params: { userId }
+    });
+    
+    return response;
+  } catch (error) {
+    console.error('Errore durante il recupero dei preferiti:', error);
+    throw error;
+  }
+}
 
 
 /**
@@ -658,41 +656,29 @@ async syncFavorites(userId) {
     const localFavorites = localStorage.getItem('booksnap_favorites');
     const favoriteObj = localFavorites ? JSON.parse(localFavorites) : {};
     
-    // Recupera i libri dell'utente
-    const response = await this.getUserBooks({ userId });
-    const userBooks = response.books || [];
-    
-    // Aggiorna i preferiti sul server in base a localStorage
-    const updatePromises = userBooks.map(userBook => {
-      const shouldBeFavorite = !!favoriteObj[userBook._id];
-      
-      // Aggiorna solo se lo stato è diverso
-      if (userBook.isFavorite !== shouldBeFavorite) {
-        return this.toggleFavorite(userBook._id, shouldBeFavorite);
-      }
-      
-      return Promise.resolve();
+    // Invia i preferiti locali al server per la sincronizzazione
+    const response = await apiService.post('/user-books/sync-favorites', {
+      userId,
+      favorites: favoriteObj
     });
     
-    await Promise.all(updatePromises);
+    if (response.success) {
+      // Aggiorna localStorage con i dati dal server
+      const newFavoriteObj = {};
+      
+      response.data.forEach(userBook => {
+        newFavoriteObj[userBook._id] = true;
+      });
+      
+      localStorage.setItem('booksnap_favorites', JSON.stringify(newFavoriteObj));
+    }
     
-    // Aggiorna localStorage con i dati dal server
-    const serverFavorites = await this.getFavorites(userId);
-    const newFavoriteObj = {};
-    
-    serverFavorites.data.forEach(userBook => {
-      newFavoriteObj[userBook._id] = true;
-    });
-    
-    localStorage.setItem('booksnap_favorites', JSON.stringify(newFavoriteObj));
-    
-    return { success: true };
+    return response;
   } catch (error) {
     console.error('Errore durante la sincronizzazione dei preferiti:', error);
     throw error;
   }
 }
-
 
 
 }

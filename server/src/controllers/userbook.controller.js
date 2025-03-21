@@ -501,6 +501,90 @@ exports.getFavorites = async (req, res) => {
   }
 };
 
+/**
+ * Sincronizza i preferiti tra client e server
+ */
+exports.syncFavorites = async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user?._id;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'ID utente richiesto' 
+      });
+    }
+    
+    // Ottieni l'elenco dei preferiti dal client
+    const { favorites } = req.body;
+    
+    if (!favorites || typeof favorites !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'elenco dei preferiti non è valido'
+      });
+    }
+    
+    // Recupera tutti i libri dell'utente
+    const userBooks = await UserBook.find({ userId });
+    
+    // Oggetto per tracciare le operazioni
+    const operations = {
+      updated: 0,
+      unchanged: 0,
+      errors: 0
+    };
+    
+    // Processa ogni libro dell'utente
+    const updatePromises = userBooks.map(async (userBook) => {
+      try {
+        const bookId = userBook._id.toString();
+        const shouldBeFavorite = !!favorites[bookId];
+        
+        // Aggiorna solo se lo stato è diverso
+        if (userBook.isFavorite !== shouldBeFavorite) {
+          await UserBook.findByIdAndUpdate(
+            bookId,
+            { 
+              isFavorite: shouldBeFavorite,
+              updatedAt: Date.now()
+            }
+          );
+          operations.updated++;
+        } else {
+          operations.unchanged++;
+        }
+      } catch (error) {
+        console.error(`Errore nell'aggiornamento del libro ${userBook._id}:`, error);
+        operations.errors++;
+      }
+    });
+    
+    // Attendi il completamento di tutte le operazioni
+    await Promise.all(updatePromises);
+    
+    // Ottieni l'elenco aggiornato dei preferiti
+    const updatedFavorites = await UserBook.find({
+      userId,
+      isFavorite: true
+    })
+    .populate('bookId')
+    .sort({ updatedAt: -1 });
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Sincronizzazione completata',
+      operations,
+      data: updatedFavorites
+    });
+  } catch (error) {
+    console.error('Errore durante la sincronizzazione dei preferiti:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Si è verificato un errore durante la sincronizzazione dei preferiti'
+    });
+  }
+};
 
 /**
  * Trova i libri attualmente in lettura dall'utente
@@ -548,7 +632,8 @@ module.exports = {
   removeUserBook,
   getRecentlyReadBooks,
   getCurrentlyReadingBooks,
-  // Aggiungi queste due funzioni all'esportazione
+  
   toggleFavorite: exports.toggleFavorite,
-  getFavorites: exports.getFavorites
+  getFavorites: exports.getFavorites,
+  syncFavorites: exports.syncFavorites
 };
