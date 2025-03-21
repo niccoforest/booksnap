@@ -3,8 +3,38 @@ import React, { useEffect, useState } from 'react';
 import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
-import { Box, useTheme, useMediaQuery } from '@mui/material';
+import { Box, useTheme, useMediaQuery, IconButton  } from '@mui/material';
+import { 
+  ArrowBackIos as PrevIcon, 
+  ArrowForwardIos as NextIcon 
+} from '@mui/icons-material';
 import BookCard from './BookCard';
+
+
+const CustomArrow = ({ direction, onClick }) => {
+    const theme = useTheme();
+    
+    return (
+      <IconButton
+        onClick={onClick}
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 10,
+          backgroundColor: 'rgba(93, 95, 239, 0.1)', // Colore primario con opacità
+          width: 40,
+          height: 40,
+          [direction === 'prev' ? 'left' : 'right']: 0,
+          '&:hover': {
+            backgroundColor: 'rgba(93, 95, 239, 0.2)',
+          }
+        }}
+      >
+        {direction === 'prev' ? <PrevIcon fontSize="small" /> : <NextIcon fontSize="small" />}
+      </IconButton>
+    );
+  };
 
 const BookCarousel = ({ 
   books = [], 
@@ -46,7 +76,8 @@ const BookCarousel = ({
     autoplaySpeed: 5000,
     centerMode: centerMode && books.length > effectiveSlidesToShow,
     centerPadding: '30px',
-    arrows: books.length > effectiveSlidesToShow,
+    nextArrow: <CustomArrow direction="next" />,
+    prevArrow: <CustomArrow direction="prev" />,
     responsive: [
       {
         breakpoint: 1280, // xl
@@ -88,6 +119,7 @@ const BookCarousel = ({
           <BookCard 
             userBook={books[0]}
             variant="preview"
+            rating={book[0].rating}
             onBookClick={() => onBookClick(books[0]._id)}
           />
         </Box>
@@ -99,14 +131,12 @@ const BookCarousel = ({
     <Box sx={{ 
       width: '100%',
       '& .slick-slide': { 
-        px: { xs: 1, sm: 1.5 },
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'stretch',
-        height: 'auto'
+       padding: '0 10px', // Spaziatura tra slide
+        boxSizing: 'border-box'
       },
       '& .slick-list': {
-        mx: { xs: -1, sm: -1.5 }
+        margin: '0 -20px', // Correzione spaziatura
+        padding: '0 20px'  // Padding per frecce
       },
       '& .slick-track': {
         display: 'flex',
@@ -117,7 +147,15 @@ const BookCarousel = ({
         }
       },
       '& .slick-dots': {
-        bottom: -35
+        bottom: -30,
+        '& li button:before': {
+          color: theme.palette.primary.main,
+          opacity: 0.3
+        },
+        '& li.slick-active button:before': {
+          color: theme.palette.primary.main,
+          opacity: 1
+        }
       },
       '& .slick-prev, & .slick-next': {
         zIndex: 1,
@@ -145,6 +183,7 @@ const BookCarousel = ({
             <BookCard 
               userBook={book}
               variant="preview"
+              rating={book.rating}
               onBookClick={() => onBookClick(book._id)}
             />
           </Box>

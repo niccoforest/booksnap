@@ -19,6 +19,7 @@ import {
   Add as AddIcon,
   BookmarkBorder as BookmarkIcon,
   ArrowForward as ArrowForwardIcon,
+  Book as BookIcon,
   MenuBook as ReadingIcon,
   Favorite as FavoriteIcon,
   PeopleAlt as LentIcon
@@ -27,55 +28,23 @@ import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
 import useFavorites from '../hooks/useFavorites';
+import EmptyState from '../components/common/EmptyState';
+import BookCarousel from '../components/book/BookCarousel';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 
 const HomeBookSection = ({ 
   title, 
-  books, 
+  books = [], 
   onBookClick, 
-  showMoreLink 
+  showMoreLink,
+  useCarousel = true // Parametro per decidere se usare il carousel
 }) => {
   const theme = useTheme();
   
-  // Modifico la condizione del carousel
-  const isCarousel = books.length >= 3 && books.length <= 4;
-
-
-  const carouselSettings = {
-    dots: false,
-    infinite: true,  // Cambiato da true a false
-    speed: 500,
-    slidesToShow: Math.min(books.length, 3),
-    slidesToScroll: 1,
-    centerMode: true,  // Aggiungi questa riga per centrare i libri
-    centerPadding: '60px',  // Aggiungi questo per spaziatura
-    variableWidth: true,  // Aggiungi questo per larghezza variabile
-    responsive: [
-      {
-        breakpoint: 1024,
-        settings: {
-          slidesToShow: Math.min(books.length, 3),
-          slidesToScroll: 1,
-        }
-      },
-      {
-        breakpoint: 600,
-        settings: {
-          slidesToShow: Math.min(books.length, 2),
-          slidesToScroll: 1,
-        }
-      },
-      {
-        breakpoint: 480,
-        settings: {
-          slidesToShow: 1,
-          slidesToScroll: 1,
-        }
-      }
-    ]
-  };
+  // Determina se usare il carousel in base al numero di libri e al parametro
+  const shouldUseCarousel = useCarousel && books.length > 2;
 
   return (
     <Box sx={{ mb: 4 }}>
@@ -95,33 +64,19 @@ const HomeBookSection = ({
         )}
       </Box>
       
-      {isCarousel ? (
-        <Box sx={{ 
-          '& .slick-slide': { 
-            px: 1,
-            display: 'flex',
-            justifyContent: 'center'
-          },
-          '& .slick-list': {
-            margin: '0 -8px'
-          },
-          '& .slick-track': {
-            display: 'flex',
-            alignItems: 'stretch'
-          }
-        }}>
-          <Slider {...carouselSettings}>
-            {books.map((book) => (
-              <Box key={book._id} sx={{ px: 1, width: '100%' }}>  {/* Larghezza fissa */}
-                <BookCard 
-                  userBook={book}
-                  variant="preview"
-                  onBookClick={() => onBookClick(book._id)}
-                />
-              </Box>
-            ))}
-          </Slider>
+      {books.length === 0 ? (
+        <Box sx={{ py: 4 }}>
+          <EmptyState 
+            message="Nessun libro in questa sezione" 
+            icon={<BookIcon sx={{ fontSize: 48 }} />} 
+          />
         </Box>
+      ) : shouldUseCarousel ? (
+        <BookCarousel 
+          books={books} 
+          onBookClick={onBookClick} 
+          maxVisible={12} // Mostra fino a 12 libri nel carousel
+        />
       ) : (
         <Grid container spacing={2}>
           {books.map((book) => (
@@ -377,27 +332,30 @@ const Home = () => {
 
           {/* La mia libreria */}
           <HomeBookSection 
-            title="La mia libreria"
-            books={libraryBooks.slice(0, 6)}
-            onBookClick={handleBookClick}
-            showMoreLink={() => navigate('/library')}
-          />
+          title="La mia libreria"
+          books={libraryBooks.slice(0, 12)} // Aumentato a 12 per il carousel
+          onBookClick={handleBookClick}
+          showMoreLink={() => navigate('/library')}
+          useCarousel={libraryBooks.length > 2} // Usa carousel solo se ci sono più di 2 libri
+        />
 
           {/* Ultime scansioni */}
           <HomeBookSection 
-  title="Ultime aggiunte"
-  books={recentScans.slice(0, 6)}
-  onBookClick={handleBookClick}
-  showMoreLink={() => navigate('/library')}
-/>
+          title="Ultime aggiunte"
+          books={recentScans.slice(0, 12)} // Aumentato a 12 per il carousel
+          onBookClick={handleBookClick}
+          showMoreLink={() => navigate('/library')}
+          useCarousel={recentScans.length > 2} // Usa carousel solo se ci sono più di 2 libri
+        />
 
          {/* Libri consigliati */}
          {hasBooks && (
-            <HomeBookSection 
-              title="Dalla tua libreria"
-              books={recommendedBooks}
-              onBookClick={handleBookClick}
-              showMoreLink={() => navigate('/library')}
+           <HomeBookSection 
+           title="Dalla tua libreria"
+           books={recommendedBooks.slice(0, 12)} // Aumentato a 12 per il carousel
+           onBookClick={handleBookClick}
+           showMoreLink={() => navigate('/library')}
+           useCarousel={recommendedBooks.length > 2} // Usa carousel solo se ci sono più di 2 libri
         />
       )}
        </>

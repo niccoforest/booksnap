@@ -5,6 +5,7 @@ import {
   CardContent,
   Typography,
   Box,
+  Rating,
   useTheme
 } from '@mui/material';
 import BookCover from '../../common/BookCover';
@@ -13,7 +14,8 @@ const PreviewVariant = ({
   bookData,
   userBookId,
   bookId,
-  onBookClick
+  onBookClick,
+  rating // Prop opzionale per il rating
 }) => {
   const theme = useTheme();
   
@@ -57,35 +59,77 @@ const PreviewVariant = ({
         />
       </Box>
       
-      <CardContent sx={{ flexGrow: 1, p: 2, pt: 1 }}>
-        <Typography 
-          variant="subtitle2" 
-          component="div" 
-          sx={{ 
-            fontWeight: 'bold', 
-            mb: 0.5, 
-            lineHeight: 1.2,
-            display: '-webkit-box',
-            overflow: 'hidden',
-            WebkitBoxOrient: 'vertical',
-            WebkitLineClamp: 2, // Limita a 2 righe
-            textOverflow: 'ellipsis'
-          }}
-        >
-          {title}
-        </Typography>
-        <Typography 
-           variant="caption" 
-           color="text.secondary" 
-           display="block"
-           sx={{
-             overflow: 'hidden',
-             textOverflow: 'ellipsis',
-             whiteSpace: 'nowrap'
-           }}
-         >
-           {author}
-         </Typography>
+      <CardContent sx={{ 
+        flexGrow: 1, 
+        p: 2, 
+        pt: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '120px', // Altezza fissa
+        maxHeight: '120px', // Altezza fissa
+        overflow: 'hidden'
+      }}>
+        <Box sx={{ 
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start'
+        }}>
+          <Typography 
+            variant="subtitle2" 
+            component="div" 
+            sx={{ 
+              fontWeight: 'bold', 
+              mb: 0.5, 
+              lineHeight: 1.2,
+              display: '-webkit-box',
+              overflow: 'hidden',
+              WebkitBoxOrient: 'vertical',
+              WebkitLineClamp: 2, // Limita a 2 righe
+              textOverflow: 'ellipsis',
+              height: '2.4em', // Altezza fissa per 2 righe
+              minHeight: '2.4em'
+            }}
+          >
+            {title}
+          </Typography>
+          <Typography 
+             variant="caption" 
+             color="text.secondary" 
+             display="block"
+             sx={{
+               overflow: 'hidden',
+               textOverflow: 'ellipsis',
+               whiteSpace: 'nowrap',
+               mb: rating ? 1 : 0
+             }}
+           >
+             {author}
+           </Typography>
+        </Box>
+         
+        {rating > 0 && (
+           <Box sx={{ 
+             display: 'flex', 
+             alignItems: 'center', 
+             justifyContent: 'flex-start',
+             mt: 'auto',
+             height: '24px' // Altezza fissa per il rating
+           }}>
+             <Rating 
+               value={rating} 
+               readOnly 
+               size="small" 
+               precision={0.5}
+               sx={{ 
+                 color: theme.palette.primary.main,
+                 '& .MuiRating-iconFilled': {
+                   color: theme.palette.primary.main
+                 }
+               }}
+             />
+           </Box>
+         )}
        </CardContent>
      </Card>
    );
