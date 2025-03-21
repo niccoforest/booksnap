@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom'
 import { 
   Box, 
   Typography, 
@@ -36,10 +37,10 @@ import {
   GridView as GridViewIcon,
   ViewList as ViewListIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
 import useFavorites from '../hooks/useFavorites';
+import FilterBar from '../components/common/FilterBar';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -47,6 +48,7 @@ const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 const Library = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Stati per i libri e caricamento
   const [books, setBooks] = useState([]);
@@ -77,11 +79,40 @@ const Library = () => {
     message: '',
     severity: 'success'
   });
+
+  const sortOptions = [
+    { value: 'dateAdded', label: 'Data aggiunta' },
+    { value: 'title', label: 'Titolo' },
+    { value: 'author', label: 'Autore' },
+    { value: 'rating', label: 'Valutazione' }
+  ];
+  
+  // Definisci le opzioni di filtro (puoi espanderle in base alle tue esigenze)
+  const filterOptions = [
+    {
+      key: 'readStatus',
+      label: 'Stato lettura',
+      options: [
+        { value: 'all', label: 'Tutti' },
+        { value: 'reading', label: 'In lettura' },
+        { value: 'to-read', label: 'Da leggere' },
+        { value: 'completed', label: 'Completati' },
+        { value: 'abandoned', label: 'Abbandonati' },
+        { value: 'lent', label: 'Prestati' }
+      ]
+    }
+  ];
   
   // Carica i libri dell'utente all'avvio e quando cambia il tab
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabFromUrl = searchParams.get('tab') || 'all';
+    const favoritesParam = searchParams.get('favorites');
+    
+    setCurrentTab(favoritesParam ? 'favorites' : tabFromUrl);
+    
     fetchBooks();
-  }, [currentTab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Funzione per recuperare i libri dalla libreria dell'utente
   const fetchBooks = async () => {
@@ -89,22 +120,69 @@ const Library = () => {
       setLoading(true);
       setError('');
       
+      // Ottieni il tab corrente dai parametri URL per sicurezza
+      const searchParams = new URLSearchParams(location.search);
+      const tabFromUrl = searchParams.get('tab') || 'all';
+      const favoritesParam = searchParams.get('favorites');
+      const currentTabValue = favoritesParam ? 'favorites' : tabFromUrl;
+      
+      console.log('Tab corrente:', currentTabValue);
+      
       // Costruisci i filtri in base al tab corrente
       const filters = { userId: TEMP_USER_ID };
       
-      if (currentTab !== 'all' && currentTab !== 'favorites') {
-        filters.readStatus = currentTab;
+      // Gestisci i diversi casi di filtraggio
+      switch (currentTabValue) {
+        case 'reading':
+          filters.readStatus = 'reading';
+          break;
+        case 'to-read':
+          filters.readStatus = 'to-read';
+          break;
+        case 'completed':
+          filters.readStatus = 'completed';
+          break;
+        case 'abandoned':
+          filters.readStatus = 'abandoned';
+          break;
+        case 'lent':
+          filters.readStatus = 'lent';
+          break;
+        case 'favorites':
+          // Per i preferiti, recupera tutti i libri e poi filtra
+          break;
+        case 'all':
+        default:
+          // Nessun filtro specifico per 'all'
+          delete filters.readStatus;
+          break;
       }
+      
+      console.log('Filtri API:', filters);
       
       // Recupera i libri dall'API
       const response = await bookService.getUserBooks(filters);
+      console.log('Risposta API completa:', response);
       
       let booksToShow = response.books || [];
       
+      // Se non ci sono libri, esci prima
+      if (booksToShow.length === 0) {
+        setBooks([]);
+        return;
+      }
+      
+      // Log di debug per vedere la struttura del primo libro
+      if (booksToShow.length > 0) {
+        console.log('Esempio struttura libro:', booksToShow[0]);
+      }
+      
       // Filtra per preferiti se necessario
-      if (currentTab === 'favorites') {
+      if (currentTabValue === 'favorites') {
         booksToShow = booksToShow.filter(book => isFavorite(book._id));
       }
+      
+      console.log(`Libri dopo filtro: ${booksToShow.length}`);
       
       // Ordina i libri
       const sortedBooks = sortBooks(booksToShow);
@@ -152,10 +230,45 @@ const Library = () => {
       }
     });
   };
+
+
+  // Quando cambia un filtro dal FilterBar
+const handleFilterChange = (filterKey, value) => {
+  if (filterKey === 'readStatus') {
+    const searchParams = new URLSearchParams(location.search);
+    
+    if (value === 'all') {
+      searchParams.delete('tab');
+      searchParams.delete('favorites');
+    } else {
+      searchParams.set('tab', value);
+      searchParams.delete('favorites');
+    }
+    
+    // Questo aggiorna automaticamente anche le tabs attraverso l'useEffect che osserva location.search
+    navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
+  }
+};
+  
+
   
   // Gestione tab corrente
   const handleTabChange = (event, newValue) => {
-    setCurrentTab(newValue);
+    // Costruisci i nuovi parametri URL
+    const searchParams = new URLSearchParams(location.search);
+    
+    // Se è il tab "Preferiti", imposta un parametro speciale
+    if (newValue === 'favorites') {
+      searchParams.set('favorites', 'true');
+      searchParams.delete('tab');
+    } else {
+      // Per altri tab, imposta il parametro tab
+      searchParams.set('tab', newValue);
+      searchParams.delete('favorites');
+    }
+
+    // Naviga con i nuovi parametri
+    navigate(`${location.pathname}?${searchParams.toString()}`, { replace: true });
   };
   
   // Cambia la modalità di visualizzazione (griglia/lista)
@@ -200,21 +313,12 @@ const Library = () => {
     setSortMenuAnchorEl(null);
   };
   
-  const handleSortChange = (newSortBy) => {
-    if (sortBy === newSortBy) {
-      // Se stiamo già ordinando per questo criterio, inverti l'ordine
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Altrimenti, imposta il nuovo criterio e resetta l'ordine a decrescente
-      setSortBy(newSortBy);
-      setSortOrder('desc');
-    }
+  const handleSortChange = (newSortBy, newSortOrder) => {
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder);
     
-    // Riordina i libri con le nuove opzioni
-    setBooks(sortBooks(books));
-    
-    // Chiudi il menu
-    handleSortMenuClose();
+    // Aggiorna l'ordinamento dei libri
+    setBooks(sortBooks([...books]));
   };
   
   // Gestione menu libro
@@ -322,85 +426,48 @@ const Library = () => {
           La mia libreria
         </Typography>
         
-        <Box>
-          {/* Controlli visualizzazione */}
-          <Tooltip title="Vista griglia">
-            <IconButton 
-              onClick={() => handleViewModeChange('grid')}
-              color={viewMode === 'grid' ? 'primary' : 'default'}
-              sx={{ 
-                bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                '&:hover': {
-                  bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-                }
-              }}
-            >
-              <GridViewIcon />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title="Vista lista">
-            <IconButton 
-              onClick={() => handleViewModeChange('list')}
-              color={viewMode === 'list' ? 'primary' : 'default'}
-              sx={{ 
-                bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-                '&:hover': {
-                  bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-                }
-              }}
-            >
-              <ViewListIcon />
-            </IconButton>
-          </Tooltip>
-          
-          {/* Menu ordinamento */}
-          <Tooltip title="Ordina">
-            <IconButton 
-              onClick={handleSortMenuOpen}
-              aria-controls="sort-menu"
-              aria-haspopup="true"
-            >
-              <SortIcon />
-            </IconButton>
-          </Tooltip>
-          <Menu
-            id="sort-menu"
-            anchorEl={sortMenuAnchorEl}
-            keepMounted
-            open={Boolean(sortMenuAnchorEl)}
-            onClose={handleSortMenuClose}
-          >
-            <MenuItem 
-              onClick={() => handleSortChange('dateAdded')}
-              selected={sortBy === 'dateAdded'}
-            >
-              {sortBy === 'dateAdded' && sortOrder === 'desc' ? '↓ ' : sortBy === 'dateAdded' && sortOrder === 'asc' ? '↑ ' : ''}
-              Data aggiunta
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleSortChange('title')} 
-              selected={sortBy === 'title'}
-            >
-              {sortBy === 'title' && sortOrder === 'desc' ? '↓ ' : sortBy === 'title' && sortOrder === 'asc' ? '↑ ' : ''}
-              Titolo
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleSortChange('author')} 
-              selected={sortBy === 'author'}
-            >
-              {sortBy === 'author' && sortOrder === 'desc' ? '↓ ' : sortBy === 'author' && sortOrder === 'asc' ? '↑ ' : ''}
-              Autore
-            </MenuItem>
-            <MenuItem 
-              onClick={() => handleSortChange('rating')} 
-              selected={sortBy === 'rating'}
-            >
-              {sortBy === 'rating' && sortOrder === 'desc' ? '↓ ' : sortBy === 'rating' && sortOrder === 'asc' ? '↑ ' : ''}
-              Valutazione
-            </MenuItem>
-          </Menu>
-        </Box>
+        <FilterBar 
+          sortOptions={sortOptions}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
+          filterOptions={filterOptions}
+          selectedFilters={{ readStatus: currentTab === 'all' ? 'all' : currentTab }}
+          onFilterChange={handleFilterChange}
+          extraActions={
+            <Box>
+              <Tooltip title="Vista griglia">
+                <IconButton 
+                  onClick={() => handleViewModeChange('grid')}
+                  color={viewMode === 'grid' ? 'primary' : 'default'}
+                  sx={{ 
+                    bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                    '&:hover': {
+                      bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+                    }
+                  }}
+                >
+                  <GridViewIcon />
+                </IconButton>
+              </Tooltip>
+              
+              <Tooltip title="Vista lista">
+                <IconButton 
+                  onClick={() => handleViewModeChange('list')}
+                  color={viewMode === 'list' ? 'primary' : 'default'}
+                  sx={{ 
+                    bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                    '&:hover': {
+                      bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+                    }
+                  }}
+                >
+                  <ViewListIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          }
+        />
       </Box>
       
       {/* Tab per filtrare per stato di lettura */}

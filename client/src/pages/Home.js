@@ -117,6 +117,17 @@ const Home = () => {
     fetchLibraryData();
   }, []);
   
+
+  const handleStatBlockClick = (tab, additionalParams = {}) => {
+    // Costruisci l'URL della libreria con i parametri corretti
+    const searchParams = new URLSearchParams({
+      tab: tab,
+      ...additionalParams
+    });
+    
+    navigate(`/library?${searchParams.toString()}`);
+  };
+
   // Funzione per recuperare i dati della libreria
   const fetchLibraryData = async () => {
     try {
@@ -206,7 +217,7 @@ const Home = () => {
                   overflow: 'hidden',
                   borderRadius: 2
                 }}
-                onClick={() => navigate('/library')}
+                onClick={() => handleStatBlockClick('all')}
               >
                 <Box 
                   sx={{ 
@@ -238,7 +249,7 @@ const Home = () => {
                   position: 'relative',
                   overflow: 'hidden'
                 }}
-                onClick={() => navigate('/library?tab=reading')}
+                onClick={() => handleStatBlockClick('reading')}
               >
                 <Box 
                   sx={{ 
@@ -270,7 +281,7 @@ const Home = () => {
                   position: 'relative',
                   overflow: 'hidden'
                 }}
-                onClick={() => navigate('/library?favorites=true')}
+                onClick={() => handleStatBlockClick('favorites')}
               >
                 <Box 
                   sx={{ 
@@ -304,7 +315,7 @@ const Home = () => {
                   position: 'relative',
                   overflow: 'hidden'
                 }}
-                onClick={() => navigate('/library?tab=lent')}
+                onClick={() => handleStatBlockClick('lent')}
               >
                 <Box 
                   sx={{ 
@@ -335,7 +346,7 @@ const Home = () => {
           title="La mia libreria"
           books={libraryBooks.slice(0, 12)} // Aumentato a 12 per il carousel
           onBookClick={handleBookClick}
-          showMoreLink={() => navigate('/library')}
+          showMoreLink={() => handleStatBlockClick('all')}
           useCarousel={libraryBooks.length > 2} // Usa carousel solo se ci sono più di 2 libri
         />
 
@@ -344,7 +355,7 @@ const Home = () => {
           title="Ultime aggiunte"
           books={recentScans.slice(0, 12)} // Aumentato a 12 per il carousel
           onBookClick={handleBookClick}
-          showMoreLink={() => navigate('/library')}
+          //showMoreLink={() => handleStatBlockClick('all')}
           useCarousel={recentScans.length > 2} // Usa carousel solo se ci sono più di 2 libri
         />
 
@@ -354,7 +365,7 @@ const Home = () => {
            title="Dalla tua libreria"
            books={recommendedBooks.slice(0, 12)} // Aumentato a 12 per il carousel
            onBookClick={handleBookClick}
-           showMoreLink={() => navigate('/library')}
+           showMoreLink={() => handleStatBlockClick('all')}
            useCarousel={recommendedBooks.length > 2} // Usa carousel solo se ci sono più di 2 libri
         />
       )}

@@ -522,37 +522,37 @@ async removeFromLibrary(userBookId, userId = '655e9e1b07910b7d21dea350') {
  * @param {number} limit - Numero di risultati per pagina
  * @returns {Promise<Object>} - Lista di libri con metadati di paginazione
  */
-async getUserBooks(filters = {}, page = 1, limit = 20) {
-  try {
-    console.log('Recupero libri con filtri:', filters);
-    
-    // Prepara i parametri di query
-    const params = {
-      page,
-      limit,
-      ...filters
-    };
-    
-    // Richiesta per ottenere i libri dell'utente
-    const response = await apiService.get('/user-books', { params });
-    
-    console.log('Risposta getUserBooks:', response);
-    
-    if (response.success) {
-      return {
-        books: response.data,
-        totalBooks: response.total,
-        totalPages: response.totalPages,
-        currentPage: response.currentPage
+  async getUserBooks(filters = {}, page = 1, limit = 20) {
+    try {
+      console.log('Recupero libri con filtri:', filters);
+      
+      // Prepara i parametri di query
+      const params = {
+        page,
+        limit,
+        ...filters
       };
-    } else {
-      throw new Error(response.message || 'Errore nel recupero dei libri');
+      
+      // Richiesta per ottenere i libri dell'utente
+      const response = await apiService.get('/user-books', { params });
+      
+      console.log('Risposta getUserBooks:', response);
+      
+      if (response.success) {
+        return {
+          books: response.data, // <--- Qui è il cambiamento chiave
+          totalBooks: response.total,
+          totalPages: response.totalPages,
+          currentPage: response.currentPage
+        };
+      } else {
+        throw new Error(response.message || 'Errore nel recupero dei libri');
+      }
+    } catch (error) {
+      console.error('Errore nel recupero dei libri dell\'utente:', error);
+      throw error;
     }
-  } catch (error) {
-    console.error('Errore nel recupero dei libri dell\'utente:', error);
-    throw error;
   }
-};
   
  /**
  * Aggiorna il record UserBook di un utente

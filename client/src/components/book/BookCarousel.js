@@ -119,7 +119,7 @@ const BookCarousel = ({
           <BookCard 
             userBook={books[0]}
             variant="preview"
-            rating={book[0].rating}
+            rating={books[0].rating}
             onBookClick={() => onBookClick(books[0]._id)}
           />
         </Box>
