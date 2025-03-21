@@ -612,20 +612,37 @@ async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350'
   async getFavorites(userId) {
     try {
       if (!userId) {
-        console.log("getFavorites: userId non fornito");
-        return { data: [] };  // Ritorna un array vuoto se manca l'userId
+        console.warn("getFavorites: userId non fornito");
+        return { data: [] }; // Ritorna un array vuoto se manca l'userId
       }
       
-      const response = await apiService.get('/user-books/favorites', { 
-        params: { userId: userId } 
-      });
-      
-      return response;
+      try {
+        const response = await apiService.get('/user-books/favorites', { 
+          params: { userId }
+        });
+        
+        return response;
+      } catch (error) {
+        console.warn('Errore API in getFavorites, utilizzo fallback locale');
+        
+        // Fallback: usa localStorage per i preferiti
+        const savedFavorites = localStorage.getItem('booksnap_favorites');
+        const favorites = savedFavorites ? JSON.parse(savedFavorites) : {};
+        
+        // Trasforma in un formato compatibile con l'API
+        const fakeApiResponse = {
+          success: true,
+          data: Object.keys(favorites)
+            .filter(key => favorites[key] === true)
+            .map(id => ({ _id: id }))
+        };
+        
+        return fakeApiResponse;
+      }
     } catch (error) {
       console.error('Errore durante il recupero dei preferiti:', error);
-      
-      // Invece di propagare l'errore, ritorniamo un risultato vuoto
-      return { data: [] };
+      // Ritorna un array vuoto invece di propagare l'errore
+      return { success: true, data: [] };
     }
   }
 

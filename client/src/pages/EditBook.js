@@ -1,5 +1,4 @@
 // client/src/pages/EditBook.js
-// Mantenendo la struttura che già hai ma utilizzando BookCard
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -62,7 +61,7 @@ const EditBook = () => {
   
   useEffect(() => {
     fetchBookDetails();
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const fetchBookDetails = async () => {
     try {
@@ -79,7 +78,7 @@ const EditBook = () => {
         // Inizializza il form con i dati esistenti
         setFormData({
           readStatus: bookData.readStatus || 'to-read',
-          rating: bookData.rating || null,
+          rating: bookData.rating !== null && bookData.rating !== undefined ? bookData.rating : 0,
           notes: bookData.notes || '',
         });
       } else {
@@ -106,9 +105,10 @@ const EditBook = () => {
   };
   
   const handleRatingChange = (value) => {
+    const numericValue = value !== null && value !== undefined ? Number(value) : 0;
     setFormData(prev => ({
       ...prev,
-      rating: value
+      rating: numericValue
     }));
   };
   
@@ -124,9 +124,6 @@ const EditBook = () => {
       ...prev,
       notes: value
     }));
-    
-    // Per debug
-    console.log("Note aggiornate:", value);
   };
   
   const handleSubmit = async (e) => {
@@ -142,7 +139,7 @@ const EditBook = () => {
       };
       
       // Chiama l'API per aggiornare il libro
-      const response = await bookService.updateUserBook(id, updatedData, TEMP_USER_ID);
+      await bookService.updateUserBook(id, updatedData, TEMP_USER_ID);
       
       // Mostra notifica di successo
       setSnackbar({
@@ -257,24 +254,25 @@ const EditBook = () => {
         <Box component="form" onSubmit={handleSubmit}>
           {/* Utilizziamo BookCard con variante detail e personalizzazione */}
           <BookCard
-             variant="detail"
-             userBook={{
-               ...book,
-               rating: formData.rating,
-               readStatus: formData.readStatus,
-               notes: formData.notes
-             }}
-             isFavorite={favorite}
-             isInLibrary={true}
-             onFavoriteToggle={handleToggleFavorite}
-             showMenuIcon={false} // Nascondi icona menu
-             showFullDescription={true} // Mostra intera descrizione
-             showPersonalization={true}
-             onRatingChange={handleRatingChange}
-             onStatusChange={handleStatusChange}
-             onNotesChange={handleNotesChange}
-             notes={formData.notes} // Assicurati di passare le note correnti
-          />
+  variant="detail"
+  userBook={{
+    ...book,
+    rating: formData.rating !== null ? Number(formData.rating) : 0, // Converte a numero
+    readStatus: formData.readStatus,
+    notes: formData.notes
+  }}
+  isFavorite={favorite}
+  isInLibrary={true}
+  onFavoriteToggle={handleToggleFavorite}
+  showMenuIcon={false}
+  showFullDescription={true}
+  showPersonalization={true}
+  rating={formData.rating !== null ? Number(formData.rating) : 0} // Aggiunto prop rating esplicito
+  onRatingChange={handleRatingChange}
+  onStatusChange={handleStatusChange}
+  onNotesChange={handleNotesChange}
+  notes={formData.notes}
+/>
           
           {/* Pulsanti azione */}
           <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>

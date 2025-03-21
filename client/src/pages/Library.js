@@ -5,11 +5,6 @@ import {
   Button,
   Paper,
   Grid,
-  Card,
-  CardMedia,
-  CardContent,
-  CardActions,
-  Chip,
   IconButton,
   CircularProgress,
   Divider,
@@ -17,9 +12,6 @@ import {
   Tab,
   Tabs,
   MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
   Menu,
   ListItemIcon,
   ListItemText,
@@ -31,6 +23,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Card,
   alpha
 } from '@mui/material';
 import { 
@@ -38,24 +31,13 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Share as ShareIcon,
-  FilterList as FilterIcon,
+  //FilterList as FilterIcon,
   Sort as SortIcon,
   GridView as GridViewIcon,
-  ViewList as ListViewIcon,
-  StarRate as StarIcon,
-  MenuBook as ReadingIcon,
-  CheckCircle as CompletedIcon,
-  Bookmark as ToReadIcon,
-  BookmarkRemove as AbandonedIcon,
-  PeopleAlt as LentIcon,
-  MoreVert as MoreIcon,
-  ImageNotSupported as NoImageIcon,
-  Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon
+  ViewList as ViewListIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
-import Rating from '@mui/material/Rating';
 import BookCard from '../components/book/BookCard';
 import useFavorites from '../hooks/useFavorites';
 
@@ -70,7 +52,6 @@ const Library = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [favorites, setFavorites] = useState({});
   const { isFavorite, toggleFavorite } = useFavorites(TEMP_USER_ID);
   
   // Stati per la visualizzazione
@@ -88,7 +69,7 @@ const Library = () => {
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [selectedBookId, setSelectedBookId] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-const [bookToDelete, setBookToDelete] = useState(null);
+  const [bookToDelete, setBookToDelete] = useState(null);
   
   // Snackbar per notifiche
   const [snackbar, setSnackbar] = useState({
@@ -97,11 +78,10 @@ const [bookToDelete, setBookToDelete] = useState(null);
     severity: 'success'
   });
   
-  
-  // Carica i libri dell'utente all'avvio
+  // Carica i libri dell'utente all'avvio e quando cambia il tab
   useEffect(() => {
     fetchBooks();
-  }, [currentTab]);
+  }, [currentTab]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Funzione per recuperare i libri dalla libreria dell'utente
   const fetchBooks = async () => {
@@ -118,8 +98,6 @@ const [bookToDelete, setBookToDelete] = useState(null);
       
       // Recupera i libri dall'API
       const response = await bookService.getUserBooks(filters);
-      
-      console.log('Libri recuperati:', response);
       
       let booksToShow = response.books || [];
       
@@ -175,19 +153,18 @@ const [bookToDelete, setBookToDelete] = useState(null);
     });
   };
   
-  // Cambia il tab corrente
+  // Gestione tab corrente
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
   };
   
   // Cambia la modalità di visualizzazione (griglia/lista)
   const handleViewModeChange = (mode) => {
-    console.log(`Cambiando visualizzazione a: ${mode}`);
     setViewMode(mode);
     localStorage.setItem('booksnap_view_mode', mode);
   };
   
-
+  // Gestione preferiti
   const handleToggleFavorite = async (bookId) => {
     try {
       await toggleFavorite(bookId);
@@ -196,8 +173,8 @@ const [bookToDelete, setBookToDelete] = useState(null);
       setSnackbar({
         open: true,
         message: isFavorite(bookId) 
-          ? 'Libro aggiunto ai preferiti' 
-          : 'Libro rimosso dai preferiti',
+          ? 'Libro rimosso dai preferiti' 
+          : 'Libro aggiunto ai preferiti',
         severity: 'success'
       });
     } catch (err) {
@@ -211,6 +188,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
       });
     }
   };
+  
   // Gestione menu di ordinamento
   const [sortMenuAnchorEl, setSortMenuAnchorEl] = useState(null);
   
@@ -250,44 +228,8 @@ const [bookToDelete, setBookToDelete] = useState(null);
     setSelectedBookId(null);
   };
   
-  // Funzione per ottenere l'icona dello stato di lettura
-  const getReadStatusIcon = (status) => {
-    switch (status) {
-      case 'reading':
-        return <ReadingIcon color="primary" />;
-      case 'completed':
-        return <CompletedIcon color="success" />;
-      case 'abandoned':
-        return <AbandonedIcon color="error" />;
-      case 'lent':
-        return <LentIcon color="warning" />;
-      case 'to-read':
-      default:
-        return <ToReadIcon color="disabled" />;
-    }
-  };
-  
-  // Funzione per ottenere l'etichetta dello stato di lettura
-  const getReadStatusLabel = (status) => {
-    switch (status) {
-      case 'reading':
-        return 'In lettura';
-      case 'completed':
-        return 'Completato';
-      case 'abandoned':
-        return 'Abbandonato';
-      case 'lent':
-        return 'Prestato';
-      case 'to-read':
-      default:
-        return 'Da leggere';
-    }
-  };
-  
   // Funzione per rimuovere un libro dalla libreria
   const handleRemoveBook = (userBookId) => {
-    console.log("Richiesta eliminazione libro:", userBookId);
-    
     // Chiudi il menu
     handleBookMenuClose();
     
@@ -297,10 +239,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
   };
 
   const handleConfirmDelete = async () => {
-    console.log("Conferma eliminazione libro:", bookToDelete);
-    
     if (!bookToDelete) {
-      console.error("bookToDelete è null o undefined");
       return;
     }
     
@@ -340,7 +279,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
     // Chiudi il menu
     handleBookMenuClose();
     
-    // Naviga alla pagina di modifica (da implementare)
+    // Naviga alla pagina di modifica
     navigate(`/edit-book/${userBookId}`);
   };
   
@@ -359,7 +298,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
   
   // Funzione per visualizzare i dettagli di un libro
   const handleViewBookDetails = (userBookId) => {
-    // Naviga alla pagina di dettaglio (da implementare)
+    // Naviga alla pagina di dettaglio
     navigate(`/book/${userBookId}`);
   };
   
@@ -386,34 +325,34 @@ const [bookToDelete, setBookToDelete] = useState(null);
         <Box>
           {/* Controlli visualizzazione */}
           <Tooltip title="Vista griglia">
-    <IconButton 
-      onClick={() => handleViewModeChange('grid')}
-      color={viewMode === 'grid' ? 'primary' : 'default'}
-      sx={{ 
-        bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-        '&:hover': {
-          bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-        }
-      }}
-    >
-      <GridViewIcon />
-    </IconButton>
-  </Tooltip>
+            <IconButton 
+              onClick={() => handleViewModeChange('grid')}
+              color={viewMode === 'grid' ? 'primary' : 'default'}
+              sx={{ 
+                bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                '&:hover': {
+                  bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+                }
+              }}
+            >
+              <GridViewIcon />
+            </IconButton>
+          </Tooltip>
           
-  <Tooltip title="Vista lista">
-    <IconButton 
-      onClick={() => handleViewModeChange('list')}
-      color={viewMode === 'list' ? 'primary' : 'default'}
-      sx={{ 
-        bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
-        '&:hover': {
-          bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
-        }
-      }}
-    >
-      <ListViewIcon />
-    </IconButton>
-  </Tooltip>
+          <Tooltip title="Vista lista">
+            <IconButton 
+              onClick={() => handleViewModeChange('list')}
+              color={viewMode === 'list' ? 'primary' : 'default'}
+              sx={{ 
+                bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent',
+                '&:hover': {
+                  bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.action.hover, 0.1),
+                }
+              }}
+            >
+              <ViewListIcon />
+            </IconButton>
+          </Tooltip>
           
           {/* Menu ordinamento */}
           <Tooltip title="Ordina">
@@ -466,26 +405,21 @@ const [bookToDelete, setBookToDelete] = useState(null);
       
       {/* Tab per filtrare per stato di lettura */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-  <Tabs 
-    value={currentTab} 
-    onChange={handleTabChange}
-    variant="scrollable"
-    scrollButtons="auto"
-  >
-    <Tab label="Tutti" value="all" />
-    <Tab 
-      label="Preferiti" 
-      value="favorites" 
-      
-    />
-    <Tab label="In lettura" value="reading" />
-    <Tab label="Da leggere" value="to-read" />
-    <Tab label="Completati" value="completed" />
-    <Tab label="Abbandonati" value="abandoned" />
-    <Tab label="Prestati" value="lent" />
-  </Tabs>
-</Box>
-
+        <Tabs 
+          value={currentTab} 
+          onChange={handleTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab label="Tutti" value="all" />
+          <Tab label="Preferiti" value="favorites" />
+          <Tab label="In lettura" value="reading" />
+          <Tab label="Da leggere" value="to-read" />
+          <Tab label="Completati" value="completed" />
+          <Tab label="Abbandonati" value="abandoned" />
+          <Tab label="Prestati" value="lent" />
+        </Tabs>
+      </Box>
       
       {/* Contenuto principale */}
       {loading ? (
@@ -535,7 +469,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
           <Typography variant="body1" color="text.secondary" gutterBottom>
             {currentTab === 'all'
               ? 'Non hai ancora aggiunto libri alla tua libreria'
-              : `Non hai libri con stato "${getReadStatusLabel(currentTab)}"`}
+              : `Non hai libri con stato "${currentTab === 'favorites' ? 'preferiti' : currentTab}"`}
           </Typography>
           <Button
             variant="contained"
@@ -577,11 +511,11 @@ const [bookToDelete, setBookToDelete] = useState(null);
                 >
                   <AddIcon sx={{ fontSize: 40, color: 'rgba(0, 0, 0, 0.3)' }} />
                 </Box>
-                <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
+                <Box sx={{ flexGrow: 1, p: 2, textAlign: 'center' }}>
                   <Typography variant="body1" color="text.secondary">
                     Aggiungi libro
                   </Typography>
-                </CardContent>
+                </Box>
               </Card>
             </Grid>
             
@@ -595,6 +529,8 @@ const [bookToDelete, setBookToDelete] = useState(null);
                   onFavoriteToggle={() => handleToggleFavorite(book._id)}
                   onMenuOpen={(e) => handleBookMenuOpen(e, book._id)}
                   onBookClick={() => handleViewBookDetails(book._id)}
+                  showFavoriteButton={true}
+                  showMenuIcon={true}
                 />
               </Grid>
             ))}
@@ -681,40 +617,40 @@ const [bookToDelete, setBookToDelete] = useState(null);
         </MenuItem>
       </Menu>
       
+      {/* Dialog di conferma eliminazione */}
       <Dialog
-  open={deleteDialogOpen}
-  onClose={() => {
-    console.log("Chiusura dialog senza eliminare");
-    setDeleteDialogOpen(false);
-    setBookToDelete(null);
-  }}
->
-  <DialogTitle>Conferma eliminazione</DialogTitle>
-  <DialogContent>
-    <DialogContentText>
-      Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata.
-    </DialogContentText>
-  </DialogContent>
-  <DialogActions>
-    <Button 
-      onClick={() => {
-        setDeleteDialogOpen(false);
-        setBookToDelete(null);
-      }} 
-      color="primary"
-    >
-      Annulla
-    </Button>
-    <Button 
-      onClick={handleConfirmDelete} 
-      color="error" 
-      variant="contained"
-    >
-      Elimina
-    </Button>
-  </DialogActions>
-</Dialog>
-
+        open={deleteDialogOpen}
+        onClose={() => {
+          setDeleteDialogOpen(false);
+          setBookToDelete(null);
+        }}
+      >
+        <DialogTitle>Conferma eliminazione</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => {
+              setDeleteDialogOpen(false);
+              setBookToDelete(null);
+            }} 
+            color="primary"
+          >
+            Annulla
+          </Button>
+          <Button 
+            onClick={handleConfirmDelete} 
+            color="error" 
+            variant="contained"
+          >
+            Elimina
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       {/* Snackbar per notifiche */}
       <Snackbar
         open={snackbar.open}
@@ -732,10 +668,7 @@ const [bookToDelete, setBookToDelete] = useState(null);
         </Alert>
       </Snackbar>
     </Box>
-    
   );
-  
-
 };
 
 export default Library;
