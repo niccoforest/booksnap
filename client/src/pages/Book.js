@@ -1,27 +1,23 @@
-// client/src/pages/Book.js
+// client/src/pages/Book.js - Aggiornamenti vari
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Box,
+  Box, 
   Typography, 
   Button, 
-  IconButton, 
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Snackbar,
-  Alert
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
-  Edit as EditIcon
+  Share as ShareIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
+import LoadingState from '../components/common/LoadingState';
+import ConfirmationDialog from '../components/common/ConfirmationDialog';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -33,22 +29,17 @@ const Book = () => {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
-  // Stato per il dialog di conferma eliminazione
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Stato per la descrizione espandibile
+  const [expandedDescription, setExpandedDescription] = useState(false);
   
   // Recupera i preferiti da localStorage
   const [favorite, setFavorite] = useState(() => {
     const savedFavorites = localStorage.getItem('booksnap_favorites');
     const favorites = savedFavorites ? JSON.parse(savedFavorites) : {};
     return favorites[id] || false;
-  });
-  
-  // Snackbar
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
   });
   
   useEffect(() => {
@@ -64,7 +55,6 @@ const Book = () => {
       const response = await bookService.getUserBookById(id, TEMP_USER_ID);
       
       if (response && response.data) {
-        console.log("Dati libro ricevuti:", response.data); // Per debug
         setBook(response.data);
       } else {
         setError('Libro non trovato');
@@ -93,62 +83,33 @@ const Book = () => {
     navigate(`/edit-book/${id}`);
   };
   
-  const handleOpenDeleteDialog = () => {
+  const handleDeleteClick = () => {
     setDeleteDialogOpen(true);
   };
   
-  const handleCloseDeleteDialog = () => {
-    setDeleteDialogOpen(false);
+  const handleShareClick = () => {
+    // Per ora è solo un placeholder
+    alert('Funzionalità di condivisione in sviluppo');
   };
   
-  const handleConfirmDelete = async () => {
+  const handleDeleteConfirm = async () => {
     try {
-      setLoading(true);
-      
-      // Chiudi il dialog
-      setDeleteDialogOpen(false);
+      setDeleteLoading(true);
       
       // Rimuovi il libro
       await bookService.removeFromLibrary(id, TEMP_USER_ID);
       
-      // Mostra notifica di successo
-      setSnackbar({
-        open: true,
-        message: 'Libro rimosso dalla libreria con successo!',
-        severity: 'success'
-      });
-      
-      // Naviga alla libreria dopo 1 secondo
-      setTimeout(() => {
-        navigate('/library');
-      }, 1000);
+      // Naviga alla libreria
+      navigate('/library');
     } catch (err) {
       console.error('Errore nella rimozione del libro:', err);
-      
-      setError('Si è verificato un errore nella rimozione del libro.');
-      setLoading(false);
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
     }
   };
   
-  const handleShare = () => {
-    // Per ora, mostriamo un semplice avviso
-    setSnackbar({
-      open: true,
-      message: 'Funzionalità di condivisione disponibile prossimamente',
-      severity: 'info'
-    });
-  };
-
-  const handleBack = () => {
-    // Naviga sempre alla libreria indipendentemente dalla provenienza
-    navigate('/library');
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({
-      ...snackbar,
-      open: false
-    });
+  const toggleDescription = () => {
+    setExpandedDescription(!expandedDescription);
   };
   
   return (
@@ -158,21 +119,19 @@ const Book = () => {
         <IconButton 
           edge="start" 
           color="inherit" 
-          onClick={handleBack}
+          onClick={() => navigate('/library')} // Torna sempre alla libreria
           sx={{ mr: 1 }}
         >
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h5" component="h1">
-          Dettagli libro
+          Dettaglio libro
         </Typography>
       </Box>
       
       {/* Contenuto principale */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState message="Caricamento dettagli libro..." />
       ) : error ? (
         <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
           <Typography gutterBottom>{error}</Typography>
@@ -187,38 +146,35 @@ const Book = () => {
         </Box>
       ) : book ? (
         <>
-          {/* Utilizziamo BookCard con variante detail */}
           <BookCard
             variant="detail"
             userBook={book}
             isFavorite={favorite}
             isInLibrary={true}
             onFavoriteToggle={handleToggleFavorite}
-            showMenuIcon={false}
-            showShareButton={true}
-            showDeleteButton={true}
-            onShareClick={handleShare}
-            onDeleteClick={handleOpenDeleteDialog}
-            showExpandableDescription={true}
+            showFullDescription={false} // Cambiato a false per permettere l'espansione
             showPersonalization={false}
-            notes={book.notes}
-            rating={book.rating}
+            showMenuIcon={false}
+            showExpandableDescription={true}
+            expandedDescription={expandedDescription}
+            toggleDescription={toggleDescription}
+            showShareButton={true}
+            onShareClick={handleShareClick}
+            showDeleteButton={true}
+            onDeleteClick={handleDeleteClick}
+            // Passiamo il rating corretto e anche le note
+            rating={book.rating || 0}
+            notes={book.notes || ''}
           />
           
-          {/* Pulsanti azione */}
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/library')}
-            >
-              Torna alla libreria
-            </Button>
-            
+          {/* Pulsante modifica (a piena larghezza) */}
+          <Box sx={{ mt: 3 }}>
             <Button
               variant="contained"
               color="primary"
-              startIcon={<EditIcon />}
+              fullWidth
               onClick={handleEdit}
+              sx={{ borderRadius: '8px' }}
             >
               Modifica
             </Button>
@@ -227,41 +183,17 @@ const Book = () => {
       ) : null}
       
       {/* Dialog di conferma eliminazione */}
-      <Dialog
+      <ConfirmationDialog
         open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-      >
-        <DialogTitle>Conferma eliminazione</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="primary">
-            Annulla
-          </Button>
-          <Button onClick={handleConfirmDelete} color="error" variant="contained">
-            Elimina
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Snackbar per notifiche */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          variant="filled"
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        title="Conferma eliminazione"
+        message="Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata."
+        confirmLabel="Elimina"
+        cancelLabel="Annulla"
+        loading={deleteLoading}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteDialogOpen(false)}
+        destructive={true}
+      />
     </Box>
   );
 };

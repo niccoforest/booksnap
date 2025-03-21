@@ -72,6 +72,9 @@ const AddBook = () => {
     notes: ''
   });
   
+  // Stato per la descrizione espandibile
+  const [expandedDescription, setExpandedDescription] = useState(false);
+  
   // Stato per notifiche
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -494,6 +497,11 @@ const AddBook = () => {
     setSelectedBook(null);
     setIsManualCreation(false);
   };
+  
+  // Funzione per gestire espansione descrizione
+  const toggleDescription = () => {
+    setExpandedDescription(!expandedDescription);
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -757,6 +765,8 @@ const AddBook = () => {
                     loading={loading && loadingBookId === selectedBook.googleBooksId}
                     showPersonalization={true}
                     showExpandableDescription={true}
+                    expandedDescription={expandedDescription}
+                    toggleDescription={toggleDescription}
                     showFavoriteButton={false}
                     showShareButton={true}
                     onShareClick={handleShare}

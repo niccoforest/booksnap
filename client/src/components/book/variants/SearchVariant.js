@@ -12,10 +12,10 @@ import {
   alpha
 } from '@mui/material';
 import { 
-  ImageNotSupported as NoImageIcon,
   Add as AddIcon,
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
+import BookCover from '../../common/BookCover';
 
 const SearchVariant = ({
   bookData,
@@ -66,45 +66,21 @@ const SearchVariant = ({
       <CardContent sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
           {/* Copertina libro */}
-          {coverImage ? (
-            <Box
-              component="img"
-              src={coverImage}
-              alt={title}
-              sx={{
-                width: 60,
-                height: 85,
-                borderRadius: '8px',
-                mr: 2,
-                objectFit: 'cover',
-                cursor: 'pointer'
-              }}
+          <Box onClick={handleBookClick}>
+            <BookCover 
+              coverImage={coverImage} 
+              title={title} 
+              size="small" 
               onClick={handleBookClick}
             />
-          ) : (
-            <Box
-              sx={{
-                width: 60,
-                height: 85,
-                borderRadius: '8px',
-                mr: 2,
-                bgcolor: 'rgba(0,0,0,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-              onClick={handleBookClick}
-            >
-              <NoImageIcon />
-            </Box>
-          )}
+          </Box>
           
           {/* Info libro */}
           <Box 
             sx={{ 
               flex: 1,
-              cursor: 'pointer'
+              cursor: 'pointer',
+              ml: 2
             }}
             onClick={handleBookClick}
           >

@@ -1,4 +1,4 @@
-// client/src/pages/EditBook.js
+// client/src/pages/EditBook.js - Aggiornamenti
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -6,14 +6,7 @@ import {
   Typography, 
   Button, 
   IconButton, 
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Snackbar,
-  Alert
+  CircularProgress
 } from '@mui/material';
 import { 
   ArrowBack as ArrowBackIcon,
@@ -22,6 +15,8 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
+import ConfirmationDialog from '../components/common/ConfirmationDialog';
+import LoadingState from '../components/common/LoadingState';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -166,56 +161,6 @@ const EditBook = () => {
     }
   };
   
-  const handleOpenDeleteDialog = () => {
-    setDeleteDialogOpen(true);
-  };
-  
-  const handleCloseDeleteDialog = () => {
-    setDeleteDialogOpen(false);
-  };
-  
-  const handleConfirmDelete = async () => {
-    try {
-      setSaving(true);
-      
-      // Chiudi il dialog
-      setDeleteDialogOpen(false);
-      
-      // Rimuovi il libro
-      await bookService.removeFromLibrary(id, TEMP_USER_ID);
-      
-      // Mostra notifica di successo
-      setSnackbar({
-        open: true,
-        message: 'Libro rimosso dalla libreria con successo!',
-        severity: 'success'
-      });
-      
-      // Naviga alla libreria dopo 1 secondo
-      setTimeout(() => {
-        navigate('/library');
-      }, 1000);
-    } catch (err) {
-      console.error('Errore nella rimozione del libro:', err);
-      
-      // Mostra notifica di errore
-      setSnackbar({
-        open: true,
-        message: 'Errore nella rimozione del libro',
-        severity: 'error'
-      });
-      
-      setSaving(false);
-    }
-  };
-  
-  const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({
-      ...prev,
-      open: false
-    }));
-  };
-  
   return (
     <Box sx={{ p: 2 }}>
       {/* Header con pulsante indietro */}
@@ -223,7 +168,7 @@ const EditBook = () => {
         <IconButton 
           edge="start" 
           color="inherit" 
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/library')} // Vai sempre alla libreria
           sx={{ mr: 1 }}
         >
           <ArrowBackIcon />
@@ -235,9 +180,7 @@ const EditBook = () => {
       
       {/* Contenuto principale */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <CircularProgress />
-        </Box>
+        <LoadingState message="Caricamento dettagli libro..." />
       ) : error ? (
         <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
           <Typography gutterBottom>{error}</Typography>
@@ -254,90 +197,42 @@ const EditBook = () => {
         <Box component="form" onSubmit={handleSubmit}>
           {/* Utilizziamo BookCard con variante detail e personalizzazione */}
           <BookCard
-  variant="detail"
-  userBook={{
-    ...book,
-    rating: formData.rating !== null ? Number(formData.rating) : 0, // Converte a numero
-    readStatus: formData.readStatus,
-    notes: formData.notes
-  }}
-  isFavorite={favorite}
-  isInLibrary={true}
-  onFavoriteToggle={handleToggleFavorite}
-  showMenuIcon={false}
-  showFullDescription={true}
-  showPersonalization={true}
-  rating={formData.rating !== null ? Number(formData.rating) : 0} // Aggiunto prop rating esplicito
-  onRatingChange={handleRatingChange}
-  onStatusChange={handleStatusChange}
-  onNotesChange={handleNotesChange}
-  notes={formData.notes}
-/>
+            variant="detail"
+            userBook={{
+              ...book,
+              rating: formData.rating !== null ? Number(formData.rating) : 0,
+              readStatus: formData.readStatus,
+              notes: formData.notes
+            }}
+            isFavorite={favorite}
+            isInLibrary={true}
+            onFavoriteToggle={handleToggleFavorite}
+            showMenuIcon={false}
+            showFullDescription={true}
+            showPersonalization={true}
+            rating={formData.rating !== null ? Number(formData.rating) : 0}
+            onRatingChange={handleRatingChange}
+            onStatusChange={handleStatusChange}
+            onNotesChange={handleNotesChange}
+            notes={formData.notes}
+          />
           
-          {/* Pulsanti azione */}
-          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleOpenDeleteDialog}
-            >
-              Rimuovi dalla libreria
-            </Button>
-            
+          {/* Pulsante salva (a piena larghezza) */}
+          <Box sx={{ mt: 3 }}>
             <Button
               variant="contained"
               color="primary"
+              fullWidth
               startIcon={saving ? <CircularProgress size={24} color="inherit" /> : <SaveIcon />}
               onClick={handleSubmit}
               disabled={saving}
+              sx={{ borderRadius: '8px' }}
             >
               {saving ? 'Salvataggio...' : 'Salva modifiche'}
             </Button>
           </Box>
         </Box>
       ) : null}
-      
-      {/* Dialog di conferma eliminazione */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-      >
-        <DialogTitle>Conferma eliminazione</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteDialog} color="primary">
-            Annulla
-          </Button>
-          <Button 
-            onClick={handleConfirmDelete} 
-            color="error" 
-            variant="contained"
-            disabled={saving}
-          >
-            {saving ? <CircularProgress size={24} color="inherit" /> : 'Elimina'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-      
-      {/* Snackbar per notifiche */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          variant="filled"
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

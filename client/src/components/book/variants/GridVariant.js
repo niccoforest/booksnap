@@ -2,37 +2,39 @@
 import React from 'react';
 import { 
   Card, 
-  CardMedia, 
   CardContent, 
-  CardActions,
   Typography,
   Box,
   IconButton,
-  Tooltip,
-  Rating,
+  alpha,
   useTheme
 } from '@mui/material';
 import { 
-  Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
   MoreVert as MoreIcon,
-  ImageNotSupported as NoImageIcon
+  Favorite as FavoriteIcon,
+  FavoriteBorder as FavoriteBorderIcon
 } from '@mui/icons-material';
-import { getReadStatusIcon, getReadStatusLabel } from '../BookCardUtils';
+import BookCover from '../../common/BookCover';
+import ReadStatus from '../../common/ReadStatus';
 
 const GridVariant = ({
   bookData,
+  userBook,
   userBookId,
   bookId,
-  isFavorite,
-  isLoading,
-  readStatus,
-  rating,
-  showFavoriteButton = true,
-  showMenuIcon = true,
+  
+  // Stato e visualizzazione
+  isFavorite = false,
+  readStatus = 'to-read',
+  
+  // Callbacks
   onFavoriteToggle,
   onMenuOpen,
-  onBookClick
+  onBookClick,
+  
+  // Flags di visualizzazione
+  showFavoriteButton = true,
+  showMenuIcon = true
 }) => {
   const theme = useTheme();
   
@@ -42,7 +44,7 @@ const GridVariant = ({
     author = 'Autore sconosciuto',
     coverImage = null
   } = bookData || {};
-  
+
   // Handler per il click sul libro
   const handleBookClick = () => {
     if (onBookClick) {
@@ -69,125 +71,130 @@ const GridVariant = ({
   return (
     <Card 
       sx={{ 
-        height: '100%', 
-        display: 'flex', 
+        borderRadius: 2, 
+        overflow: 'hidden',
+        height: '100%',
+        display: 'flex',
         flexDirection: 'column',
-        borderRadius: '12px',
+        cursor: 'pointer',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         '&:hover': {
-          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
-        },
-        cursor: 'pointer'
+          transform: 'translateY(-4px)',
+          boxShadow: '0 6px 12px rgba(0,0,0,0.1)'
+        }
       }}
+      elevation={1}
       onClick={handleBookClick}
     >
-      {/* Stato di lettura - badge superiore */}
+      {/* Container immagine con aspect ratio fisso */}
       <Box 
         sx={{ 
-          position: 'absolute', 
-          top: 8, 
-          right: 8, 
-          zIndex: 1,
-          bgcolor: 'white',
-          borderRadius: '50%',
-          p: 0.5,
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          position: 'relative', 
+          paddingTop: '150%', // Aspect ratio 2:3
+          width: '100%',
+          overflow: 'hidden'
         }}
       >
-        <Tooltip title={getReadStatusLabel(readStatus)}>
-          {getReadStatusIcon(readStatus)}
-        </Tooltip>
-      </Box>
-      
-      {/* Copertina */}
-      {coverImage ? (
-        <CardMedia
-          component="img"
-          height="200"
-          image={coverImage}
-          alt={title}
-          sx={{ objectFit: 'contain', p: 1 }}
-        />
-      ) : (
+        {/* Icone sovrapposte */}
         <Box 
           sx={{ 
-            height: 200, 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            p: 1, 
             display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            bgcolor: 'rgba(0, 0, 0, 0.04)'
+            justifyContent: 'space-between',
+            zIndex: 10
           }}
         >
-          <NoImageIcon sx={{ fontSize: 40, color: 'rgba(0, 0, 0, 0.3)' }} />
+          {showFavoriteButton && (
+            <IconButton 
+              size="small"
+              sx={{ 
+                bgcolor: 'rgba(255,255,255,0.7)', 
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } 
+              }}
+              onClick={handleFavoriteToggle}
+            >
+              {isFavorite ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
+            </IconButton>
+          )}
+          
+          {showMenuIcon && (
+            <IconButton 
+              size="small"
+              sx={{ 
+                ml: 'auto',
+                bgcolor: 'rgba(255,255,255,0.7)', 
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } 
+              }}
+              onClick={handleMenuOpen}
+            >
+              <MoreIcon />
+            </IconButton>
+          )}
         </Box>
-      )}
+
+        {/* Utilizziamo il componente BookCover per la copertina */}
+        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          <BookCover 
+            coverImage={coverImage} 
+            title={title} 
+            size="medium" 
+            rounded={false}
+          />
+        </Box>
+
+        {/* Stato di lettura */}
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 0, 
+            left: 0, 
+            right: 0, 
+            p: 0.5, 
+            display: 'flex', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: alpha(theme.palette.background.paper, 0.7)
+          }}
+        >
+          <ReadStatus status={readStatus} variant="chip" size="small" />
+        </Box>
+      </Box>
       
-      {/* Info libro */}
-      <CardContent sx={{ flexGrow: 1, pt: 1 }}>
+      {/* Contenuto testuale */}
+      <CardContent sx={{ flexGrow: 1, p: 2 }}>
         <Typography 
-          variant="subtitle1" 
+          variant="subtitle2" 
           component="div" 
           sx={{ 
-            fontWeight: 'medium',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
+            fontWeight: 'bold', 
+            mb: 0.5, 
             lineHeight: 1.2,
-            mb: 0.5
+            display: '-webkit-box',
+            overflow: 'hidden',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+            textOverflow: 'ellipsis'
           }}
         >
           {title}
         </Typography>
-        
         <Typography 
-          variant="body2" 
-          color="text.secondary"
-          sx={{ 
+          variant="caption" 
+          color="text.secondary" 
+          display="block"
+          sx={{
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 1,
-            WebkitBoxOrient: 'vertical'
+            whiteSpace: 'nowrap'
           }}
         >
           {author}
         </Typography>
-        
-        {/* Valutazione */}
-        {rating > 0 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-            <Rating 
-              value={rating} 
-              readOnly 
-              size="small" 
-              precision={0.5}
-            />
-          </Box>
-        )}
       </CardContent>
-      
-      {/* Icona preferiti e menu */}
-      <CardActions sx={{ justifyContent: 'space-between', pt: 0 }}>
-        {showFavoriteButton && (
-          <IconButton 
-            size="small"
-            onClick={handleFavoriteToggle}
-            color={isFavorite ? "error" : "default"}
-          >
-            {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-          </IconButton>
-        )}
-        
-        {showMenuIcon && (
-          <IconButton 
-            size="small"
-            onClick={handleMenuOpen}
-          >
-            <MoreIcon />
-          </IconButton>
-        )}
-      </CardActions>
     </Card>
   );
 };

@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import { 
   Typography, 
   Box, 
@@ -28,50 +31,111 @@ import useFavorites from '../hooks/useFavorites';
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 
-// Componente per mostrare un libro in anteprima
-const BookPreview = ({ book, onClick }) => {
-  // Usa i dati reali o predefiniti
-  const bookData = book || {
-    id: '1',
-    title: 'Il nome della rosa',
-    author: 'Umberto Eco',
-    coverImage: 'https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg'
+const HomeBookSection = ({ 
+  title, 
+  books, 
+  onBookClick, 
+  showMoreLink 
+}) => {
+  const theme = useTheme();
+  
+  // Modifico la condizione del carousel
+  const isCarousel = books.length >= 3 && books.length <= 4;
+
+
+  const carouselSettings = {
+    dots: false,
+    infinite: true,  // Cambiato da true a false
+    speed: 500,
+    slidesToShow: Math.min(books.length, 3),
+    slidesToScroll: 1,
+    centerMode: true,  // Aggiungi questa riga per centrare i libri
+    centerPadding: '60px',  // Aggiungi questo per spaziatura
+    variableWidth: true,  // Aggiungi questo per larghezza variabile
+    responsive: [
+      {
+        breakpoint: 1024,
+        settings: {
+          slidesToShow: Math.min(books.length, 3),
+          slidesToScroll: 1,
+        }
+      },
+      {
+        breakpoint: 600,
+        settings: {
+          slidesToShow: Math.min(books.length, 2),
+          slidesToScroll: 1,
+        }
+      },
+      {
+        breakpoint: 480,
+        settings: {
+          slidesToShow: 1,
+          slidesToScroll: 1,
+        }
+      }
+    ]
   };
 
   return (
-    <Card 
-      sx={{ 
-        borderRadius: 2, 
-        overflow: 'hidden',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        cursor: 'pointer',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 6px 12px rgba(0,0,0,0.1)'
-        }
-      }}
-      elevation={1}
-      onClick={onClick}
-    >
-      <CardMedia
-        component="img"
-        height="160"
-        image={bookData.coverImage || 'https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg'}
-        alt={bookData.title}
-        sx={{ objectFit: 'cover' }}
-      />
-      <CardContent sx={{ flexGrow: 1, p: 2 }}>
-        <Typography variant="subtitle2" component="div" sx={{ fontWeight: 'bold', mb: 0.5, lineHeight: 1.2 }}>
-          {bookData.title}
+    <Box sx={{ mb: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
+          {title}
         </Typography>
-        <Typography variant="caption" color="text.secondary" display="block">
-          {bookData.author}
-        </Typography>
-      </CardContent>
-    </Card>
+        {showMoreLink && (
+          <Button 
+            endIcon={<ArrowForwardIcon />} 
+            variant="text" 
+            size="small"
+            onClick={showMoreLink}
+          >
+            Vedi tutti
+          </Button>
+        )}
+      </Box>
+      
+      {isCarousel ? (
+        <Box sx={{ 
+          '& .slick-slide': { 
+            px: 1,
+            display: 'flex',
+            justifyContent: 'center'
+          },
+          '& .slick-list': {
+            margin: '0 -8px'
+          },
+          '& .slick-track': {
+            display: 'flex',
+            alignItems: 'stretch'
+          }
+        }}>
+          <Slider {...carouselSettings}>
+            {books.map((book) => (
+              <Box key={book._id} sx={{ px: 1, width: '100%' }}>  {/* Larghezza fissa */}
+                <BookCard 
+                  userBook={book}
+                  variant="preview"
+                  onBookClick={() => onBookClick(book._id)}
+                />
+              </Box>
+            ))}
+          </Slider>
+        </Box>
+      ) : (
+        <Grid container spacing={2}>
+          {books.map((book) => (
+            <Grid item xs={6} sm={4} md={3} lg={2} key={book._id}>
+              <BookCard 
+                userBook={book}
+                variant="preview"
+                onBookClick={() => onBookClick(book._id)}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      )}
+    </Box>
   );
 };
 
@@ -129,10 +193,10 @@ const Home = () => {
         const sortedByDate = [...books].sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         );
-        setRecentScans(sortedByDate.slice(0, 3));
+        setRecentScans(sortedByDate.slice(0, 6));
         
         // Imposta libri consigliati (3 libri random dalla libreria)
-        const randomBooks = getRandomBooks(books, 3);
+        const randomBooks = getRandomBooks(books, 6);
         setRecommendedBooks(randomBooks);
       }
     } catch (err) {
@@ -312,155 +376,32 @@ const Home = () => {
           </Grid>
 
           {/* La mia libreria */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
-                La mia libreria
-              </Typography>
-              {hasBooks && (
-                <Button 
-                  endIcon={<ArrowForwardIcon />} 
-                  variant="text" 
-                  size="small"
-                  onClick={() => navigate('/library')}
-                >
-                  Vedi tutti
-                </Button>
-              )}
-            </Box>
-            
-           {hasBooks ? (
-          <Grid container spacing={2}>
-            {libraryBooks.slice(0, 3).map((book) => (
-              <Grid item xs={4} key={book._id}>
-                <BookCard 
-                  userBook={book}
-                  variant="preview"
-                  onBookClick={() => handleBookClick(book._id)}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-              <Box sx={{ 
-                textAlign: 'center', 
-                py: 4, 
-                bgcolor: 'background.paper', 
-                borderRadius: 2,
-                border: '1px dashed',
-                borderColor: alpha(theme.palette.divider, 0.3)
-              }}>
-                <Typography variant="body1" color="text.secondary" gutterBottom>
-                  Non hai ancora aggiunto libri alla tua libreria
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary"
-                  startIcon={<AddIcon />}
-                  sx={{ mt: 2 }}
-                  onClick={() => navigate('/add-book')}
-                >
-                  Aggiungi libro
-                </Button>
-              </Box>
-            )}
-          </Box>
+          <HomeBookSection 
+            title="La mia libreria"
+            books={libraryBooks.slice(0, 6)}
+            onBookClick={handleBookClick}
+            showMoreLink={() => navigate('/library')}
+          />
 
           {/* Ultime scansioni */}
-          <Box sx={{ mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
-                Ultime aggiunte
-              </Typography>
-              {hasScannedBooks && (
-                <Button 
-                  endIcon={<ArrowForwardIcon />} 
-                  variant="text" 
-                  size="small"
-                  onClick={() => navigate('/library')}
-                >
-                  Vedi tutte
-                </Button>
-              )}
-            </Box>
+          <HomeBookSection 
+  title="Ultime aggiunte"
+  books={recentScans.slice(0, 6)}
+  onBookClick={handleBookClick}
+  showMoreLink={() => navigate('/library')}
+/>
 
-            {hasScannedBooks ? (
-              <Grid container spacing={2}>
-                {recentScans.map((book) => (
-                  <Grid item xs={4} key={book._id}>
-                    <BookPreview 
-                      book={{
-                        id: book._id,
-                        title: book.bookId?.title || 'Titolo sconosciuto',
-                        author: book.bookId?.author || 'Autore sconosciuto',
-                        coverImage: book.bookId?.coverImage
-                      }} 
-                      onClick={() => handleBookClick(book._id)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Box sx={{ 
-                textAlign: 'center', 
-                py: 4, 
-                bgcolor: 'background.paper', 
-                borderRadius: 2,
-                border: '1px dashed',
-                borderColor: alpha(theme.palette.divider, 0.3)
-              }}>
-                <BookmarkIcon color="primary" sx={{ fontSize: 40, mb: 1, opacity: 0.7 }} />
-                <Typography variant="body1" color="text.secondary" gutterBottom>
-                  Non hai ancora scansionato libri
-                </Typography>
-                <Button 
-                  variant="contained" 
-                  color="secondary"
-                  sx={{ mt: 2 }}
-                  onClick={() => navigate('/add-book')}
-                >
-                  Scansiona il primo libro
-                </Button>
-              </Box>
-            )}
-          </Box>
-
-          {/* Libri consigliati */}
-          {hasBooks && (
-            <Box sx={{ mb: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold' }}>
-                  Dalla tua libreria
-                </Typography>
-                <Button 
-                  endIcon={<ArrowForwardIcon />} 
-                  variant="text" 
-                  size="small"
-                  onClick={() => navigate('/library')}
-                >
-                  Esplora
-                </Button>
-              </Box>
-
-              <Grid container spacing={2}>
-                {recommendedBooks.map((book) => (
-                  <Grid item xs={4} key={book._id}>
-                    <BookPreview 
-                      book={{
-                        id: book._id,
-                        title: book.bookId?.title || 'Titolo sconosciuto',
-                        author: book.bookId?.author || 'Autore sconosciuto',
-                        coverImage: book.bookId?.coverImage
-                      }} 
-                      onClick={() => handleBookClick(book._id)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          )}
-        </>
+         {/* Libri consigliati */}
+         {hasBooks && (
+            <HomeBookSection 
+              title="Dalla tua libreria"
+              books={recommendedBooks}
+              onBookClick={handleBookClick}
+              showMoreLink={() => navigate('/library')}
+        />
       )}
+       </>
+       )}
     </Box>
   );
 };

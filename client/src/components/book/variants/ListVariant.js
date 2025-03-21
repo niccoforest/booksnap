@@ -7,16 +7,16 @@ import {
   Typography,
   IconButton,
   Tooltip,
-  Rating,
   useTheme
 } from '@mui/material';
 import { 
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
-  MoreVert as MoreIcon,
-  ImageNotSupported as NoImageIcon
+  MoreVert as MoreIcon
 } from '@mui/icons-material';
-import { getReadStatusIcon, getReadStatusLabel } from '../BookCardUtils';
+import BookCover from '../../common/BookCover';
+import BookRating from '../../common/BookRating';
+import ReadStatus from '../../common/ReadStatus';
 
 const ListVariant = ({
   bookData,
@@ -82,44 +82,19 @@ const ListVariant = ({
       <Grid container spacing={2} alignItems="center">
         {/* Copertina */}
         <Grid item xs={3} sm={1}>
-          {coverImage ? (
-            <Box
-              component="img"
-              src={coverImage}
-              alt={title}
-              sx={{
-                width: { xs: '100%', sm: 50 },
-                height: { xs: 'auto', sm: 70 },
-                maxHeight: 70,
-                objectFit: 'contain',
-                borderRadius: 1
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                width: { xs: '100%', sm: 50 },
-                height: { xs: 70, sm: 70 },
-                bgcolor: 'rgba(0, 0, 0, 0.04)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 1
-              }}
-            >
-              <NoImageIcon sx={{ color: 'rgba(0, 0, 0, 0.3)' }} />
-            </Box>
-          )}
+          <BookCover 
+            coverImage={coverImage} 
+            title={title} 
+            size="small" 
+          />
         </Grid>
         
         {/* Info libro */}
         <Grid item xs={7} sm={9}>
           {/* Badge stato lettura sopra il titolo */}
-          <Tooltip title={getReadStatusLabel(readStatus)}>
-            <Box sx={{ display: 'inline-flex', mb: 1 }}>
-              {getReadStatusIcon(readStatus)}
-            </Box>
-          </Tooltip>
+          <Box sx={{ mb: 1 }}>
+            <ReadStatus status={readStatus} variant="chip" size="small" />
+          </Box>
           
           <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
             {title}
@@ -131,12 +106,13 @@ const ListVariant = ({
           
           {/* Valutazione */}
           {rating > 0 && (
-            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-              <Rating 
+            <Box sx={{ mt: 1 }}>
+              <BookRating 
                 value={rating} 
-                readOnly 
+                readOnly={true} 
                 size="small" 
                 precision={0.5}
+                showValue={false}
               />
             </Box>
           )}
