@@ -126,10 +126,10 @@ const GridVariant = (props) => {
         
         {/* Badge di stato lettura (solo per libri nella libreria) */}
         {userBook && userBook.readStatus && (
-          <Box sx={{ position: 'absolute', top: 8, left: 8 }}>
-            <ReadStatus status={userBook.readStatus} variant="chip" showIcon={true} size="small" />
-          </Box>
-        )}
+  <Box sx={{ position: 'absolute', bottom: 8, left: 8 }}>
+    <ReadStatus status={userBook.readStatus} variant="chip" showIcon={true} size="small" />
+  </Box>
+)}
         
         {/* Icone e azioni nella parte superiore */}
         <Box sx={{ 

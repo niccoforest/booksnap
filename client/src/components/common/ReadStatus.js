@@ -21,12 +21,17 @@ const ReadStatus = ({
   // Per il chip, determina il colore
   const getChipColor = (status) => {
     switch (status) {
-      case 'reading': return { bg: theme.palette.primary.light, color: theme.palette.primary.main };
-      case 'completed': return { bg: theme.palette.success.light, color: theme.palette.success.main };
-      case 'abandoned': return { bg: theme.palette.error.light, color: theme.palette.error.main };
-      case 'lent': return { bg: theme.palette.warning.light, color: theme.palette.warning.main };
+      case 'reading':
+        return { bg: theme.palette.primary.light, color: theme.palette.primary.contrastText };
+      case 'completed':
+        return { bg: theme.palette.success.light, color: theme.palette.success.contrastText };
+      case 'abandoned':
+        return { bg: theme.palette.error.light, color: theme.palette.error.contrastText };
+      case 'lent':
+        return { bg: theme.palette.warning.light, color: theme.palette.warning.contrastText };
       case 'to-read':
-      default: return { bg: theme.palette.grey[200], color: theme.palette.grey[700] };
+      default:
+        return { bg: theme.palette.grey[300], color: theme.palette.grey[800] };
     }
   };
   
@@ -37,8 +42,11 @@ const ReadStatus = ({
         <InputLabel id="read-status-label">Stato lettura</InputLabel>
         <Select
           labelId="read-status-label"
-          value={status}
-          onChange={(e) => onChange && onChange(e.target.value)}
+          value={status || 'to-read'} // Valore di default per evitare undefined
+          onChange={(e) => {
+            console.log('ReadStatus onChange:', e.target.value);
+            if (onChange) onChange(e.target.value);
+          }}
           label="Stato lettura"
           sx={{ borderRadius: '8px', ...sx }}
         >

@@ -120,58 +120,57 @@ const DetailVariant = ({
     >
       {/* Layout superiore con copertina e informazioni base */}
       <Box sx={{ 
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        alignItems: 'center',
-        p: 3,
-        background: `linear-gradient(to bottom, ${alpha(theme.palette.primary.light, 0.1)}, ${alpha(theme.palette.background.paper, 0.8)})`
-      }}>
-        {/* Copertina */}
-        <Box sx={{ 
-          width: { xs: '40%', sm: '25%', md: '15%' },
-          minWidth: { xs: 120, sm: 150 },
-          maxWidth: 200,
-          mb: { xs: 2, sm: 0 },
-          mr: { xs: 0, sm: 3 },
-          position: 'relative'
-        }}>
-          <BookCover 
-            coverImage={coverImage} 
-            title={title} 
-            size="large" 
-          />
-          
-          {/* Badge stato di lettura */}
-          <Box sx={{ position: 'absolute', top: -10, right: -10 }}>
-            <ReadStatus status={readStatus} variant="chip" />
-          </Box>
-        </Box>
-        
-        {/* Informazioni libro */}
-        <Box sx={{ flex: 1, width: '100%' }}>
-          <Typography variant="h5" component="h1" gutterBottom>
-            {title}
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            {author}
-          </Typography>
-          
-          {/* Rating personale - mostrato sempre */}
-          <BookRating 
-            value={rating} 
-            readOnly={true} 
-            showEmptyLabel={true}
-            size="medium"
-          />
-          
-         
-          {/* Riga di azioni */}
-<Box sx={{ 
-  display: 'flex', 
-  mt: 2,
-  gap: 1,
-  flexWrap: 'wrap'
+  display: 'flex',
+  flexDirection: { xs: 'column', sm: 'row' },
+  alignItems: { xs: 'center', sm: 'flex-start' },
+  p: 3,
+  background: `linear-gradient(to bottom, ${alpha(theme.palette.primary.light, 0.1)}, ${alpha(theme.palette.background.paper, 0.8)})`
 }}>
+  {/* Copertina */}
+  <Box sx={{ 
+    width: { xs: '40%', sm: '25%', md: '15%' },
+    minWidth: { xs: 120, sm: 150 },
+    maxWidth: 200,
+    mb: { xs: 2, sm: 0 },
+    mr: { xs: 0, sm: 3 },
+    position: 'relative'
+  }}>
+    <BookCover 
+      coverImage={coverImage} 
+      title={title} 
+      size="large" 
+    />
+  </Box>
+  
+  {/* Informazioni libro */}
+  <Box sx={{ flex: 1, width: '100%', alignSelf: 'flex-start' }}>
+    {/* Badge stato di lettura */}
+    <Box sx={{ mb: 1 }}>
+      <ReadStatus status={readStatus} variant="chip" />
+    </Box>
+    
+    <Typography variant="h5" component="h1" gutterBottom>
+      {title}
+    </Typography>
+    <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+      {author}
+    </Typography>
+    
+    {/* Rating personale - mostrato sempre */}
+    <BookRating 
+      value={rating} 
+      readOnly={true} 
+      showEmptyLabel={true}
+      size="medium"
+    />
+    
+    {/* Riga di azioni */}
+    <Box sx={{ 
+      display: 'flex', 
+      mt: 2,
+      gap: 1,
+      flexWrap: 'wrap'
+    }}>
   {showFavoriteButton && (
     <IconButton 
       color={isFavorite ? "error" : "default"}
@@ -242,6 +241,13 @@ const DetailVariant = ({
               </Typography>
             </Grid>
           )}
+          {bookData && bookData.genres && bookData.genres.length > 0 && (
+  <Grid item xs={12} sm={6}>
+    <Typography variant="body2">
+      <strong>Generi:</strong> {bookData.genres.join(', ')}
+    </Typography>
+  </Grid>
+)}
           {publishedYear && (
             <Grid item xs={12} sm={6}>
               <Typography variant="body2">
@@ -293,15 +299,19 @@ const DetailVariant = ({
     </Typography>
     
     {/* Pulsante "Leggi tutto/Mostra meno" solo se necessario e non in modalità fullDescription */}
-    {!showFullDescription && showExpandableDescription && description.length > 300 && (
-      <Button 
-        onClick={toggleDescription} 
-        sx={{ mt: 1, p: 0 }}
-        color="primary"
-      >
-        {expandedDescription ? 'Mostra meno' : 'Leggi tutto'}
-      </Button>
-    )}
+    {!showFullDescription && showExpandableDescription && description && description.length > 300 && (
+  <Button 
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (toggleDescription) toggleDescription();
+    }} 
+    sx={{ mt: 1, p: 0 }}
+    color="primary"
+  >
+    {expandedDescription ? 'Mostra meno' : 'Leggi tutto'}
+  </Button>
+)}
   </Box>
 )}
         
@@ -328,60 +338,70 @@ const DetailVariant = ({
         
         {/* Sezione di personalizzazione - mostrata solo se necessario */}
         {showPersonalization && (
-          <>
-            <Divider sx={{ my: 3 }} />
-            
-            <Typography variant="h6" gutterBottom>
-              Personalizzazione
-            </Typography>
-            
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                La tua valutazione personale
-              </Typography>
-              <BookRating
-                value={rating}
-                readOnly={false}
-                onChange={onRatingChange}
-                size="large"
-                precision={0.5}
-              />
-            </Box>
-            
-            {onStatusChange && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Stato lettura
-                </Typography>
-                <ReadStatus 
-                  status={readStatus} 
-                  variant="select" 
-                  onChange={onStatusChange} 
-                />
-              </Box>
-            )}
-            
-            {onNotesChange && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Note personali
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  placeholder="Aggiungi le tue note personali sul libro..."
-                  value={notes || ''}
-                  onChange={(e) => onNotesChange(e.target.value)}
-                  variant="outlined"
-                  InputProps={{
-                    sx: { borderRadius: '8px' }
-                  }}
-                />
-              </Box>
-            )}
-          </>
-        )}
+  <>
+    <Divider sx={{ my: 3 }} />
+    
+    <Typography variant="h6" gutterBottom>
+      Personalizzazione
+    </Typography>
+    
+    <Box sx={{ mb: 2 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        La tua valutazione personale
+      </Typography>
+      <BookRating
+        value={rating || 0}  // Assicurati che il valore non sia mai undefined
+        readOnly={false}
+        onChange={(newValue) => {
+          console.log('Rating cambiato a:', newValue);
+          if (onRatingChange) onRatingChange(newValue);
+        }}
+        size="large"
+        precision={0.5}
+      />
+    </Box>
+    
+    {onStatusChange && (
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          Stato lettura
+        </Typography>
+        <ReadStatus 
+          status={readStatus || 'to-read'}  // Valore di default se undefined
+          variant="select" 
+          onChange={(newValue) => {
+            console.log('Stato lettura cambiato a:', newValue);
+            onStatusChange(newValue);
+          }} 
+          disabled={false} // Assicurati che non sia disabilitato
+        />
+      </Box>
+    )}
+    
+    {onNotesChange && (
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" gutterBottom>
+          Note personali
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          rows={4}
+          placeholder="Aggiungi le tue note personali sul libro..."
+          value={notes || ''}  // Assicurati che il valore non sia mai undefined
+          onChange={(e) => {
+            console.log('Note cambiate a:', e.target.value);
+            onNotesChange(e.target.value);
+          }}
+          variant="outlined"
+          InputProps={{
+            sx: { borderRadius: '8px' }
+          }}
+        />
+      </Box>
+    )}
+  </>
+)}
       </CardContent>
       
       {/* Pulsanti azione principale */}

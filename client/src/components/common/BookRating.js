@@ -17,6 +17,7 @@ const BookRating = ({
 }) => {
   // Handler per il cambio di valutazione
   const handleRatingChange = (event, newValue) => {
+    console.log('BookRating handleRatingChange:', newValue);
     if (onChange) {
       onChange(newValue);
     }

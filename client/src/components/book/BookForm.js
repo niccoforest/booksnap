@@ -278,6 +278,7 @@ const BookForm = ({
                 status={personalData.readStatus} 
                 variant="select" 
                 onChange={(value) => handlePersonalDataChange('readStatus', value)} 
+                disabled={false}
               />
             </Grid>
             
@@ -286,11 +287,13 @@ const BookForm = ({
                 La tua valutazione
               </Typography>
               <BookRating 
-                value={personalData.rating} 
-                readOnly={false} 
-                onChange={(value) => handlePersonalDataChange('rating', value)} 
-                showEmptyLabel={true}
-              />
+  value={personalData.rating} 
+  readOnly={false} 
+  onChange={(value) => handlePersonalDataChange('rating', value)} 
+  showEmptyLabel={true}
+  size="medium"
+  precision={0.5}
+/>
             </Grid>
             
             <Grid item xs={12}>
@@ -298,17 +301,17 @@ const BookForm = ({
                 Note personali
               </Typography>
               <TextField
-                fullWidth
-                multiline
-                rows={4}
-                placeholder="Aggiungi le tue note personali sul libro..."
-                value={personalData.notes || ''}
-                onChange={(e) => handlePersonalDataChange('notes', e.target.value)}
-                variant="outlined"
-                InputProps={{
-                  sx: { borderRadius: '8px' }
-                }}
-              />
+  fullWidth
+  multiline
+  rows={4}
+  placeholder="Aggiungi le tue note personali sul libro..."
+  value={personalData.notes || ''}
+  onChange={(e) => handlePersonalDataChange('notes', e.target.value)}
+  variant="outlined"
+  disabled={false}
+  InputProps={{
+    sx: { borderRadius: '8px' }
+  }}/>
             </Grid>
           </Grid>
         </Paper>

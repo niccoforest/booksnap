@@ -98,68 +98,68 @@ const ListVariant = (props) => {
       onClick={handleBookClick}
     >
       <Grid container spacing={2} alignItems="center">
-        {/* Copertina */}
-        <Grid item xs={3} sm={1}>
-          <BookCover 
-            coverImage={coverImage} 
-            title={title} 
-            size="small" 
-          />
-        </Grid>
-        
-        {/* Info libro */}
-        <Grid item xs={7} sm={9}>
-          {/* Badge stato lettura sopra il titolo */}
-          <Box sx={{ mb: 1 }}>
-            <ReadStatus status={readStatus} variant="chip" size="small" />
-          </Box>
-          
-          <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
-            {title}
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary">
-            {author}
-          </Typography>
-          
-          {/* Valutazione */}
-          {rating > 0 && (
-            <Box sx={{ mt: 1 }}>
-              <BookRating 
-                value={rating} 
-                readOnly={true} 
-                size="small" 
-                precision={0.5}
-                showValue={false}
-              />
-            </Box>
-          )}
-        </Grid>
-        
-        {/* Azioni */}
-        <Grid item xs={2} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          {showFavoriteButton && userBookId && (
-            <IconButton 
-              size="small"
-              onClick={handleFavoriteToggle}
-              color={isFavorite ? "error" : "default"}
-              sx={{ mr: 1 }}
-            >
-              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-            </IconButton>
-          )}
-          
-          {showMenuIcon && (
-            <IconButton 
-              size="small"
-              onClick={handleMenuOpen}
-              disabled={isLoading}
-            >
-              <MoreIcon />
-            </IconButton>
-          )}
-        </Grid>
-      </Grid>
+  {/* Copertina */}
+  <Grid item xs={3} sm={2} md={1}>
+    <BookCover 
+      coverImage={coverImage} 
+      title={title} 
+      size="small" 
+    />
+  </Grid>
+  
+  {/* Info libro */}
+  <Grid item xs={6} sm={8} md={9}>
+    {/* Badge stato lettura sopra il titolo */}
+    <Box sx={{ mb: 1 }}>
+      <ReadStatus status={readStatus} variant="chip" size="small" />
+    </Box>
+    
+    <Typography variant="subtitle1" sx={{ fontWeight: 'medium', wordBreak: 'break-word' }}>
+      {title}
+    </Typography>
+    
+    <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+      {author}
+    </Typography>
+    
+    {/* Valutazione */}
+    {rating > 0 && (
+      <Box sx={{ mt: 1 }}>
+        <BookRating 
+          value={rating} 
+          readOnly={true} 
+          size="small" 
+          precision={0.5}
+          showValue={false}
+        />
+      </Box>
+    )}
+  </Grid>
+  
+  {/* Azioni */}
+  <Grid item xs={3} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+    {showFavoriteButton && userBookId && (
+      <IconButton 
+        size="small"
+        onClick={handleFavoriteToggle}
+        color={isFavorite ? "error" : "default"}
+        sx={{ mr: 1 }}
+      >
+        {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+      </IconButton>
+    )}
+    
+    {showMenuIcon && (
+      <IconButton 
+        size="small"
+        onClick={handleMenuOpen}
+        disabled={isLoading}
+      >
+        <MoreIcon />
+      </IconButton>
+    )}
+  </Grid>
+</Grid>
     </Paper>
   );
 };

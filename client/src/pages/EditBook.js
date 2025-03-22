@@ -100,41 +100,56 @@ const EditBook = () => {
   };
   
   const handleRatingChange = (value) => {
+    console.log('EditBook handleRatingChange:', value);
     const numericValue = value !== null && value !== undefined ? Number(value) : 0;
-    setFormData(prev => ({
-      ...prev,
-      rating: numericValue
-    }));
+    setFormData(prev => {
+      const updated = { ...prev, rating: numericValue };
+      console.log('Nuovo formData dopo rating change:', updated);
+      return updated;
+    });
   };
   
   const handleStatusChange = (value) => {
-    setFormData(prev => ({
-      ...prev,
-      readStatus: value
-    }));
+    console.log('EditBook handleStatusChange:', value);
+    setFormData(prev => {
+      const updated = { ...prev, readStatus: value };
+      console.log('Nuovo formData dopo status change:', updated);
+      return updated;
+    });
   };
   
   const handleNotesChange = (value) => {
-    setFormData(prev => ({
-      ...prev,
-      notes: value
-    }));
+    console.log('EditBook handleNotesChange:', value);
+    setFormData(prev => {
+      const updated = { ...prev, notes: value };
+      console.log('Nuovo formData dopo notes change:', updated);
+      return updated;
+    });
   };
   
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
     try {
+      console.log('Inizio salvataggio con formData:', formData);
       setSaving(true);
       
-      // Se il rating è 0, lo impostiamo a null
+      // Prepara i dati da inviare
       const updatedData = {
         ...formData,
-        rating: formData.rating === 0 ? null : formData.rating
+        // Rating: se 0, invia null, altrimenti il valore numerico
+        rating: formData.rating === 0 ? null : Number(formData.rating),
+        // Assicurati che lo stato di lettura sia definito
+        readStatus: formData.readStatus || 'to-read',
+        // Notes: assicurati che sia una stringa, anche se vuota
+        notes: formData.notes || ''
       };
       
+      console.log('Dati da inviare al server:', updatedData);
+      
       // Chiama l'API per aggiornare il libro
-      await bookService.updateUserBook(id, updatedData, TEMP_USER_ID);
+      const result = await bookService.updateUserBook(id, updatedData, TEMP_USER_ID);
+      console.log('Risposta dal server:', result);
       
       // Mostra notifica di successo
       setSnackbar({
@@ -197,25 +212,26 @@ const EditBook = () => {
         <Box component="form" onSubmit={handleSubmit}>
           {/* Utilizziamo BookCard con variante detail e personalizzazione */}
           <BookCard
-            variant="detail"
-            userBook={{
-              ...book,
-              rating: formData.rating !== null ? Number(formData.rating) : 0,
-              readStatus: formData.readStatus,
-              notes: formData.notes
-            }}
-            isFavorite={favorite}
-            isInLibrary={true}
-            onFavoriteToggle={handleToggleFavorite}
-            showMenuIcon={false}
-            showFullDescription={true}
-            showPersonalization={true}
-            rating={formData.rating !== null ? Number(formData.rating) : 0}
-            onRatingChange={handleRatingChange}
-            onStatusChange={handleStatusChange}
-            onNotesChange={handleNotesChange}
-            notes={formData.notes}
-          />
+  variant="detail"
+  userBook={{
+    ...book,
+    rating: formData.rating !== null ? Number(formData.rating) : 0,
+    readStatus: formData.readStatus || 'to-read',
+    notes: formData.notes || ''
+  }}
+  isFavorite={favorite}
+  isInLibrary={true}
+  onFavoriteToggle={handleToggleFavorite}
+  showMenuIcon={false}
+  showFullDescription={true}
+  showPersonalization={true}
+  rating={formData.rating !== null ? Number(formData.rating) : 0}
+  readStatus={formData.readStatus || 'to-read'}
+  notes={formData.notes || ''}
+  onRatingChange={handleRatingChange}
+  onStatusChange={handleStatusChange}
+  onNotesChange={handleNotesChange}
+/>
           
           {/* Pulsante salva (a piena larghezza) */}
           <Box sx={{ mt: 3 }}>
