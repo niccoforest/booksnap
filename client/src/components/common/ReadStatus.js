@@ -1,42 +1,20 @@
-// components/common/ReadStatus.js
+// client/src/components/common/ReadStatus.js
 import React from 'react';
 import { Chip, FormControl, InputLabel, Select, MenuItem, useTheme } from '@mui/material';
-import { 
-  MenuBook as ReadingIcon,
-  CheckCircle as CompletedIcon,
-  Bookmark as ToReadIcon,
-  BookmarkRemove as AbandonedIcon,
-  PeopleAlt as LentIcon
-} from '@mui/icons-material';
+import { getReadStatusIcon, getReadStatusLabel } from '../../utils/bookStatusUtils';
 
-export const getReadStatusIcon = (status) => {
-  switch (status) {
-    case 'reading': return <ReadingIcon color="primary" />;
-    case 'completed': return <CompletedIcon color="success" />;
-    case 'abandoned': return <AbandonedIcon color="error" />;
-    case 'lent': return <LentIcon color="warning" />;
-    case 'to-read':
-    default: return <ToReadIcon color="disabled" />;
-  }
-};
-
-export const getReadStatusLabel = (status) => {
-  switch (status) {
-    case 'reading': return 'In lettura';
-    case 'completed': return 'Completato';
-    case 'abandoned': return 'Abbandonato';
-    case 'lent': return 'Prestato';
-    case 'to-read':
-    default: return 'Da leggere';
-  }
-};
-
+/**
+ * Componente per visualizzare e gestire lo stato di lettura di un libro
+ * Supporta diverse varianti di visualizzazione (chip, icona, testo, select)
+ */
 const ReadStatus = ({ 
   status = 'to-read', 
   variant = 'chip', // 'chip', 'icon', 'text', 'select'
   onChange,
   size = 'small',
-  showIcon = true
+  showIcon = true,
+  disabled = false,
+  sx = {}
 }) => {
   const theme = useTheme();
   
@@ -52,22 +30,38 @@ const ReadStatus = ({
     }
   };
   
+  // Rendering condizionale in base alla variante richiesta
   if (variant === 'select') {
     return (
-      <FormControl fullWidth variant="outlined">
+      <FormControl fullWidth variant="outlined" disabled={disabled} sx={{ ...sx }}>
         <InputLabel id="read-status-label">Stato lettura</InputLabel>
         <Select
           labelId="read-status-label"
           value={status}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange && onChange(e.target.value)}
           label="Stato lettura"
-          sx={{ borderRadius: '8px' }}
+          sx={{ borderRadius: '8px', ...sx }}
         >
-          <MenuItem value="to-read">Da leggere</MenuItem>
-          <MenuItem value="reading">In lettura</MenuItem>
-          <MenuItem value="completed">Completato</MenuItem>
-          <MenuItem value="abandoned">Abbandonato</MenuItem>
-          <MenuItem value="lent">Prestato</MenuItem>
+          <MenuItem value="to-read">
+            {showIcon && getReadStatusIcon('to-read')}
+            <span style={{ marginLeft: showIcon ? 8 : 0 }}>Da leggere</span>
+          </MenuItem>
+          <MenuItem value="reading">
+            {showIcon && getReadStatusIcon('reading')}
+            <span style={{ marginLeft: showIcon ? 8 : 0 }}>In lettura</span>
+          </MenuItem>
+          <MenuItem value="completed">
+            {showIcon && getReadStatusIcon('completed')}
+            <span style={{ marginLeft: showIcon ? 8 : 0 }}>Completato</span>
+          </MenuItem>
+          <MenuItem value="abandoned">
+            {showIcon && getReadStatusIcon('abandoned')}
+            <span style={{ marginLeft: showIcon ? 8 : 0 }}>Abbandonato</span>
+          </MenuItem>
+          <MenuItem value="lent">
+            {showIcon && getReadStatusIcon('lent')}
+            <span style={{ marginLeft: showIcon ? 8 : 0 }}>Prestato</span>
+          </MenuItem>
         </Select>
       </FormControl>
     );
@@ -80,13 +74,16 @@ const ReadStatus = ({
         icon={showIcon ? getReadStatusIcon(status) : undefined}
         label={getReadStatusLabel(status)}
         size={size}
+        disabled={disabled}
         sx={{
           backgroundColor: chipColor.bg,
           color: chipColor.color,
           '& .MuiChip-icon': {
             color: 'inherit'
-          }
+          },
+          ...sx
         }}
+        onClick={onChange ? () => {} : undefined}
       />
     );
   }
@@ -95,7 +92,10 @@ const ReadStatus = ({
     return getReadStatusIcon(status);
   }
   
-  return getReadStatusLabel(status);
+  // Variante 'text' o default
+  return (
+    <span style={sx}>{getReadStatusLabel(status)}</span>
+  );
 };
 
 export default ReadStatus;

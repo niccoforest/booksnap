@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Slider from 'react-slick';
+//import Slider from 'react-slick';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { 
@@ -27,7 +27,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
-import useFavorites from '../hooks/useFavorites';
+import { useFavorites } from '../contexts/FavoritesContext';
 import EmptyState from '../components/common/EmptyState';
 import BookCarousel from '../components/book/BookCarousel';
 
@@ -137,13 +137,13 @@ const Home = () => {
       const response = await bookService.getUserBooks({ userId: TEMP_USER_ID, limit: 100 });
       console.log('Dati libreria:', response);
       
-      if (response && response.books) {
-        const books = response.books;
+      if (response && response.data) {
+        const books = response.data;
         
         // Calcola le statistiche
         const readingBooks = books.filter(book => book.readStatus === 'reading');
         const lentBooks = books.filter(book => book.readStatus === 'lent');
-        const favoriteBooks = books.filter(book => book.rating && book.rating >= 4);
+        const favoriteBooks = books.filter(book => book.isFavorite === true);
         
         setStats({
           total: books.length,

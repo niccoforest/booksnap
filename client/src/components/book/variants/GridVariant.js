@@ -5,196 +5,241 @@ import {
   CardContent, 
   Typography,
   Box,
+  Button,
   IconButton,
-  alpha,
-  useTheme
+  Rating,
+  useTheme,
+  alpha
 } from '@mui/material';
 import { 
   MoreVert as MoreIcon,
-  Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon
+  CheckCircleOutline as CheckIcon,
+  MenuBook as LibraryIcon
 } from '@mui/icons-material';
 import BookCover from '../../common/BookCover';
 import ReadStatus from '../../common/ReadStatus';
+import FavoriteButton from '../../common/FavoriteButton';
+import { extractBookData, getUserBookId } from '../../../utils/bookStatusUtils';
 
-const GridVariant = ({
-  bookData,
-  userBook,
-  userBookId,
-  bookId,
+/**
+ * Variante Grid del componente BookCard
+ * Visualizza un libro in un layout a griglia
+ */
+const GridVariant = (props) => {
+  const {
+    bookData,
+    userBook,
+    userBookId: propUserBookId,
+    
+    // Stati
+    isLoading = false,
+    isInLibrary = false,
+    isFavorite = false,
+    
+    // Configurazione visualizzazione
+    showFavoriteButton = true,
+    showMenuIcon = true,
+    showActionButtons = true,
+    
+    // Callbacks
+    onBookClick,
+    onFavoriteToggle,
+    onMenuOpen,
+    onAddBook,
+    onViewInLibrary
+  } = props;
   
-  // Stato e visualizzazione
-  isFavorite = false,
-  readStatus = 'to-read',
-  
-  // Callbacks
-  onFavoriteToggle,
-  onMenuOpen,
-  onBookClick,
-  
-  // Flags di visualizzazione
-  showFavoriteButton = true,
-  showMenuIcon = true
-}) => {
   const theme = useTheme();
   
-  // Estrai le informazioni dal libro
-  const {
-    title = 'Titolo sconosciuto',
-    author = 'Autore sconosciuto',
-    coverImage = null
-  } = bookData || {};
-
-  // Handler per il click sul libro
-  const handleBookClick = () => {
-    if (onBookClick) {
-      onBookClick(userBookId || bookId);
+  // Usa i dati corretti, dal libro o dalla relazione userBook
+  const displayData = userBook?.bookId || bookData || {};
+  const { title, author, coverImage, publishedYear } = extractBookData(displayData);
+  
+  // Determina l'ID userBook corretto
+  const userBookId = propUserBookId || getUserBookId(userBook);
+  
+  // Determina lo stato di lettura
+  const readStatus = userBook?.readStatus || 'to-read';
+  
+  // Gestisce il clic sul libro
+  const handleClick = () => {
+    if (onBookClick && !isLoading) {
+      onBookClick(userBook || bookData);
     }
   };
   
-  // Handler per il toggle dei preferiti
-  const handleFavoriteToggle = (e) => {
-    e.stopPropagation(); // Previene la propagazione al click sul libro
-    if (onFavoriteToggle) {
-      onFavoriteToggle(userBookId || bookId);
-    }
-  };
-  
-  // Handler per l'apertura del menu
-  const handleMenuOpen = (e) => {
-    e.stopPropagation(); // Previene la propagazione al click sul libro
+  // Gestisce il clic sul pulsante del menu
+  const handleMenuClick = (e) => {
+    e.stopPropagation();
     if (onMenuOpen) {
-      onMenuOpen(e, userBookId || bookId);
+      onMenuOpen(e, userBook || bookData);
     }
   };
-
+  
+  // Gestisce l'aggiunta del libro alla libreria
+  const handleAddBook = (e) => {
+    e.stopPropagation();
+    if (onAddBook) {
+      onAddBook(bookData);
+    }
+  };
+  console.log(`[GridVariant] Rendering libro: userBookId=${userBookId}, isFavorite=${isFavorite}`);
+  // Gestisce la visualizzazione del libro nella libreria
+  const handleViewInLibrary = (e) => {
+    e.stopPropagation();
+    if (onViewInLibrary) {
+      onViewInLibrary(userBook || bookData);
+    }
+  };
+  
   return (
     <Card 
-      sx={{ 
-        borderRadius: 2, 
-        overflow: 'hidden',
-        height: '100%',
+      sx={{
         display: 'flex',
         flexDirection: 'column',
-        cursor: 'pointer',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
+        height: '100%',
+        borderRadius: '12px',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        boxShadow: 2,
+        cursor: onBookClick ? 'pointer' : 'default',
+        position: 'relative',
+        overflow: 'visible',
+        '&:hover': onBookClick ? {
           transform: 'translateY(-4px)',
-          boxShadow: '0 6px 12px rgba(0,0,0,0.1)'
-        }
+          boxShadow: 4
+        } : {}
       }}
-      elevation={1}
-      onClick={handleBookClick}
+      onClick={handleClick}
     >
-      {/* Container immagine con aspect ratio fisso */}
-      <Box 
-        sx={{ 
-          position: 'relative', 
-          paddingTop: '150%', // Aspect ratio 2:3
-          width: '100%',
-          overflow: 'hidden'
-        }}
-      >
-        {/* Icone sovrapposte */}
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            p: 1, 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            zIndex: 10
-          }}
-        >
-          {showFavoriteButton && (
-            <IconButton 
-              size="small"
-              sx={{ 
-                bgcolor: 'rgba(255,255,255,0.7)', 
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } 
-              }}
-              onClick={handleFavoriteToggle}
-            >
-              {isFavorite ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
-            </IconButton>
-          )}
-          
-          {showMenuIcon && (
-            <IconButton 
-              size="small"
-              sx={{ 
-                ml: 'auto',
-                bgcolor: 'rgba(255,255,255,0.7)', 
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' } 
-              }}
-              onClick={handleMenuOpen}
-            >
-              <MoreIcon />
-            </IconButton>
-          )}
-        </Box>
-
-        {/* Utilizziamo il componente BookCover per la copertina */}
+      {/* Copertina del libro */}
+      <Box sx={{ position: 'relative', paddingTop: '150%', backgroundColor: alpha(theme.palette.primary.main, 0.1) }}>
+        {/* Copertina */}
         <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
           <BookCover 
             coverImage={coverImage} 
             title={title} 
             size="medium" 
             rounded={false}
+            sx={{ width: '100%', height: '100%' }}
           />
         </Box>
-
-        {/* Stato di lettura */}
-        <Box 
-          sx={{ 
-            position: 'absolute', 
-            bottom: 0, 
-            left: 0, 
-            right: 0, 
-            p: 0.5, 
-            display: 'flex', 
-            alignItems: 'center',
-            justifyContent: 'center',
-            bgcolor: alpha(theme.palette.background.paper, 0.7)
-          }}
-        >
-          <ReadStatus status={readStatus} variant="chip" size="small" />
+        
+        {/* Badge di stato lettura (solo per libri nella libreria) */}
+        {userBook && userBook.readStatus && (
+          <Box sx={{ position: 'absolute', top: 8, left: 8 }}>
+            <ReadStatus status={userBook.readStatus} variant="chip" showIcon={true} size="small" />
+          </Box>
+        )}
+        
+        {/* Icone e azioni nella parte superiore */}
+        <Box sx={{ 
+          position: 'absolute', 
+          top: 8, 
+          right: 8, 
+          display: 'flex', 
+          gap: 0.5,
+          backgroundColor: alpha(theme.palette.background.paper, 0.7),
+          borderRadius: '16px',
+          padding: '2px'
+        }}>
+          {/* Pulsante preferiti */}
+          {showFavoriteButton && userBookId && (
+            <FavoriteButton 
+              userBookId={userBookId}
+              isFavorite={isFavorite}
+              onClick={onFavoriteToggle}
+              size="small"
+            />
+          )}
+          
+          {/* Pulsante menu */}
+          {showMenuIcon && (
+            <IconButton 
+              size="small" 
+              onClick={handleMenuClick}
+              aria-label="Opzioni libro"
+              disabled={isLoading}
+            >
+              <MoreIcon fontSize="small" />
+            </IconButton>
+          )}
         </Box>
       </Box>
       
       {/* Contenuto testuale */}
-      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+      <CardContent sx={{ flexGrow: 1, pb: 1 }}>
         <Typography 
-          variant="subtitle2" 
-          component="div" 
+          variant="subtitle1" 
+          component="h2" 
           sx={{ 
-            fontWeight: 'bold', 
-            mb: 0.5, 
-            lineHeight: 1.2,
+            fontWeight: 600, 
+            mb: 0.5,
             display: '-webkit-box',
-            overflow: 'hidden',
-            WebkitBoxOrient: 'vertical',
             WebkitLineClamp: 2,
-            textOverflow: 'ellipsis'
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            lineHeight: 1.2
           }}
         >
           {title}
         </Typography>
+        
         <Typography 
-          variant="caption" 
-          color="text.secondary" 
-          display="block"
-          sx={{
+          variant="body2" 
+          color="text.secondary"
+          sx={{ 
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
+            mb: 0.5
           }}
         >
           {author}
+          {publishedYear && ` (${publishedYear})`}
         </Typography>
+        
+        {/* Valutazione, se presente */}
+        {userBook && userBook.rating > 0 && (
+          <Rating 
+            value={userBook.rating} 
+            precision={0.5} 
+            size="small" 
+            readOnly 
+            sx={{ mt: 0.5 }} 
+          />
+        )}
       </CardContent>
+      
+      {/* Azioni in fondo */}
+      {showActionButtons && (
+        <Box sx={{ p: 1, pt: 0 }}>
+          {isInLibrary && onViewInLibrary ? (
+            <Button 
+              startIcon={<LibraryIcon />}
+              size="small" 
+              variant="outlined"
+              onClick={handleViewInLibrary}
+              fullWidth
+              sx={{ borderRadius: '8px' }}
+            >
+              Nella tua libreria
+            </Button>
+          ) : onAddBook ? (
+            <Button 
+              startIcon={<CheckIcon />}
+              size="small" 
+              variant="contained"
+              onClick={handleAddBook}
+              fullWidth
+              disabled={isLoading}
+              sx={{ borderRadius: '8px' }}
+            >
+              Aggiungi
+            </Button>
+          ) : null}
+        </Box>
+      )}
     </Card>
   );
 };

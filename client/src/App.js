@@ -17,11 +17,15 @@ import EditBook from './pages/EditBook';
 import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';
 import ApiTest from './components/ApiTest';
+import { FavoritesProvider } from './contexts/FavoritesContext';
+// ID utente temporaneo (da sostituire con autenticazione)
+const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <FavoritesProvider userId={TEMP_USER_ID}>
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -38,6 +42,7 @@ function App() {
           </Route>
         </Routes>
       </Router>
+      </FavoritesProvider>
     </ThemeProvider>
   );
 }

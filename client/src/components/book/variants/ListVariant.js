@@ -6,44 +6,60 @@ import {
   Box,
   Typography,
   IconButton,
-  Tooltip,
-  useTheme
+  useTheme,
+  alpha
 } from '@mui/material';
 import { 
+  MoreVert as MoreIcon,
   Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
-  MoreVert as MoreIcon
+  FavoriteBorder as FavoriteBorderIcon
 } from '@mui/icons-material';
 import BookCover from '../../common/BookCover';
 import BookRating from '../../common/BookRating';
 import ReadStatus from '../../common/ReadStatus';
+import { extractBookData, getUserBookId } from '../../../utils/bookStatusUtils';
 
-const ListVariant = ({
-  bookData,
-  userBookId,
-  bookId,
-  isFavorite,
-  readStatus,
-  rating,
-  showFavoriteButton = true,
-  showMenuIcon = true,
-  onFavoriteToggle,
-  onMenuOpen,
-  onBookClick
-}) => {
+/**
+ * Variante List del componente BookCard
+ * Visualizza un libro in un layout a lista orizzontale
+ */
+const ListVariant = (props) => {
+  const {
+    bookData,
+    userBook,
+    userBookId: propUserBookId,
+    
+    // Stati
+    isFavorite = false,
+    isLoading = false,
+    
+    // Props di visualizzazione
+    showFavoriteButton = true,
+    showMenuIcon = true,
+    
+    // Callbacks
+    onFavoriteToggle,
+    onMenuOpen,
+    onBookClick
+  } = props;
+  
   const theme = useTheme();
   
-  // Estrai le informazioni dal libro
-  const {
-    title = 'Titolo sconosciuto',
-    author = 'Autore sconosciuto',
-    coverImage = null
-  } = bookData || {};
+  // Usa i dati corretti, dal libro o dalla relazione userBook
+  const displayData = userBook?.bookId || bookData || {};
+  const { title, author, coverImage } = extractBookData(displayData);
+  
+  // Determina l'ID userBook corretto
+  const userBookId = propUserBookId || getUserBookId(userBook);
+  
+  // Determina lo stato di lettura e rating
+  const readStatus = userBook?.readStatus || 'to-read';
+  const rating = userBook?.rating || 0;
   
   // Handler per il click sul libro
   const handleBookClick = () => {
-    if (onBookClick) {
-      onBookClick(userBookId || bookId);
+    if (onBookClick && !isLoading) {
+      onBookClick(userBook || bookData);
     }
   };
   
@@ -51,7 +67,7 @@ const ListVariant = ({
   const handleFavoriteToggle = (e) => {
     e.stopPropagation(); // Previene la propagazione al click sul libro
     if (onFavoriteToggle) {
-      onFavoriteToggle(userBookId || bookId);
+      onFavoriteToggle(userBookId);
     }
   };
   
@@ -59,7 +75,7 @@ const ListVariant = ({
   const handleMenuOpen = (e) => {
     e.stopPropagation(); // Previene la propagazione al click sul libro
     if (onMenuOpen) {
-      onMenuOpen(e, userBookId || bookId);
+      onMenuOpen(e, userBook || bookData);
     }
   };
 
@@ -72,10 +88,12 @@ const ListVariant = ({
         borderRadius: '12px',
         border: `1px solid ${theme.palette.divider}`,
         '&:hover': {
-          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)'
+          boxShadow: '0 4px 8px rgba(0, 0, 0, 0.08)',
+          backgroundColor: alpha(theme.palette.background.default, 0.5)
         },
-        cursor: 'pointer',
-        position: 'relative'
+        cursor: onBookClick ? 'pointer' : 'default',
+        position: 'relative',
+        transition: 'all 0.2s ease'
       }}
       onClick={handleBookClick}
     >
@@ -120,7 +138,7 @@ const ListVariant = ({
         
         {/* Azioni */}
         <Grid item xs={2} sm={2} sx={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          {showFavoriteButton && (
+          {showFavoriteButton && userBookId && (
             <IconButton 
               size="small"
               onClick={handleFavoriteToggle}
@@ -135,6 +153,7 @@ const ListVariant = ({
             <IconButton 
               size="small"
               onClick={handleMenuOpen}
+              disabled={isLoading}
             >
               <MoreIcon />
             </IconButton>

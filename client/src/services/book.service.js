@@ -539,12 +539,8 @@ async removeFromLibrary(userBookId, userId = '655e9e1b07910b7d21dea350') {
       console.log('Risposta getUserBooks:', response);
       
       if (response.success) {
-        return {
-          books: response.data, // <--- Qui è il cambiamento chiave
-          totalBooks: response.total,
-          totalPages: response.totalPages,
-          currentPage: response.currentPage
-        };
+        // Restituisci l'intera risposta senza modificare la struttura
+        return response;
       } else {
         throw new Error(response.message || 'Errore nel recupero dei libri');
       }
@@ -594,28 +590,55 @@ async updateUserBook(userBookId, updateData, userId = '655e9e1b07910b7d21dea350'
  * @param {boolean} isFavorite - Nuovo stato preferito
  * @returns {Promise} Risultato dell'operazione
  */
-async toggleFavorite(userBookId, isFavorite) {
+ async toggleFavorite(userBookId, isFavorite) {
   try {
-    const response = await apiService.put(`/user-books/${userBookId}/favorite`, { isFavorite });
+    console.log(`Modifica preferito: userBookId=${userBookId}, isFavorite=${isFavorite}`);
     
-    // Se la chiamata API ha successo, salva anche in localStorage per ottimizzare
-    if (response.success) {
-      // Mantieni anche una cache locale
-      const savedFavorites = localStorage.getItem('booksnap_favorites') || '{}';
-      const favoritesObj = JSON.parse(savedFavorites);
+    // Verifica parametri
+    if (!userBookId) {
+      console.error('userBookId non fornito');
+      throw new Error('ID libro non valido');
+    }
+    
+    // Aggiorna la cache locale immediatamente (ottimista)
+    const savedFavorites = localStorage.getItem('booksnap_favorites') || '{}';
+    const favoritesObj = JSON.parse(savedFavorites);
+    
+    if (isFavorite) {
+      favoritesObj[userBookId] = true;
+    } else {
+      delete favoritesObj[userBookId];
+    }
+    
+    localStorage.setItem('booksnap_favorites', JSON.stringify(favoritesObj));
+    
+    // Invia la richiesta al server
+    const response = await apiService.put(`/user-books/${userBookId}/favorite`, { 
+      isFavorite,
+      userId: '655e9e1b07910b7d21dea350'  // ID utente temporaneo
+    });
+    
+    console.log('Risposta toggleFavorite:', response);
+    
+    // Gestisci eventuale rollback
+    if (!response || !response.success) {
+      console.error('Errore nella risposta del server:', response);
       
+      // Rollback della cache locale
       if (isFavorite) {
-        favoritesObj[userBookId] = true;
-      } else {
         delete favoritesObj[userBookId];
+      } else {
+        favoritesObj[userBookId] = true;
       }
       
       localStorage.setItem('booksnap_favorites', JSON.stringify(favoritesObj));
+      
+      throw new Error('Errore nell\'aggiornamento del preferito');
     }
     
     return response;
   } catch (error) {
-    console.error('Errore durante l\'aggiornamento dei preferiti:', error);
+    console.error('Errore in toggleFavorite:', error);
     throw error;
   }
 }
@@ -629,18 +652,60 @@ async getFavorites(userId) {
   try {
     if (!userId) {
       console.warn("getFavorites: userId non fornito");
-      return { success: true, data: [] }; // Ritorna un array vuoto se manca l'userId
+      return { success: true, data: [] };
     }
     
-    // Prima prova a ottenere i preferiti dal server
-    const response = await apiService.get('/user-books/favorites', { 
-      params: { userId }
-    });
+    console.log(`Richiesta preferiti per utente: ${userId}`);
     
-    return response;
+    try {
+      // Verifica che userId sia una stringa valida
+      const response = await apiService.get('/user-books', { 
+        params: { 
+          userId: userId,
+          isFavorite: true  // Chiedere direttamente i libri con isFavorite = true
+        }
+      });
+      
+      console.log('Risposta getFavorites:', response);
+      
+      if (response && response.success) {
+        return response;
+      } else {
+        console.warn('Risposta non valida da getFavorites:', response);
+        return { success: true, data: [] };
+      }
+    } catch (error) {
+      console.error('Errore API getFavorites:', error);
+      
+      // Se il primo tentativo fallisce, proviamo un altro approccio
+      console.log('Tentativo alternativo per ottenere i preferiti...');
+      
+      try {
+        // Recupera tutti i libri dell'utente
+        const allBooksResponse = await apiService.get('/user-books', { 
+          params: { userId: userId }
+        });
+        
+        // Filtra manualmente i preferiti
+        if (allBooksResponse && allBooksResponse.success && allBooksResponse.data) {
+          const favorites = allBooksResponse.data.filter(book => book.isFavorite === true);
+          console.log(`Filtrati ${favorites.length} preferiti da ${allBooksResponse.data.length} libri`);
+          
+          return {
+            success: true,
+            count: favorites.length,
+            data: favorites
+          };
+        }
+      } catch (fallbackError) {
+        console.error('Anche il tentativo alternativo è fallito:', fallbackError);
+      }
+      
+      return { success: true, data: [] };
+    }
   } catch (error) {
-    console.error('Errore durante il recupero dei preferiti:', error);
-    throw error;
+    console.error('Errore nel recupero dei preferiti:', error);
+    return { success: true, data: [] };
   }
 }
 

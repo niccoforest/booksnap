@@ -1,66 +1,32 @@
 // client/src/components/book/BookCard.js
-import React, { useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
-import { 
-  // Manteniamo tutti gli import esistenti
-  Card, 
-  CardMedia, 
-  CardContent, 
-  CardActions,
-  Typography,
-  Box,
-  Button,  
-  IconButton,
-  Tooltip,
-  Paper,
-  Grid,
-  Rating,
-  useTheme,
-  alpha,
-  Chip,
-  CircularProgress,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider
-} from '@mui/material';
-import { 
-  Favorite as FavoriteIcon,
-  FavoriteBorder as FavoriteBorderIcon,
-  MoreVert as MoreIcon,
-  ImageNotSupported as NoImageIcon,
-  MenuBook as ReadingIcon,
-  CheckCircle as CompletedIcon,
-  Bookmark as ToReadIcon,
-  BookmarkRemove as AbandonedIcon,
-  PeopleAlt as LentIcon,
-  CheckCircleOutline as CheckIcon,
-  CheckCircle as CheckCircleIcon,
-  MenuBook as LibraryIcon,
-  Share as ShareIcon,
-  Delete as DeleteIcon,
-  Add as AddIcon
-} from '@mui/icons-material';
 
-// Componenti per ogni variante
+// Importiamo le varianti
 import GridVariant from './variants/GridVariant';
 import ListVariant from './variants/ListVariant';
 import DetailVariant from './variants/DetailVariant';
 import SearchVariant from './variants/SearchVariant';
 import PreviewVariant from './variants/PreviewVariant';
 
+// Importiamo il contesto dei preferiti
+import { useFavorites } from '../../contexts/FavoritesContext';
+
+// Importiamo le utility
+import { getUserBookId, getBookId, isUserBook } from '../../utils/bookStatusUtils';
+
 /**
  * Componente unificato per la visualizzazione dei libri con diverse varianti
+ * Gestisce le differenze tra libri e userBooks (libri nella libreria utente)
  */
 const BookCard = (props) => {
   const {
-    book,
-    userBook,
+    // Dati principali
+    book,         // Dati libro originali
+    userBook,     // Dati relazione utente-libro
+    
+    // Visualizzazione
     variant = 'grid',
-    isFavorite = false,
-    isInLibrary = false,
     loading = false,
     loadingId = null,
     
@@ -74,13 +40,7 @@ const BookCard = (props) => {
     showDeleteButton = false,
     showPersonalization = false,
     
-    // Dati personalizzazione
-    rating = 0,
-    readStatus = 'to-read',
-    notes = '',
-    
     // Callbacks
-    onFavoriteToggle,
     onMenuOpen,
     onBookClick,
     onAddBook,
@@ -91,21 +51,39 @@ const BookCard = (props) => {
     onStatusChange,
     onNotesChange,
     
+    // Override controllo preferiti (opzionale)
+    isFavorite: propIsFavorite,
+    onFavoriteToggle: propOnFavoriteToggle,
+    
     // Proprietà aggiuntive per editing
     editable = false,
     onSave,
-    onDelete
+    onDelete,
+    
+    // Flag per stato libro
+    isInLibrary = false
   } = props;
 
-  // Estrai i dati in base al tipo di oggetto ricevuto
+  // Estrai i dati necessari
   const bookData = userBook?.bookId || book;
-  const userBookId = userBook?._id;
-  const bookId = bookData?.googleBooksId || bookData?._id;
-
-  // Stato per la descrizione espandibile
-  const [expandedDescription, setExpandedDescription] = useState(false);
-  const toggleDescription = () => setExpandedDescription(!expandedDescription);
-
+  const userBookId = getUserBookId(userBook);
+  const bookId = getBookId(bookData);
+  
+  // Usa il contesto dei preferiti
+  const { isFavorite: contextIsFavorite, toggleFavorite: contextToggleFavorite } = useFavorites();
+  
+  // Determina se il libro è un preferito
+  const isFavorite = propIsFavorite !== undefined ? propIsFavorite : contextIsFavorite(userBookId);
+  
+  // Handler per il toggle dei preferiti
+  const handleFavoriteToggle = (id) => {
+    if (propOnFavoriteToggle) {
+      propOnFavoriteToggle(id);
+    } else if (id) {
+      contextToggleFavorite(id);
+    }
+  };
+  
   // Determina se è in caricamento
   const isLoading = loading && (loadingId === bookId || loadingId === userBookId);
 
@@ -118,13 +96,6 @@ const BookCard = (props) => {
     isFavorite,
     isInLibrary,
     isLoading,
-    rating,
-    readStatus,
-    notes,
-    
-    // Stati visualizzazione
-    expandedDescription,
-    toggleDescription,
     
     // Props visualizzazione
     showMenuIcon,
@@ -137,7 +108,7 @@ const BookCard = (props) => {
     showPersonalization,
     
     // Callbacks
-    onFavoriteToggle,
+    onFavoriteToggle: handleFavoriteToggle,
     onMenuOpen,
     onBookClick,
     onAddBook,
@@ -171,11 +142,11 @@ const BookCard = (props) => {
   }
 };
 
-// PropTypes per documentazione e validazione
+// PropTypes per la documentazione e validazione
 BookCard.propTypes = {
   // Dati libro
-  book: PropTypes.object,           // Oggetto libro completo
-  userBook: PropTypes.object,       // Oggetto userBook con relazione utente-libro
+  book: PropTypes.object,
+  userBook: PropTypes.object,
   
   // Opzioni visualizzazione
   variant: PropTypes.oneOf(['grid', 'list', 'detail', 'search', 'preview']),
@@ -193,11 +164,6 @@ BookCard.propTypes = {
   isFavorite: PropTypes.bool,
   loading: PropTypes.bool,
   loadingId: PropTypes.string,
-  
-  // Dati personalizzazione
-  rating: PropTypes.number,
-  readStatus: PropTypes.string,
-  notes: PropTypes.string,
   
   // Callbacks
   onBookClick: PropTypes.func,

@@ -425,39 +425,58 @@ const getRecentlyReadBooks = async (req, res) => {
 /**
  * Aggiorna lo stato preferito di un libro nella libreria dell'utente
  */
+// In userbook.controller.js, verifica toggleFavorite
 exports.toggleFavorite = async (req, res) => {
   try {
     const userBookId = req.params.id;
-    const { isFavorite } = req.body;
+    const { isFavorite, userId } = req.body;
     
-    // Verifica che isFavorite sia definito e sia un boolean
+    console.log(`[Server] toggleFavorite richiesto: userBookId=${userBookId}, isFavorite=${isFavorite}, userId=${userId}`);
+    
+    // Verifica parametri
     if (typeof isFavorite !== 'boolean') {
+      console.error('[Server] isFavorite non è un booleano:', isFavorite);
       return res.status(400).json({ 
         success: false, 
         error: 'Il parametro isFavorite deve essere un valore booleano'
       });
     }
     
-    // Aggiorna lo stato preferito del libro
-    const userBook = await UserBook.findByIdAndUpdate(
-      userBookId, 
-      { isFavorite, updatedAt: Date.now() },
-      { new: true }
-    );
+    // Cerca il libro dell'utente
+    const userBook = await UserBook.findById(userBookId);
     
     if (!userBook) {
+      console.error(`[Server] UserBook ${userBookId} non trovato`);
       return res.status(404).json({ 
         success: false, 
         error: 'Libro non trovato nella libreria dell\'utente'
       });
     }
     
+    console.log(`[Server] UserBook trovato: ${userBook._id}, userId=${userBook.userId}, isFavorite=${userBook.isFavorite}`);
+    
+    // Verifica che l'utente sia il proprietario (opzionale in fase di test)
+    // if (userId && userBook.userId.toString() !== userId.toString()) {
+    //   console.error(`[Server] L'utente ${userId} non è il proprietario del libro ${userBookId}`);
+    //   return res.status(403).json({
+    //     success: false,
+    //     error: 'Non autorizzato a modificare questo libro'
+    //   });
+    // }
+    
+    // Aggiorna lo stato preferito
+    userBook.isFavorite = isFavorite;
+    userBook.updatedAt = Date.now();
+    await userBook.save();
+    
+    console.log(`[Server] UserBook aggiornato: ${userBook._id}, nuovo isFavorite=${userBook.isFavorite}`);
+    
     return res.status(200).json({
       success: true,
       data: userBook
     });
   } catch (error) {
-    console.error('Errore durante l\'aggiornamento dei preferiti:', error);
+    console.error('[Server] Errore in toggleFavorite:', error);
     return res.status(500).json({
       success: false,
       error: 'Si è verificato un errore durante l\'aggiornamento dei preferiti'
@@ -470,8 +489,12 @@ exports.toggleFavorite = async (req, res) => {
  */
 exports.getFavorites = async (req, res) => {
   try {
+    // Problema: l'userId potrebbe essere diverso da quello che ci aspettiamo
     const userId = req.query.userId || (req.user && req.user._id);
     
+    console.log(`[Server] getFavorites richiesto con userId:`, req.query);
+    
+    // Per il momento, permetti un userId anche se è una stringa
     if (!userId) {
       return res.status(400).json({ 
         success: false, 
@@ -479,13 +502,22 @@ exports.getFavorites = async (req, res) => {
       });
     }
     
+    // Cerca nei preferiti
+    let query = {
+      userId: userId
+    };
+    
+    // Aggiungi il filtro isFavorite
+    query.isFavorite = true;
+    
+    console.log(`[Server] Query per i preferiti:`, query);
+    
     // Trova tutti i libri preferiti dell'utente
-    const favorites = await UserBook.find({
-      userId,
-      isFavorite: true
-    })
-    .populate('bookId')
-    .sort({ updatedAt: -1 });
+    const favorites = await UserBook.find(query)
+      .populate('bookId')
+      .sort({ updatedAt: -1 });
+    
+    console.log(`[Server] Trovati ${favorites.length} preferiti`);
     
     return res.status(200).json({
       success: true,
@@ -493,7 +525,7 @@ exports.getFavorites = async (req, res) => {
       data: favorites
     });
   } catch (error) {
-    console.error('Errore durante il recupero dei preferiti:', error);
+    console.error('[Server] Errore durante il recupero dei preferiti:', error);
     return res.status(500).json({
       success: false,
       error: 'Si è verificato un errore durante il recupero dei preferiti'

@@ -1,45 +1,57 @@
-// components/common/BookRating.js
+// client/src/components/common/BookRating.js
 import React from 'react';
-import { Rating, Box, Typography, alpha, useTheme } from '@mui/material';
+import { Box, Rating, Typography } from '@mui/material';
 
+/**
+ * Componente per la visualizzazione e modifica della valutazione di un libro
+ */
 const BookRating = ({ 
   value = 0, 
-  readOnly = false, 
-  showValue = true,
-  size = "medium", 
+  readOnly = true, 
+  size = 'medium', 
   precision = 0.5,
+  showValue = true,
+  showEmptyLabel = false,
   onChange,
-  label,
-  showEmptyLabel = true
+  sx = {}
 }) => {
-  const theme = useTheme();
-  const numericValue = Number(value) || 0;
+  // Handler per il cambio di valutazione
+  const handleRatingChange = (event, newValue) => {
+    if (onChange) {
+      onChange(newValue);
+    }
+  };
   
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-      {label && (
-        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-          {label}
-        </Typography>
-      )}
+    <Box sx={{ display: 'flex', alignItems: 'center', ...sx }}>
       <Rating
-        value={numericValue}
+        name="book-rating"
+        value={value}
         readOnly={readOnly}
+        onChange={handleRatingChange}
         precision={precision}
         size={size}
-        onChange={(event, newValue) => {
-          if (onChange) onChange(newValue);
-        }}
       />
-      {showValue && numericValue > 0 ? (
-        <Typography variant="body2" sx={{ ml: 1, fontWeight: 'medium' }}>
-          {numericValue.toFixed(1)}
+      
+      {showValue && value > 0 && (
+        <Typography 
+          variant={size === 'small' ? 'caption' : 'body2'} 
+          color="text.secondary" 
+          sx={{ ml: 1 }}
+        >
+          {value.toFixed(1)}
         </Typography>
-      ) : (showEmptyLabel && !numericValue && !readOnly) ? (
-        <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary', fontSize: '0.875rem' }}>
+      )}
+      
+      {showEmptyLabel && value === 0 && (
+        <Typography 
+          variant={size === 'small' ? 'caption' : 'body2'} 
+          color="text.secondary" 
+          sx={{ ml: 1 }}
+        >
           Non valutato
         </Typography>
-      ) : null}
+      )}
     </Box>
   );
 };

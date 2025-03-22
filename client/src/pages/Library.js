@@ -39,8 +39,8 @@ import {
 } from '@mui/icons-material';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
-import useFavorites from '../hooks/useFavorites';
-import FilterBar from '../components/common/FilterBar';
+//import useFavorites from '../hooks/useFavorites';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -54,8 +54,9 @@ const Library = () => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { isFavorite, toggleFavorite } = useFavorites(TEMP_USER_ID);
   
+  const { isFavorite, toggleFavorite, loading: favoritesLoading } = useFavorites();
+
   // Stati per la visualizzazione
   const [viewMode, setViewMode] = useState(() => {
     const savedViewMode = localStorage.getItem('booksnap_view_mode');
@@ -131,31 +132,32 @@ const Library = () => {
       // Costruisci i filtri in base al tab corrente
       const filters = { userId: TEMP_USER_ID };
       
-      // Gestisci i diversi casi di filtraggio
-      switch (currentTabValue) {
-        case 'reading':
-          filters.readStatus = 'reading';
-          break;
-        case 'to-read':
-          filters.readStatus = 'to-read';
-          break;
-        case 'completed':
-          filters.readStatus = 'completed';
-          break;
-        case 'abandoned':
-          filters.readStatus = 'abandoned';
-          break;
-        case 'lent':
-          filters.readStatus = 'lent';
-          break;
-        case 'favorites':
-          // Per i preferiti, recupera tutti i libri e poi filtra
-          break;
-        case 'all':
-        default:
-          // Nessun filtro specifico per 'all'
-          delete filters.readStatus;
-          break;
+      // Se è il tab preferiti, recupera tutti i libri senza filtri aggiuntivi
+      // altrimenti applica i filtri normali
+      if (currentTabValue !== 'favorites') {
+        // Gestisci i diversi casi di filtraggio
+        switch (currentTabValue) {
+          case 'reading':
+            filters.readStatus = 'reading';
+            break;
+          case 'to-read':
+            filters.readStatus = 'to-read';
+            break;
+          case 'completed':
+            filters.readStatus = 'completed';
+            break;
+          case 'abandoned':
+            filters.readStatus = 'abandoned';
+            break;
+          case 'lent':
+            filters.readStatus = 'lent';
+            break;
+          case 'all':
+          default:
+            // Nessun filtro specifico per 'all'
+            delete filters.readStatus;
+            break;
+        }
       }
       
       console.log('Filtri API:', filters);
@@ -164,11 +166,13 @@ const Library = () => {
       const response = await bookService.getUserBooks(filters);
       console.log('Risposta API completa:', response);
       
-      let booksToShow = response.books || [];
+      // Inizializza booksToShow qui, prima di qualsiasi filtro
+      let booksToShow = response.data || [];
       
       // Se non ci sono libri, esci prima
       if (booksToShow.length === 0) {
         setBooks([]);
+        setLoading(false);
         return;
       }
       
@@ -179,10 +183,32 @@ const Library = () => {
       
       // Filtra per preferiti se necessario
       if (currentTabValue === 'favorites') {
-        booksToShow = booksToShow.filter(book => isFavorite(book._id));
+        console.log('Filtraggio per preferiti...');
+        
+        // Prima opzione: usa il campo isFavorite direttamente dai dati
+        let favoriteBooks = booksToShow.filter(book => book.isFavorite === true);
+        console.log(`Libri con isFavorite=true: ${favoriteBooks.length}`);
+        
+        // Se non ci sono preferiti dai dati, usa favoriti dal context
+        if (favoriteBooks.length === 0) {
+          console.log('Nessun preferito trovato nei dati, controllo nel context...');
+          favoriteBooks = booksToShow.filter(book => {
+            const isInContext = isFavorite(book._id);
+            if (isInContext) {
+              console.log(`Libro trovato nei preferiti del context: ${book._id}`);
+            }
+            return isInContext;
+          });
+          console.log(`Preferiti trovati nel context: ${favoriteBooks.length}`);
+        }
+        
+        booksToShow = favoriteBooks;
+        
+        // Se ancora non ci sono preferiti, mantieni l'array vuoto
+        if (booksToShow.length === 0) {
+          console.log('Nessun preferito trovato né nei dati né nel context');
+        }
       }
-      
-      console.log(`Libri dopo filtro: ${booksToShow.length}`);
       
       // Ordina i libri
       const sortedBooks = sortBooks(booksToShow);
@@ -629,7 +655,6 @@ const handleFilterChange = (filterKey, value) => {
                 <BookCard 
                   userBook={book}
                   variant="grid"
-                  isFavorite={isFavorite(book._id)}
                   onFavoriteToggle={() => handleToggleFavorite(book._id)}
                   onMenuOpen={(e) => handleBookMenuOpen(e, book._id)}
                   onBookClick={() => handleViewBookDetails(book._id)}
@@ -681,7 +706,6 @@ const handleFilterChange = (filterKey, value) => {
                 key={book._id}
                 userBook={book}
                 variant="list"
-                isFavorite={isFavorite(book._id)}
                 onFavoriteToggle={() => handleToggleFavorite(book._id)}
                 onMenuOpen={(e) => handleBookMenuOpen(e, book._id)}
                 onBookClick={() => handleViewBookDetails(book._id)}
