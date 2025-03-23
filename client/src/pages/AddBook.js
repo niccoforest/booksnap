@@ -296,20 +296,20 @@ const AddBook = () => {
   
   // Funzione per aggiornare i dati utente (rating, status, notes)
   const handleUserBookDataChange = (field, value) => {
-    console.log(`Cambio ${field}:`, value); // Debug
+    // Log per debugging
+    console.log(`Cambio ${field}:`, value, typeof value);
     
-    if (field === 'rating') {
-      // Usa direttamente il valore, Material UI Rating restituisce numeri
-      setUserBookData(prev => ({
+    // Per semplicità, trattiamo tutti i campi allo stesso modo
+    setUserBookData(prev => {
+      const updated = {
         ...prev,
-        rating: value === null ? 0 : Number(value)
-      }));
-    } else {
-      setUserBookData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
+        [field]: field === 'rating' ? (value === null ? 0 : Number(value)) : value
+      };
+      
+      // Log per verificare l'aggiornamento
+      console.log('userBookData aggiornato:', updated);
+      return updated;
+    });
   };
   
   // Funzione per verificare se un libro è nella libreria con debug
@@ -357,16 +357,25 @@ const AddBook = () => {
       }
       
       // Gestisci correttamente il rating
-      const adjustedUserBookData = { ...userBookData };
+      const dataToSave = {
+        readStatus: userBookData.readStatus || 'to-read',
+        notes: userBookData.notes || ''
+      };
+      if (userBookData.rating > 0) {
+        dataToSave.rating = Number(userBookData.rating);
+      }
       
-      if (!adjustedUserBookData.rating || adjustedUserBookData.rating === 0) {
-        delete adjustedUserBookData.rating;
+      console.log('Dati personalizzati libro da salvare:', dataToSave);
+      
+      // Corretto: usa dataToSave invece di adjustedUserBookData
+      if (!dataToSave.rating || dataToSave.rating === 0) {
+        delete dataToSave.rating;
       }
       
       // Chiamata al servizio per salvare il libro e aggiungerlo alla libreria
       const result = await bookService.addBookToLibrary(
         bookToAdd, 
-        adjustedUserBookData,
+        dataToSave,
         null, // libraryId (opzionale) 
         TEMP_USER_ID
       );
@@ -777,58 +786,67 @@ const AddBook = () => {
               
               {/* Dettagli libro selezionato */}
               {selectedBook && (
-                <Box sx={{ mt: 2 }}>
-                  <BookCard
-                    variant="detail"
-                    book={selectedBook}
-                    isInLibrary={isBookInLibrary(selectedBook.googleBooksId)}
-                    loading={loading && loadingBookId === selectedBook.googleBooksId}
-                    showPersonalization={true}
-                    showExpandableDescription={true}
-                    expandedDescription={expandedDescription}
-                    toggleDescription={toggleDescription}
-                    showFavoriteButton={false}
-                    showShareButton={true}
-                    onShareClick={handleShare}
-                    rating={userBookData.rating}
-                    readStatus={userBookData.readStatus}
-                    notes={userBookData.notes}
-                    onRatingChange={(newValue) => handleUserBookDataChange('rating', newValue)}
-                    onStatusChange={(value) => handleUserBookDataChange('readStatus', value)}
-                    onNotesChange={(value) => handleUserBookDataChange('notes', value)}
-                    onAddBook={() => handleAddToLibrary(selectedBook)}
-                    showActionButtons={false} // Disabilitiamo i pulsanti integrati per usare il nostro personalizzato sotto
-                  />
-                  
-                  {/* Pulsante esterno */}
-                  <Box sx={{ mt: 3 }}>
-                    {isBookInLibrary(selectedBook.googleBooksId) ? (
-                      <Button
-                        variant="outlined"
-                        color="success"
-                        fullWidth
-                        startIcon={<LibraryIcon />}
-                        onClick={() => navigate('/library')}
-                        sx={{ borderRadius: '8px' }}
-                      >
-                        Visualizza nella libreria
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
-                        onClick={() => handleAddToLibrary(selectedBook)}
-                        disabled={loading}
-                        sx={{ borderRadius: '8px' }}
-                      >
-                        {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
-                      </Button>
-                    )}
-                  </Box>
-                </Box>
-              )}
+  <Box sx={{ mt: 2 }}>
+    <BookCard
+      variant="detail"
+      book={selectedBook}
+      isInLibrary={isBookInLibrary(selectedBook.googleBooksId)}
+      loading={loading && loadingBookId === selectedBook.googleBooksId}
+      showPersonalization={true}
+      showExpandableDescription={true}
+      expandedDescription={expandedDescription}
+      toggleDescription={toggleDescription}
+      showFavoriteButton={false}
+      showShareButton={true}
+      onShareClick={handleShare}
+      rating={userBookData.rating}
+      readStatus={userBookData.readStatus}
+      notes={userBookData.notes}
+      onRatingChange={(newValue) => {
+        console.log("Rating cambiato a:", newValue);
+        handleUserBookDataChange('rating', newValue);
+      }}
+      onStatusChange={(value) => {
+        console.log("Stato cambiato a:", value);
+        handleUserBookDataChange('readStatus', value);
+      }}
+      onNotesChange={(value) => {
+        console.log("Note cambiate a:", value);
+        handleUserBookDataChange('notes', value);
+      }}
+      onAddBook={() => handleAddToLibrary(selectedBook)}
+      showActionButtons={false} // Disabilitiamo i pulsanti integrati per usare il nostro personalizzato sotto
+    />
+    
+    {/* Pulsante esterno */}
+    <Box sx={{ mt: 3 }}>
+      {isBookInLibrary(selectedBook.googleBooksId) ? (
+        <Button
+          variant="outlined"
+          color="success"
+          fullWidth
+          startIcon={<LibraryIcon />}
+          onClick={() => navigate('/library')}
+          sx={{ borderRadius: '8px' }}
+        >
+          Visualizza nella libreria
+        </Button>
+      ) : (
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <AddIcon />}
+          onClick={() => handleAddToLibrary(selectedBook)}
+          disabled={loading}
+          sx={{ borderRadius: '8px' }}
+        >
+          {loading ? 'Aggiunta in corso...' : 'Aggiungi alla libreria'}
+        </Button>
+      )}
+    </Box>
+  </Box>
+)}
               
               {/* Nessun risultato */}
               {!selectedBook && searchQuery.trim().length >= 3 && searchResults.length === 0 && !loading && !error && (

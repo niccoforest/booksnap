@@ -30,6 +30,15 @@ const BookCard = (props) => {
     loading = false,
     loadingId = null,
     
+    // Stati visualizzazione
+    expandedDescription,
+    toggleDescription,
+    
+    // Dati personalizzazione
+    rating,
+    readStatus,
+    notes,
+    
     // Props per visualizzazione
     showMenuIcon = true,
     showFavoriteButton = true,
@@ -97,6 +106,13 @@ const BookCard = (props) => {
     isInLibrary,
     isLoading,
     
+    // Aggiungiamo le proprietà mancanti
+    expandedDescription,
+    toggleDescription,
+    rating,
+    readStatus,
+    notes,
+    
     // Props visualizzazione
     showMenuIcon,
     showFavoriteButton,
@@ -158,6 +174,15 @@ BookCard.propTypes = {
   showPersonalization: PropTypes.bool,
   showExpandableDescription: PropTypes.bool,
   showFullDescription: PropTypes.bool,
+  
+  // Stati visualizzazione
+  expandedDescription: PropTypes.bool,
+  toggleDescription: PropTypes.func,
+  
+  // Dati personalizzazione
+  rating: PropTypes.number,
+  readStatus: PropTypes.string,
+  notes: PropTypes.string,
   
   // Stati
   isInLibrary: PropTypes.bool,

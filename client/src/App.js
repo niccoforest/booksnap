@@ -12,7 +12,7 @@ import Home from './pages/Home';
 import Library from './pages/Library';
 import Search from './pages/Search';
 import Profile from './pages/Profile';
-import Book from './pages/Book';           // Nuova pagina dettaglio libro
+import Book from './pages/Book';           
 import EditBook from './pages/EditBook';  
 import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';

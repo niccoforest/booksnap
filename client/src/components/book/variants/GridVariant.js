@@ -111,18 +111,33 @@ const GridVariant = (props) => {
       }}
       onClick={handleClick}
     >
-      {/* Copertina del libro */}
       <Box sx={{ position: 'relative', paddingTop: '150%', backgroundColor: alpha(theme.palette.primary.main, 0.1) }}>
-        {/* Copertina */}
-        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
-          <BookCover 
-            coverImage={coverImage} 
-            title={title} 
-            size="medium" 
-            rounded={false}
-            sx={{ width: '100%', height: '100%' }}
-          />
-        </Box>
+      {/* Copertina - Corretto il problema dello stretch */}
+      <Box sx={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        width: '100%', 
+        height: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden'
+      }}>
+        <BookCover 
+          coverImage={coverImage} 
+          title={title} 
+          size="medium" 
+          rounded={false}
+          sx={{ 
+            width: 'auto',         // Invece di 100%
+            height: '100%',        // Manteniamo l'altezza piena
+            maxWidth: '100%',      // Ma limitiamo la larghezza al 100%
+            objectFit: 'contain',  // Manteniamo le proporzioni
+            objectPosition: 'center' // Centrato nel contenitore
+          }}
+        />
+      </Box>
         
         {/* Badge di stato lettura (solo per libri nella libreria) */}
         {userBook && userBook.readStatus && (
@@ -167,49 +182,67 @@ const GridVariant = (props) => {
       </Box>
       
       {/* Contenuto testuale */}
-      <CardContent sx={{ flexGrow: 1, pb: 1 }}>
-        <Typography 
-          variant="subtitle1" 
-          component="h2" 
-          sx={{ 
-            fontWeight: 600, 
-            mb: 0.5,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            lineHeight: 1.2
-          }}
-        >
-          {title}
-        </Typography>
-        
-        <Typography 
-          variant="body2" 
-          color="text.secondary"
-          sx={{ 
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            mb: 0.5
-          }}
-        >
-          {author}
-          {publishedYear && ` (${publishedYear})`}
-        </Typography>
-        
-        {/* Valutazione, se presente */}
-        {userBook && userBook.rating > 0 && (
-          <Rating 
-            value={userBook.rating} 
-            precision={0.5} 
-            size="small" 
-            readOnly 
-            sx={{ mt: 0.5 }} 
-          />
-        )}
-      </CardContent>
+      <CardContent sx={{ 
+  flexGrow: 1, 
+  pb: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  // Rimuoviamo l'altezza fissa e usiamo min-height
+  minHeight: { xs: 120, sm: 120 }  // Altezza minima che crescerà in base al contenuto
+}}>
+  <Typography 
+    variant="subtitle1" 
+    component="h2" 
+    sx={{ 
+      fontWeight: 600, 
+      mb: 0.5,
+      // Incrementiamo ulteriormente il numero di righe per dispositivi molto piccoli
+      display: '-webkit-box',
+      WebkitLineClamp: { xs: 4, sm: 2 },  // 4 righe per mobile piccolo, 2 per altri
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+      lineHeight: 1.2,
+      fontSize: { xs: '0.875rem', sm: '1rem' }, // Font leggermente più piccolo su mobile
+      textOverflow: 'ellipsis'
+    }}
+  >
+    {title}
+  </Typography>
+  
+  <Typography 
+    variant="body2" 
+    color="text.secondary"
+    sx={{ 
+      display: '-webkit-box',
+      WebkitLineClamp: { xs: 1, sm: 2 }, // Ridotto a 1 riga su mobile per fare spazio
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+      mb: 0.5,
+      textOverflow: 'ellipsis',
+      fontSize: { xs: '0.75rem', sm: '0.875rem' }, // Font leggermente più piccolo su mobile
+    }}
+  >
+    {author}
+    {publishedYear && ` (${publishedYear})`}
+  </Typography>
+  
+  {/* Spacer flessibile */}
+  <Box sx={{ flexGrow: 1, minHeight: 4 }} /> {/* Spazio minimo tra autore e rating */}
+  
+  {/* Rating sempre in basso */}
+  <Box sx={{ mt: 'auto' }}>
+    {userBook && userBook.rating > 0 ? (
+      <Rating 
+        value={userBook.rating} 
+        precision={0.5} 
+        size="small" 
+        readOnly
+      />
+    ) : (
+      <Box sx={{ height: 16 }} /> 
+    )}
+  </Box>
+</CardContent>
       
       {/* Azioni in fondo */}
       {showActionButtons && (

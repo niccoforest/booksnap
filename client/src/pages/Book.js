@@ -34,7 +34,7 @@ const Book = () => {
   
   // Stato per la descrizione espandibile
   const [expandedDescription, setExpandedDescription] = useState(false);
-  
+
   // Recupera i preferiti da localStorage
   const [favorite, setFavorite] = useState(() => {
     const savedFavorites = localStorage.getItem('booksnap_favorites');
@@ -43,29 +43,37 @@ const Book = () => {
   });
   
   useEffect(() => {
-    fetchBookDetails();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  
-  const fetchBookDetails = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Recupera i dettagli del libro dall'API
-      const response = await bookService.getUserBookById(id, TEMP_USER_ID);
-      
-      if (response && response.data) {
-        setBook(response.data);
-      } else {
-        setError('Libro non trovato');
+    // Pulisci lo stato prima di caricare
+    setBook(null);
+    setLoading(true);
+    setError('');
+    
+    // Funzione per caricare i dettagli del libro
+    const loadBook = async () => {
+      try {
+        // Aggiungi un timestamp per evitare cache di rete
+        const response = await bookService.getUserBookById(id, TEMP_USER_ID);
+        
+        if (response && response.data) {
+          setBook(response.data);
+          
+          // Aggiorna anche lo stato dei preferiti
+          const savedFavorites = localStorage.getItem('booksnap_favorites');
+          const favorites = savedFavorites ? JSON.parse(savedFavorites) : {};
+          setFavorite(favorites[id] || false);
+        } else {
+          setError('Libro non trovato');
+        }
+      } catch (err) {
+        console.error('Errore nel recupero dei dettagli del libro:', err);
+        setError('Si è verificato un errore nel caricamento dei dettagli del libro.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Errore nel recupero dei dettagli del libro:', err);
-      setError('Si è verificato un errore nel caricamento dei dettagli del libro.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    loadBook();
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   
   const handleToggleFavorite = () => {
     // Aggiorna lo stato locale
@@ -109,93 +117,93 @@ const Book = () => {
   };
   
   const toggleDescription = () => {
-    setExpandedDescription(!expandedDescription);
-  };
-  
-  return (
-    <Box sx={{ p: 2 }}>
-      {/* Header con pulsante indietro */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton 
-          edge="start" 
-          color="inherit" 
-          onClick={() => navigate('/library')} // Torna sempre alla libreria
-          sx={{ mr: 1 }}
+  setExpandedDescription(!expandedDescription);
+  console.log("Toggle descrizione:", !expandedDescription); // Log per debug
+};return (
+  <Box sx={{ p: 2 }}>
+    {/* Header con pulsante indietro */}
+    <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+      <IconButton 
+        edge="start" 
+        color="inherit" 
+        onClick={() => navigate('/library')}
+        sx={{ mr: 1 }}
+      >
+        <ArrowBackIcon />
+      </IconButton>
+      <Typography variant="h5" component="h1">
+        Dettaglio libro
+      </Typography>
+    </Box>
+    
+    {/* Contenuto principale */}
+    {loading ? (
+      <LoadingState message="Caricamento dettagli libro..." />
+    ) : error ? (
+      <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
+        <Typography gutterBottom>{error}</Typography>
+        <Button 
+          variant="outlined" 
+          color="primary" 
+          onClick={() => navigate('/library')}
+          sx={{ mt: 2 }}
         >
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h5" component="h1">
-          Dettaglio libro
-        </Typography>
+          Torna alla libreria
+        </Button>
       </Box>
-      
-      {/* Contenuto principale */}
-      {loading ? (
-        <LoadingState message="Caricamento dettagli libro..." />
-      ) : error ? (
-        <Box sx={{ textAlign: 'center', mt: 4, color: 'error.main' }}>
-          <Typography gutterBottom>{error}</Typography>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={() => navigate('/library')}
-            sx={{ mt: 2 }}
+    ) : book ? (
+      <>
+        <BookCard
+          variant="detail"
+          userBook={book}
+          isFavorite={favorite}
+          isInLibrary={true}
+          onFavoriteToggle={handleToggleFavorite}
+          showFullDescription={false}
+          showPersonalization={false}
+          showMenuIcon={false}
+          showExpandableDescription={true}
+          expandedDescription={expandedDescription}
+          toggleDescription={toggleDescription}
+          showShareButton={true}
+          onShareClick={handleShareClick}
+          showDeleteButton={true}
+          onDeleteClick={handleDeleteClick}
+          // Passiamo esplicitamente i dati dal libro
+          rating={book.rating || 0}   // Valore di default se undefined
+          readStatus={book.readStatus || 'to-read'} // Valore di default se undefined
+          notes={book.notes || ''}    // Valore di default se undefined
+        />
+        
+        {/* Pulsante modifica (a piena larghezza) */}
+        <Box sx={{ mt: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            onClick={handleEdit}
+            sx={{ borderRadius: '8px' }}
           >
-            Torna alla libreria
+            Modifica
           </Button>
         </Box>
-      ) : book ? (
-        <>
-          <BookCard
-            variant="detail"
-            userBook={book}
-            isFavorite={favorite}
-            isInLibrary={true}
-            onFavoriteToggle={handleToggleFavorite}
-            showFullDescription={false} // Cambiato a false per permettere l'espansione
-            showPersonalization={false}
-            showMenuIcon={false}
-            showExpandableDescription={true}
-            expandedDescription={expandedDescription}
-            toggleDescription={toggleDescription}
-            showShareButton={true}
-            onShareClick={handleShareClick}
-            showDeleteButton={true}
-            onDeleteClick={handleDeleteClick}
-            // Passiamo il rating corretto e anche le note
-            rating={book.rating || 0}
-            notes={book.notes || ''}
-          />
-          
-          {/* Pulsante modifica (a piena larghezza) */}
-          <Box sx={{ mt: 3 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={handleEdit}
-              sx={{ borderRadius: '8px' }}
-            >
-              Modifica
-            </Button>
-          </Box>
-        </>
-      ) : null}
-      
-      {/* Dialog di conferma eliminazione */}
-      <ConfirmationDialog
-        open={deleteDialogOpen}
-        title="Conferma eliminazione"
-        message="Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata."
-        confirmLabel="Elimina"
-        cancelLabel="Annulla"
-        loading={deleteLoading}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteDialogOpen(false)}
-        destructive={true}
-      />
-    </Box>
-  );
+      </>
+    ) : null}
+    
+    {/* Dialog di conferma eliminazione */}
+    <ConfirmationDialog
+      open={deleteDialogOpen}
+      title="Conferma eliminazione"
+      message="Sei sicuro di voler rimuovere questo libro dalla tua libreria? Questa azione non può essere annullata."
+      confirmLabel="Elimina"
+      cancelLabel="Annulla"
+      loading={deleteLoading}
+      onConfirm={handleDeleteConfirm}
+      onCancel={() => setDeleteDialogOpen(false)}
+      destructive={true}
+    />
+  </Box>
+);
 };
 
 export default Book;
