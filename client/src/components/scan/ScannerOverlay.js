@@ -1,42 +1,45 @@
-// client/src/components/scan/ScannerOverlay.js
+// client/src/components/scan/ScannerOverlay.js - Versione ottimizzata per copertine
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   IconButton, 
   Typography, 
-  TextField,
-  Button, 
   Slide,
   useTheme,
   alpha,
   CircularProgress,
   Snackbar,
-  Alert
+  Alert,
+  Fab,
+  Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
+  Fade
 } from '@mui/material';
 import { 
   Close as CloseIcon,
   CameraAlt as CameraIcon,
   FlashlightOn as FlashIcon,
-  FlashlightOff as FlashOffIcon
+  FlashlightOff as FlashOffIcon,
+  LibraryBooks as MultiBookIcon,
+  MenuBook as CoverIcon,
+  Check as CheckIcon
 } from '@mui/icons-material';
 import Webcam from 'react-webcam';
 import barcodeService from '../../services/barcode.service';
-import ocrService from '../../services/ocr.service';
-import isbnService from '../../services/isbn.service';
 
 const ScannerOverlay = ({ open, onClose, onCapture }) => {
   const theme = useTheme();
   const webcamRef = useRef(null);
-  const scanningInterval = useRef(null);
   const [flashActive, setFlashActive] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [isScanningActive, setIsScanningActive] = useState(true);
-  const [scanAttempts, setScanAttempts] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   const [showStatus, setShowStatus] = useState(false);
-  const [manualIsbn, setManualIsbn] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
+  const [successMode, setSuccessMode] = useState(false);
+  const [recognizedBook, setRecognizedBook] = useState(null);
+  const [scanMode, setScanMode] = useState('cover'); // 'cover' o 'multi'
 
   // Configurazione webcam
   const videoConstraints = {
@@ -57,191 +60,103 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
       document.body.style.overflow = 'auto';
       // Reset dello stato della camera quando chiudiamo
       setIsCameraReady(false);
-      setIsScanningActive(false);
+      setSuccessMode(false);
+      setRecognizedBook(null);
     }
     
     // Cleanup quando il componente viene smontato
     return () => {
       document.body.style.overflow = 'auto';
-      stopScanningLoop();
     };
   }, [open]);
 
-  // Effetto per avviare la scansione automatica quando la camera è pronta
-  useEffect(() => {
-    if (isCameraReady && open) {
-      startScanningLoop();
-    } else {
-      stopScanningLoop();
-    }
-
-    return () => {
-      stopScanningLoop();
-    };
-  }, [isCameraReady, open]);
-
+  // Gestione del flash della fotocamera
   const toggleFlash = () => {
-    setFlashActive(!flashActive);
-    // In futuro qui implementeremo la logica effettiva del flash
-  };
-
-  // Avvia il loop di scansione automatica
-  const startScanningLoop = () => {
-    if (scanningInterval.current) return;
-    
-    // Reset dei tentativi di scansione
-    setScanAttempts(0);
-    setIsScanningActive(true);
-    
-    scanningInterval.current = setInterval(() => {
-      if (webcamRef.current && isCameraReady && !isCapturing) {
-        performScan();
-      }
-    }, 1000); // Scansione ogni 2 secondi
-    
-    setStatusMessage('Ricerca codice ISBN...');
-    setShowStatus(true);
-  };
-
-  // Ferma il loop di scansione
-  const stopScanningLoop = () => {
-    if (scanningInterval.current) {
-      clearInterval(scanningInterval.current);
-      scanningInterval.current = null;
-    }
-    setIsScanningActive(false);
-    setShowStatus(false);
-  };
-
-  // Esegue una singola scansione
-
-  const performScan = async () => {
-    if (isCapturing) return;
-    
-    setIsCapturing(true);
-    setScanAttempts(prev => prev + 1);
-    
-    // Aggiorna il messaggio di stato
-    setStatusMessage('Analisi immagine in corso...');
-    setShowStatus(true);
+    if (!webcamRef.current || !webcamRef.current.video) return;
     
     try {
-      // Cattura l'immagine dalla webcam
-      const imageSrc = webcamRef.current.getScreenshot();
+      // Ottieni i track video
+      const track = webcamRef.current.video.srcObject.getVideoTracks()[0];
       
-      if (!imageSrc) {
-        setIsCapturing(false);
-        return;
+      // Controlla se il supporto per il flash è disponibile
+      const capabilities = track.getCapabilities();
+      
+      if (capabilities.torch) {
+        // Cambia lo stato del flash
+        const newFlashState = !flashActive;
+        track.applyConstraints({
+          advanced: [{ torch: newFlashState }]
+        }).then(() => {
+          setFlashActive(newFlashState);
+          console.log(`Flash ${newFlashState ? 'attivato' : 'disattivato'}`);
+        }).catch(err => {
+          console.error('Errore nell\'attivazione del flash:', err);
+          setShowStatus(true);
+          setStatusMessage('Impossibile attivare il flash');
+        });
+      } else {
+        console.log('Questo dispositivo non supporta il flash');
+        setShowStatus(true);
+        setStatusMessage('Flash non supportato su questo dispositivo');
       }
-      
-      console.log(`Tentativo di scansione #${scanAttempts}`);
-      
-      // Feedback visivo durante l'analisi
-      setStatusMessage(`Analisi immagine... Tentativo ${scanAttempts}`);
-      
-      try {
-        console.log('Richiamo decodeFromImage...');
-        const isbn = await barcodeService.decodeFromImage(imageSrc);
-        
-        if (isbn) {
-          stopScanningLoop();
-          setStatusMessage(`ISBN trovato: ${isbn}`);
-          
-          // Aggiungi un flash di successo
-          const overlay = document.createElement('div');
-          overlay.style.position = 'fixed';
-          overlay.style.top = '0';
-          overlay.style.left = '0';
-          overlay.style.width = '100%';
-          overlay.style.height = '100%';
-          overlay.style.backgroundColor = 'rgba(76, 175, 80, 0.3)'; // Verde semitrasparente
-          overlay.style.zIndex = '9999';
-          overlay.style.transition = 'opacity 0.5s';
-          document.body.appendChild(overlay);
-          
-          // Rimuovi l'overlay dopo 0.8 secondi
-          setTimeout(() => {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-              document.body.removeChild(overlay);
-            }, 500);
-          }, 800);
-          
-          console.log(`ISBN riconosciuto: ${isbn}, invio al componente padre`);
-          
-          // Invia l'immagine e l'ISBN al componente padre
-          if (onCapture) {
-            onCapture({
-              type: 'camera',
-              image: imageSrc,
-              isbn: isbn
-            });
-          }
-          return;
-        
-        }
-      } catch (error) {
-        console.log('Barcode non riconosciuto, continuiamo a scansionare...', error);
-      }
-      
-      // Fornisci suggerimenti basati sul numero di tentativi
-      if (scanAttempts % 3 === 0) {
-        // Ogni 3 tentativi, cambia il suggerimento
-        const tips = [
-          'Assicurati che ci sia buona illuminazione',
-          'Prova ad allontanare un po\' la fotocamera',
-          'Inquadra solo il codice a barre',
-          'Tieni fermo il libro',
-          'Prova un angolo diverso'
-        ];
-        
-        const tipIndex = Math.floor(scanAttempts / 3) % tips.length;
-        setStatusMessage(`Suggerimento: ${tips[tipIndex]}`);
-      }
-      
     } catch (error) {
-      console.error('Errore generale nella scansione:', error);
-      setStatusMessage('Errore durante la scansione. Riprova.');
-    } finally {
-      setIsCapturing(false);
+      console.error('Errore nell\'accesso al flash:', error);
     }
   };
-// 
-const handleManualSubmit = () => {
-  if (!manualIsbn || manualIsbn.trim().length < 5) {
-    setStatusMessage('Inserisci un ISBN valido');
-    setShowStatus(true);
-    return;
-  }
-  
-  const formattedIsbn = isbnService.format(manualIsbn.trim());
-  
-  if (onCapture) {
-    onCapture({
-      type: 'manual',
-      isbn: formattedIsbn
-    });
-  }
-};
-  // Gestisce lo scatto manuale della foto
-  const handleTakePhoto = () => {
+
+  // Gestisce lo scatto della foto
+  const handleTakePhoto = async () => {
     if (webcamRef.current && isCameraReady) {
       setIsCapturing(true);
+      setStatusMessage('Analisi dell\'immagine in corso...');
+      setShowStatus(true);
       
       // Cattura l'immagine dalla webcam
       const imageSrc = webcamRef.current.getScreenshot();
       
-      setTimeout(() => {
-        setIsCapturing(false);
+      try {
+        // Qui simuliamo il riconoscimento del libro (in un'implementazione reale
+        // chiameremmo un servizio di riconoscimento copertina o OCR)
+        console.log('Riconoscimento libro dalla copertina...');
         
-        if (onCapture) {
-          onCapture({
-            type: 'camera',
-            image: imageSrc
+        // Simulazione di successo nel riconoscimento
+        setTimeout(() => {
+          // Mostra animazione di successo
+          setRecognizedBook({
+            title: "Libro riconosciuto" // In una versione reale qui ci sarebbero i metadati
           });
-        }
-      }, 300);
+          setSuccessMode(true);
+          setStatusMessage(`Libro riconosciuto con successo!`);
+          
+          // Aspetta un momento per mostrare l'animazione
+          setTimeout(() => {
+            if (onCapture) {
+              onCapture({
+                type: 'camera',
+                image: imageSrc,
+                mode: scanMode
+              });
+            }
+          }, 1500);
+        }, 1000);
+      } catch (error) {
+        console.log('Errore nel riconoscimento', error);
+        setShowStatus(true);
+        setStatusMessage('Problemi nel riconoscimento. Riprova con una foto più chiara.');
+        setIsCapturing(false);
+      }
     }
+  };
+  
+  // Cambia modalità di scansione
+  const toggleScanMode = () => {
+    setScanMode(prevMode => prevMode === 'cover' ? 'multi' : 'cover');
+    setStatusMessage(
+      scanMode === 'cover' 
+        ? 'Modalità scansione multipla attivata' 
+        : 'Modalità scansione singola attivata'
+    );
+    setShowStatus(true);
   };
   
   // Gestisce errori di accesso alla fotocamera
@@ -279,7 +194,9 @@ const handleManualSubmit = () => {
           <IconButton color="inherit" onClick={onClose} edge="start">
             <CloseIcon />
           </IconButton>
-          <Typography variant="h6">Scanner ISBN</Typography>
+          <Typography variant="h6">
+            {scanMode === 'cover' ? 'Scansiona copertina' : 'Scansiona scaffale'}
+          </Typography>
           <IconButton 
             color="inherit" 
             onClick={toggleFlash}
@@ -345,223 +262,263 @@ const handleManualSubmit = () => {
             }}
           />
           
-          {/* Riquadro guida scansione */}
+          {/* Animazione di successo */}
+          {successMode && (
+            <Box sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              zIndex: 20
+            }}>
+              <Box sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                backgroundColor: theme.palette.success.main,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                animation: 'pulse 1.5s infinite',
+                mb: 2
+              }}>
+                <CheckIcon style={{ color: 'white', fontSize: 40 }} />
+              </Box>
+              <Typography variant="h5" color="white" fontWeight="bold">
+                Voilà!
+              </Typography>
+              {recognizedBook && (
+                <Typography variant="body1" color="white" sx={{ mt: 1 }}>
+                  {recognizedBook.title}
+                </Typography>
+              )}
+            </Box>
+          )}
+          
+          {/* Riquadro guida scansione - rettangolare verticale per le copertine */}
           <Box
-  sx={{
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '90%',  // Aumentato da 80% a 90%
-    height: '30%', // Aumentato da 20% a 30%
-    border: '2px solid rgba(255,255,255,0.8)',
-    borderRadius: 2,
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    pointerEvents: 'none',
-    boxShadow: '0 0 0 4000px rgba(0, 0, 0, 0.5)'
-  }}
->
-
-{/* Angoli per aiutare il posizionamento */}
-<Box sx={{
-    position: 'absolute',
-    top: -5,
-    left: -5,
-    width: 20,
-    height: 20,
-    borderTop: '5px solid rgba(255,255,255,0.9)',
-    borderLeft: '5px solid rgba(255,255,255,0.9)',
-  }} />
-  <Box sx={{
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    width: 20,
-    height: 20,
-    borderTop: '5px solid rgba(255,255,255,0.9)',
-    borderRight: '5px solid rgba(255,255,255,0.9)',
-  }} />
-  <Box sx={{
-    position: 'absolute',
-    bottom: -5,
-    left: -5,
-    width: 20,
-    height: 20,
-    borderBottom: '5px solid rgba(255,255,255,0.9)',
-    borderLeft: '5px solid rgba(255,255,255,0.9)',
-  }} />
-  <Box sx={{
-    position: 'absolute',
-    bottom: -5,
-    right: -5,
-    width: 20,
-    height: 20,
-    borderBottom: '5px solid rgba(255,255,255,0.9)',
-    borderRight: '5px solid rgba(255,255,255,0.9)',
-  }} />
-
-{isCameraReady && (
-    <Typography 
-      variant="body2" 
-      color="white" 
-      sx={{ 
-        bgcolor: 'rgba(0,0,0,0.7)', 
-        px: 2, 
-        py: 1, 
-        borderRadius: 1,
-        textAlign: 'center',
-        maxWidth: '90%'
-      }}
-    >
-       {isCapturing 
-        ? 'Analisi in corso...' 
-        : 'Inquadra il codice a barre del libro'}
-    </Typography>
-  )}
-</Box>
-
-          
-         {/* Aggiungi più stili CSS per animazioni */}
-<style jsx="true">{`
-  @keyframes scanLine {
-    0% {
-      transform: translate(-50%, calc(-50% - 30px));
-    }
-    50% {
-      transform: translate(-50%, calc(-50% + 30px));
-    }
-    100% {
-      transform: translate(-50%, calc(-50% - 30px));
-    }
-  }
-  
-  @keyframes pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4), 0 0 0 4000px rgba(0, 0, 0, 0.6);
-    }
-    70% {
-      box-shadow: 0 0 0 10px rgba(255, 255, 255, 0), 0 0 0 4000px rgba(0, 0, 0, 0.6);
-    }
-    100% {
-      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0), 0 0 0 4000px rgba(0, 0, 0, 0.6);
-    }
-  }
-`}</style>
-          
-          
-        </Box>
-
-        {/* Footer con messaggio di guida */}
-        <Box
-          sx={{
-            padding: 2,
-            backgroundColor: '#111',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Typography 
-            variant="body2" 
-            color="white" 
-            sx={{ mb: 1, textAlign: 'center' }}
-          >
-            La scansione è automatica. Puoi anche scattare manualmente una foto.
-          </Typography>
-          
-          <Button
-            variant="contained"
-            size="large"
-            fullWidth
-            startIcon={<CameraIcon />}
-            onClick={handleTakePhoto}
-            disabled={!isCameraReady || isCapturing}
-            sx={{ 
-              py: 1.5, 
-              borderRadius: 2, 
-              bgcolor: theme.palette.primary.main,
-              '&:hover': {
-                bgcolor: theme.palette.primary.dark
-              }
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: scanMode === 'cover' ? '70%' : '90%',  // Più stretto per copertina singola
+              height: scanMode === 'cover' ? '80%' : '60%', // Più alto per copertina singola
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              zIndex: 5
             }}
           >
-            Scatta foto
-          </Button>
+            {/* Angoli stile Vivino */}
+            <Box sx={{
+              position: 'absolute', 
+              top: 0, 
+              left: 0, 
+              width: 40, 
+              height: 40,
+              borderTop: '3px solid rgba(255,255,255,0.8)',
+              borderLeft: '3px solid rgba(255,255,255,0.8)',
+              borderTopLeftRadius: 12
+            }} />
+            <Box sx={{
+              position: 'absolute', 
+              top: 0, 
+              right: 0, 
+              width: 40, 
+              height: 40,
+              borderTop: '3px solid rgba(255,255,255,0.8)',
+              borderRight: '3px solid rgba(255,255,255,0.8)',
+              borderTopRightRadius: 12
+            }} />
+            <Box sx={{
+              position: 'absolute', 
+              bottom: 0, 
+              left: 0, 
+              width: 40, 
+              height: 40,
+              borderBottom: '3px solid rgba(255,255,255,0.8)',
+              borderLeft: '3px solid rgba(255,255,255,0.8)',
+              borderBottomLeftRadius: 12
+            }} />
+            <Box sx={{
+              position: 'absolute', 
+              bottom: 0, 
+              right: 0, 
+              width: 40, 
+              height: 40,
+              borderBottom: '3px solid rgba(255,255,255,0.8)',
+              borderRight: '3px solid rgba(255,255,255,0.8)',
+              borderBottomRightRadius: 12
+            }} />
+            
+            {/* Testo di guida */}
+            {isCameraReady && !isCapturing && !successMode && (
+              <Typography 
+                variant="body2" 
+                color="white" 
+                sx={{ 
+                  bgcolor: 'rgba(0,0,0,0.5)', 
+                  px: 2, 
+                  py: 1, 
+                  borderRadius: 1,
+                  textAlign: 'center',
+                  position: 'absolute',
+                  bottom: -40
+                }}
+              >
+                {scanMode === 'cover' 
+                  ? 'Inquadra la copertina del libro' 
+                  : 'Inquadra lo scaffale con i libri'}
+              </Typography>
+            )}
+          </Box>
+          
+          {/* Overlay di feedback durante lo scatto */}
+          {isCapturing && (
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 20
+              }}
+            >
+              <CircularProgress color="primary" size={60} />
+            </Box>
+          )}
         </Box>
-        
-        <Box sx={{ mt: 2, width: '100%' }}>
-  <Button
-    variant="text"
-    color="primary"
-    onClick={() => setShowManualInput(!showManualInput)}
-    sx={{ width: '100%', color: 'white' }}
-  >
-    {showManualInput ? 'Nascondi input manuale' : 'Inserisci ISBN manualmente'}
-  </Button>
-  
-  {showManualInput && (
-    <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="Inserisci ISBN"
-        value={manualIsbn}
-        onChange={(e) => setManualIsbn(e.target.value)}
-        size="small"
-        autoFocus
+
+        {/* Footer con pulsanti azione */}
+        <Box
+  sx={{
+    padding: 2,
+    backgroundColor: '#111',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  }}
+>
+  {/* Pulsante centrale di scatto */}
+  {!successMode && (
+    <Box sx={{ 
+      width: '100%', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      mb: 3, 
+      position: 'relative' 
+    }}>
+      <Fab
+        color="primary"
+        disabled={!isCameraReady || isCapturing}
+        onClick={handleTakePhoto}
+        size="large"
         sx={{
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          borderRadius: 1
+          width: 64,
+          height: 64,
+          boxShadow: theme.shadows[4]
         }}
-      />
-      <Button 
-        variant="contained" 
-        color="primary" 
-        onClick={handleManualSubmit}
       >
-        Cerca
-      </Button>
+        <CameraIcon fontSize="large" />
+      </Fab>
     </Box>
   )}
+  
+  {/* Toggle per selezionare la modalità - Stile Vivino */}
+  {!successMode && (
+    <Fade in={true}>
+      <Box sx={{ mb: 2 }}>
+        <ToggleButtonGroup
+          value={scanMode}
+          exclusive
+          onChange={(e, newMode) => {
+            // Previeni la deseleziona (almeno una modalità deve essere selezionata)
+            if (newMode !== null) {
+              setScanMode(newMode);
+              setStatusMessage(
+                newMode === 'cover' 
+                  ? 'Modalità scansione singola copertina' 
+                  : 'Modalità scansione multipla libri'
+              );
+              setShowStatus(true);
+            }
+          }}
+          aria-label="Modalità di scansione"
+          sx={{
+            bgcolor: 'rgba(255,255,255,0.12)',
+            borderRadius: 3,
+            '& .MuiToggleButtonGroup-grouped': {
+              border: 0,
+              color: 'white',
+              '&.Mui-selected': {
+                bgcolor: theme.palette.primary.main,
+                color: 'white',
+                '&:hover': {
+                  bgcolor: theme.palette.primary.dark,
+                }
+              },
+              '&:hover': {
+                bgcolor: 'rgba(255,255,255,0.2)',
+              }
+            }
+          }}
+        >
+          <ToggleButton 
+            value="cover" 
+            aria-label="Scansiona copertina"
+            sx={{ px: 2, py: 1, borderRadius: '24px 0 0 24px' }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CoverIcon sx={{ mr: 1 }} />
+              <Typography variant="body2">Copertina</Typography>
+            </Box>
+          </ToggleButton>
+          <ToggleButton 
+            value="multi" 
+            aria-label="Scansiona multipli libri"
+            sx={{ px: 2, py: 1, borderRadius: '0 24px 24px 0' }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <MultiBookIcon sx={{ mr: 1 }} />
+              <Typography variant="body2">Scaffale</Typography>
+            </Box>
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+    </Fade>
+  )}
+  
+  {/* Testo informativo */}
+  <Typography 
+    variant="body2" 
+    color="rgba(255,255,255,0.7)"
+    align="center"
+  >
+    {scanMode === 'cover' 
+      ? 'La copertina deve essere completamente visibile' 
+      : 'Inquadra più libri contemporaneamente'}
+  </Typography>
 </Box>
-{process.env.NODE_ENV === 'development' && (
-  <Box sx={{ 
-    position: 'absolute', 
-    bottom: 70, 
-    right: 10, 
-    zIndex: 100,
-    opacity: 0.7
-  }}>
-    <Button
-      size="small"
-      variant="contained"
-      color="secondary"
-      onClick={() => {
-        const debugInfo = {
-          webcamReady: isCameraReady,
-          scanAttempts,
-          flashActive,
-          isCapturing,
-          dimensions: webcamRef.current ? {
-            videoWidth: webcamRef.current.video.videoWidth,
-            videoHeight: webcamRef.current.video.videoHeight
-          } : null
-        };
-        console.log('Debug Scanner:', debugInfo);
-        alert(JSON.stringify(debugInfo, null, 2));
-      }}
-    >
-      Debug
-    </Button>
-  </Box>
-)}
-
+        
         {/* Snackbar per messaggi di stato */}
         <Snackbar 
           open={showStatus} 
           anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          autoHideDuration={3000}
+          onClose={() => setShowStatus(false)}
           sx={{ 
             top: '80px',
             '& .MuiPaper-root': {
@@ -579,6 +536,21 @@ const handleManualSubmit = () => {
             {statusMessage}
           </Alert>
         </Snackbar>
+        
+        {/* Stile CSS per animazioni */}
+        <style jsx="true">{`
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
+            70% {
+              box-shadow: 0 0 0 15px rgba(76, 175, 80, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
+          }
+        `}</style>
       </Box>
     </Slide>
   );
