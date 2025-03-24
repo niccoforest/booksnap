@@ -12,7 +12,6 @@ import {
   Snackbar,
   Alert,
   Fab,
-  Tooltip,
   ToggleButtonGroup,
   ToggleButton,
   Fade
@@ -28,6 +27,9 @@ import {
 } from '@mui/icons-material';
 import Webcam from 'react-webcam';
 import barcodeService from '../../services/barcode.service';
+import { processBookScan } from '../../services/bookScannerIntegration';
+
+
 
 const ScannerOverlay = ({ open, onClose, onCapture }) => {
   const theme = useTheme();
@@ -115,41 +117,26 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
       const imageSrc = webcamRef.current.getScreenshot();
       
       try {
-        // Qui simuliamo il riconoscimento del libro (in un'implementazione reale
-        // chiameremmo un servizio di riconoscimento copertina o OCR)
-        console.log('Riconoscimento libro dalla copertina...');
-        
-        // Simulazione di successo nel riconoscimento
-        setTimeout(() => {
-          // Mostra animazione di successo
-          setRecognizedBook({
-            title: "Libro riconosciuto" // In una versione reale qui ci sarebbero i metadati
-          });
-          setSuccessMode(true);
-          setStatusMessage(`Libro riconosciuto con successo!`);
-          
-          // Aspetta un momento per mostrare l'animazione
-          setTimeout(() => {
-            if (onCapture) {
-              onCapture({
-                type: 'camera',
-                image: imageSrc,
-                mode: scanMode
-              });
-            }
-          }, 1500);
-        }, 1000);
+        // Utilizza il servizio di integrazione per processare l'immagine
+        await processBookScan(
+          imageSrc,
+          scanMode,
+          setStatusMessage,
+          setIsCapturing,
+          setSuccessMode,
+          setRecognizedBook,
+          onCapture
+        );
       } catch (error) {
-        console.log('Errore nel riconoscimento', error);
-        setShowStatus(true);
-        setStatusMessage('Problemi nel riconoscimento. Riprova con una foto più chiara.');
+        console.error('Errore durante la scansione:', error);
+        setStatusMessage('Si è verificato un errore durante la scansione. Riprova.');
         setIsCapturing(false);
       }
     }
   };
   
   // Cambia modalità di scansione
-  const toggleScanMode = () => {
+  const _toggleScanMode  = () => {
     setScanMode(prevMode => prevMode === 'cover' ? 'multi' : 'cover');
     setStatusMessage(
       scanMode === 'cover' 

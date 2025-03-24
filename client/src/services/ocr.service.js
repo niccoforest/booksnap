@@ -44,9 +44,8 @@ class OcrService {
       
       // Creazione di un nuovo worker con opzioni più sicure
       this.worker = await createWorker({
-        langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-        logger: m => console.log(m),
-        errorHandler: err => console.error('Worker error:', err)
+        langPath: 'http://tessdata.projectnaptha.com/4.0.0_best/eng.traineddata.gz',
+       
       });
       
       // Caricamento del modello linguistico

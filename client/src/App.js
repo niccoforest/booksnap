@@ -20,6 +20,8 @@ import ApiTest from './components/ApiTest';
 import ISBNDebug from './pages/ISBNDebug';
 import ScanTest from './pages/ScanTest';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+
+import RecognitionTest from './pages/RecognitionTest';
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 
@@ -43,6 +45,7 @@ function App() {
             <Route path="/test-api" element={<ApiTest />} />
             <Route path="/isbn-debug" element={<ISBNDebug />} />
             <Route path="/scan-test" element={<ScanTest />} />
+            <Route path="/recognition-test" element={<RecognitionTest />} />
           </Route>
         </Routes>
       </Router>

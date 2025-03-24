@@ -13,7 +13,8 @@ import {
   Divider,
   Snackbar
 } from '@mui/material';
-import { Add as AddIcon, Camera as CameraIcon } from '@mui/icons-material';
+import { Add as AddIcon, Camera as CameraIcon, ArrowBack as ArrowBackIcon, 
+  ArrowForward as ArrowForwardIcon  } from '@mui/icons-material';
 
 import ScannerOverlay from '../components/scan/ScannerOverlay';
 import barcodeService from '../services/barcode.service';
@@ -56,35 +57,27 @@ const Scan = () => {
     setDebugInfo(null);
     
     try {
-      let isbn;
-      
-      // Gestione dei diversi tipi di cattura
-      if (captureData.type === 'manual') {
-        // Inserimento manuale dell'ISBN
-        isbn = captureData.isbn;
-        setDebugInfo(`ISBN inserito manualmente: ${isbn}`);
-      } else if (captureData.type === 'camera') {
-        // Se l'ISBN è già stato riconosciuto dopo la foto
-        if (captureData.isbn) {
-          isbn = captureData.isbn;
-          setDebugInfo(`ISBN riconosciuto dalla foto: ${isbn}`);
-        } else {
-          setError('Nessun ISBN trovato. Usa l\'input manuale.');
-          setIsProcessing(false);
-          return;
-        }
+      // Determina il tipo di risultato
+      if (captureData.mode === 'multi' && Array.isArray(captureData.result) && captureData.result.length > 0) {
+        // Scansione multipla (scaffale)
+        setScannerOpen(false);
+        
+        // Salva i risultati multipli
+        setMultiScanResults(captureData.result);
+        
+        // Mostra un libro alla volta, iniziando dal primo
+        setScanResult(captureData.result[0]);
+        setCurrentBookIndex(0);
+        
+        setDebugInfo(`Riconosciuti ${captureData.result.length} libri dallo scaffale`);
+      } 
+      else if (captureData.mode === 'cover' && captureData.result) {
+        // Scansione singola (copertina)
+        setScannerOpen(false);
+        setScanResult(captureData.result);
+        setMultiScanResults(null);
+        setDebugInfo('Libro riconosciuto dalla copertina');
       }
-      
-      if (!isbn) {
-        throw new Error('Nessun codice ISBN fornito');
-      }
-      
-      // Debug per vedere l'ISBN che viene cercato
-      console.log('Ricerca libro con ISBN:', isbn);
-      setDebugInfo(`Ricerca libro con ISBN: ${isbn}`);
-      
-      // Cerca il libro con l'ISBN
-      const bookData = await bookService.findBookByIsbn(isbn);
       
       // Chiude lo scanner e imposta il risultato
       setScannerOpen(false);
@@ -97,7 +90,23 @@ const Scan = () => {
       setIsProcessing(false);
     }
   };
-  
+  const [multiScanResults, setMultiScanResults] = useState(null);
+const [currentBookIndex, setCurrentBookIndex] = useState(0);
+
+const showNextBook = () => {
+  if (multiScanResults && currentBookIndex < multiScanResults.length - 1) {
+    setCurrentBookIndex(prev => prev + 1);
+    setScanResult(multiScanResults[currentBookIndex + 1]);
+  }
+};
+
+const showPreviousBook = () => {
+  if (multiScanResults && currentBookIndex > 0) {
+    setCurrentBookIndex(prev => prev - 1);
+    setScanResult(multiScanResults[currentBookIndex - 1]);
+  }
+};
+
   // Aggiunge il libro alla libreria personale
   const handleAddToLibrary = async () => {
     if (!scanResult) return;
@@ -222,6 +231,31 @@ const Scan = () => {
               )}
             </CardContent>
           </Card>
+
+          {multiScanResults && multiScanResults.length > 1 && (
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+    <Button 
+      variant="outlined" 
+      disabled={currentBookIndex === 0}
+      onClick={showPreviousBook}
+      startIcon={<ArrowBackIcon />}
+    >
+      Precedente
+    </Button>
+    <Typography variant="body2" sx={{ alignSelf: 'center' }}>
+      {currentBookIndex + 1} di {multiScanResults.length}
+    </Typography>
+    <Button 
+      variant="outlined" 
+      disabled={currentBookIndex === multiScanResults.length - 1}
+      onClick={showNextBook}
+      endIcon={<ArrowForwardIcon />}
+    >
+      Successivo
+    </Button>
+  </Box>
+)}
+
           
           {scanResult.description && (
             <Box sx={{ mb: 2 }}>
