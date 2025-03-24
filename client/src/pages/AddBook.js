@@ -490,18 +490,57 @@ const AddBook = () => {
   };
   
   // Funzione per gestire la cattura dall'overlay scanner
-  const handleCapture = (captureData) => {
+  const handleCapture = async (captureData) => {
     console.log('Dati catturati:', captureData);
     setScannerOpen(false);
-    // Per ora, simuliamo un fallimento nella scansione per testare il flusso
-    setTimeout(() => {
+    
+    // Verifica se abbiamo un ISBN nei dati catturati
+    if (captureData && captureData.isbn) {
+      try {
+        // Mostriamo stato di caricamento
+        setLoading(true);
+        
+        console.log(`Ricerca libro con ISBN: ${captureData.isbn}`);
+        const bookData = await bookService.findBookByIsbn(captureData.isbn);
+        
+        if (bookData) {
+          // Libro trovato, passiamo alla modalità manuale e mostriamo il libro
+          setIsManualMode(true);
+          setSelectedBook(bookData);
+          setSnackbar({
+            open: true,
+            message: 'Libro riconosciuto con successo!',
+            severity: 'success'
+          });
+        } else {
+          // Libro non trovato
+          setIsManualMode(true);
+          setSnackbar({
+            open: true,
+            message: 'Nessun libro trovato con questo ISBN.',
+            severity: 'warning'
+          });
+        }
+      } catch (error) {
+        console.error('Errore durante la ricerca del libro:', error);
+        setIsManualMode(true);
+        setSnackbar({
+          open: true,
+          message: 'Errore durante la ricerca del libro.',
+          severity: 'error'
+        });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Nessun ISBN nei dati catturati
+      setIsManualMode(true);
       setSnackbar({
         open: true,
-        message: 'Non siamo riusciti a identificare il libro. Prova ad inserirlo manualmente.',
+        message: 'Non siamo riusciti a identificare un ISBN. Prova ad inserirlo manualmente.',
         severity: 'warning'
       });
-      setIsManualMode(true);
-    }, 1000);
+    }
   };
 
   // Funzione per pulire il campo di ricerca

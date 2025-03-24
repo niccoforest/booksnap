@@ -1,98 +1,43 @@
-// client/src/pages/Scan.js - VERSIONE RIVISTA
-import React, { useState, useEffect } from 'react';
+// client/src/pages/Scan.js - Versione ultra semplificata
+import React, { useState } from 'react';
 import { 
   Box, 
   Typography, 
-  CircularProgress, 
-  Button, 
-  Alert, 
-  Card, 
+  TextField,
+  Button,
+  Paper,
+  CircularProgress,
+  Card,
   CardContent,
   CardMedia,
-  CardActions,
   Divider,
-  Snackbar
+  Alert
 } from '@mui/material';
-import { Add as AddIcon, Camera as CameraIcon } from '@mui/icons-material';
-
-import ScannerOverlay from '../components/scan/ScannerOverlay';
-import barcodeService from '../services/barcode.service';
+import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 import bookService from '../services/book.service';
 
 const Scan = () => {
-  const [scannerOpen, setScannerOpen] = useState(false);
+  const [isbn, setIsbn] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
-  const [debugInfo, setDebugInfo] = useState(null);
   
-  // Apre lo scanner automaticamente all'apertura della pagina
-  useEffect(() => {
-    // Inizializza il servizio barcode in anticipo
-    barcodeService.init().then(initialized => {
-      if (initialized) {
-        console.log('Scanner barcode inizializzato con successo');
-      } else {
-        console.warn('Inizializzazione scanner barcode fallita');
-        setDebugInfo('Inizializzazione scanner fallita. Prova a ricaricare la pagina.');
-      }
-    });
+  // Funzione semplificata per la ricerca manuale
+  const handleSearchManual = async () => {
+    if (!isbn) return;
     
-    // Apre lo scanner
-    setScannerOpen(true);
-  }, []);
-  
-  // Gestisce la pulizia delle risorse quando il componente viene smontato
-  useEffect(() => {
-    return () => {
-      barcodeService.destroy();
-    };
-  }, []);
-  
-  // Gestisce la cattura dall'overlay scanner
-  const handleCapture = async (captureData) => {
     setIsProcessing(true);
     setError(null);
-    setDebugInfo(null);
+    setScanResult(null);
     
     try {
-      let isbn;
-      
-      // Gestione dei diversi tipi di cattura
-      if (captureData.type === 'manual') {
-        // Inserimento manuale dell'ISBN
-        isbn = captureData.isbn;
-        setDebugInfo(`ISBN inserito manualmente: ${isbn}`);
-      } else if (captureData.type === 'camera') {
-        // Se l'ISBN è già stato riconosciuto dopo la foto
-        if (captureData.isbn) {
-          isbn = captureData.isbn;
-          setDebugInfo(`ISBN riconosciuto dalla foto: ${isbn}`);
-        } else {
-          setError('Nessun ISBN trovato. Usa l\'input manuale.');
-          setIsProcessing(false);
-          return;
-        }
-      }
-      
-      if (!isbn) {
-        throw new Error('Nessun codice ISBN fornito');
-      }
-      
-      // Debug per vedere l'ISBN che viene cercato
-      console.log('Ricerca libro con ISBN:', isbn);
-      setDebugInfo(`Ricerca libro con ISBN: ${isbn}`);
-      
-      // Cerca il libro con l'ISBN
+      console.log(`Ricerca libro con ISBN: ${isbn}`);
       const bookData = await bookService.findBookByIsbn(isbn);
-      
-      // Chiude lo scanner e imposta il risultato
-      setScannerOpen(false);
+      console.log('Libro trovato:', bookData);
       setScanResult(bookData);
-      setDebugInfo(null);
     } catch (err) {
-      console.error('Errore durante la scansione:', err);
-      setError(err.message || 'Si è verificato un errore durante la scansione');
+      console.error('Errore durante la ricerca:', err);
+      setError(err.message || 'Si è verificato un errore durante la ricerca');
     } finally {
       setIsProcessing(false);
     }
@@ -105,13 +50,10 @@ const Scan = () => {
     try {
       setIsProcessing(true);
       await bookService.addBookToLibrary(scanResult);
-      
-      // Usa Snackbar invece di alert per un'esperienza migliore
-      setDebugInfo('Libro aggiunto alla libreria con successo!');
-      
-      // Reset dello stato per una nuova scansione
+      alert('Libro aggiunto alla libreria con successo!');
+      // Reset dello stato per una nuova ricerca
       setScanResult(null);
-      setScannerOpen(true);
+      setIsbn('');
     } catch (err) {
       console.error('Errore nell\'aggiunta del libro:', err);
       setError('Impossibile aggiungere il libro alla libreria. Riprova più tardi.');
@@ -120,16 +62,19 @@ const Scan = () => {
     }
   };
   
-  // Apre lo scanner per una nuova scansione
-  const handleNewScan = () => {
+  // Resetta lo stato
+  const handleNewSearch = () => {
     setScanResult(null);
     setError(null);
-    setDebugInfo(null);
-    setScannerOpen(true);
+    setIsbn('');
   };
 
   return (
-    <Box sx={{ p: 2, height: 'calc(100vh - 112px)', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ p: 2, maxWidth: 600, mx: 'auto' }}>
+      <Typography variant="h5" gutterBottom>
+        Test Ricerca ISBN
+      </Typography>
+      
       {/* Area errori */}
       {error && (
         <Alert 
@@ -141,17 +86,37 @@ const Scan = () => {
         </Alert>
       )}
       
-      {/* Debug Info - solo in ambiente di sviluppo */}
-      {process.env.NODE_ENV === 'development' && debugInfo && (
-        <Alert 
-          severity="info" 
-          sx={{ mb: 2 }}
-          onClose={() => setDebugInfo(null)}
-        >
-          <Typography variant="body2" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
-            {debugInfo}
+      {/* Area manuale input */}
+      {!scanResult && !isProcessing && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Inserisci ISBN manualmente:
           </Typography>
-        </Alert>
+          
+          <Box sx={{ display: 'flex', mb: 2 }}>
+            <TextField
+              fullWidth
+              label="ISBN"
+              value={isbn}
+              onChange={(e) => setIsbn(e.target.value)}
+              placeholder="Inserisci ISBN"
+              variant="outlined"
+            />
+            <Button
+              variant="contained"
+              onClick={handleSearchManual}
+              disabled={isProcessing || !isbn}
+              sx={{ ml: 1 }}
+              startIcon={<SearchIcon />}
+            >
+              Cerca
+            </Button>
+          </Box>
+          
+          <Typography variant="body2" color="text.secondary">
+            Prova con l'ISBN: 9788830137998
+          </Typography>
+        </Paper>
       )}
       
       {/* Area risultati scansione */}
@@ -161,7 +126,7 @@ const Scan = () => {
           flexDirection: 'column', 
           alignItems: 'center', 
           justifyContent: 'center',
-          flex: 1 
+          my: 3
         }}>
           <CircularProgress size={60} />
           <Typography variant="h6" sx={{ mt: 2 }}>
@@ -169,7 +134,7 @@ const Scan = () => {
           </Typography>
         </Box>
       ) : scanResult ? (
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ my: 2 }}>
           <Typography variant="h5" gutterBottom>
             Libro riconosciuto
           </Typography>
@@ -237,14 +202,14 @@ const Scan = () => {
             </Box>
           )}
           
-          <Box sx={{ mt: 'auto', display: 'flex', gap: 2 }}>
+          <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
             <Button 
               variant="outlined" 
-              startIcon={<CameraIcon />}
-              onClick={handleNewScan}
+              startIcon={<SearchIcon />}
+              onClick={handleNewSearch}
               fullWidth
             >
-              Nuova scansione
+              Nuova ricerca
             </Button>
             <Button 
               variant="contained" 
@@ -257,43 +222,7 @@ const Scan = () => {
             </Button>
           </Box>
         </Box>
-      ) : (
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          flex: 1 
-        }}>
-          <Typography variant="body1" color="text.secondary" gutterBottom align="center">
-            Scansiona un libro per aggiungerlo alla tua libreria
-          </Typography>
-          <Button 
-            variant="contained" 
-            color="primary"
-            startIcon={<CameraIcon />}
-            onClick={() => setScannerOpen(true)}
-            sx={{ mt: 2 }}
-          >
-            Apri scanner
-          </Button>
-        </Box>
-      )}
-      
-      {/* Scanner overlay */}
-      <ScannerOverlay 
-        open={scannerOpen}
-        onClose={() => setScannerOpen(false)}
-        onCapture={handleCapture}
-      />
-      
-      {/* Feedback Snackbar */}
-      <Snackbar
-        open={Boolean(debugInfo) && !error && !isProcessing && !scanResult}
-        autoHideDuration={6000}
-        onClose={() => setDebugInfo(null)}
-        message={debugInfo}
-      />
+      ) : null}
     </Box>
   );
 };

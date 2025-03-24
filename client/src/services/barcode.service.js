@@ -4,94 +4,155 @@ import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from '@zxing/
 class BarcodeService {
   constructor() {
     const hints = new Map();
-    const formats = [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.ISBN];
+    const formats = [
+      BarcodeFormat.EAN_13, 
+      BarcodeFormat.EAN_8, 
+      BarcodeFormat.ISBN, 
+      BarcodeFormat.CODE_39,
+      BarcodeFormat.CODE_128
+    ];
     
     hints.set(DecodeHintType.POSSIBLE_FORMATS, formats);
     hints.set(DecodeHintType.TRY_HARDER, true);
     
-    this.reader = new BrowserMultiFormatReader(hints);
+    this.reader = new BrowserMultiFormatReader(hints, 1000);
     this.isInitialized = false;
   }
 
-  /**
-   * Inizializza il lettore di codici a barre
-   */
   async init() {
-    if (!this.isInitialized) {
-      try {
-        await this.reader.listVideoInputDevices();
-        this.isInitialized = true;
-      } catch (error) {
-        console.error('Errore inizializzazione scanner barcode:', error);
-      }
+    if (this.isInitialized) {
+      return true;
     }
-    return this.isInitialized;
-  }
-
-  /**
-   * Decodifica un codice a barre da un'immagine
-   * @param {string} imageData - Data URL dell'immagine
-   * @returns {Promise<string>} - Testo del codice a barre decodificato
-   */
-  async decodeFromImage(imageData) {
+    
     try {
-      await this.init();
-      
-      // Carica l'immagine
-      const img = new Image();
-      img.src = imageData;
-      
-      // Attendi che l'immagine sia caricata
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        // Imposta un timeout in caso l'immagine non si carichi
-        setTimeout(reject, 3000);
-      });
-      
-      // Decodifica il barcode
-      const result = await this.reader.decodeFromImage(img);
-      
-      if (result) {
-        const text = result.getText();
-        // Verifica se è un ISBN valido (10 o 13 cifre)
-        if (this.isValidIsbn(text)) {
-          return text;
-        }
-      }
-      
-      throw new Error('Nessun ISBN valido trovato');
+      console.log('Inizializzazione scanner barcode...');
+      await this.reader.listVideoInputDevices();
+      this.isInitialized = true;
+      console.log('Scanner barcode inizializzato con successo');
+      return true;
     } catch (error) {
-      console.error('Errore decodifica barcode:', error);
-      throw new Error('Impossibile riconoscere il codice ISBN. Riprova o inserisci manualmente.');
+      console.error('Errore inizializzazione scanner barcode:', error);
+      return false;
     }
   }
 
-  /**
-   * Verifica che una stringa rappresenti un ISBN valido
-   * @param {string} code - Codice da verificare
-   * @returns {boolean} - true se è un ISBN valido
-   */
-  isValidIsbn(code) {
-    if (!code) return false;
-    
-    // Rimuove spazi, trattini e altri caratteri non numerici
-    const cleanCode = code.replace(/[^\dX]/gi, '');
-    
-    // ISBN-10 (10 cifre) o ISBN-13 (13 cifre)
-    return /^(\d{10}|\d{13})$/.test(cleanCode);
-  }
+  // client/src/services/barcode.service.js
 
-  /**
-   * Rilascia le risorse del lettore
-   */
-  destroy() {
-    if (this.reader) {
-      this.reader.reset();
+async decodeFromImage(imageData) {
+  try {
+    await this.init();
+    
+    // Crea l'immagine una sola volta
+    const img = await this._createImageFromData(imageData);
+    console.log('Immagine pre-processata, provo decodifica...');
+    
+    // Array di approcci da provare in sequenza
+    const approaches = [
+      // Approccio 1: Try standard decoding
+      async () => {
+        return await this.reader.decodeFromImageElement(img);
+      },
+      
+      // Approccio 2: Try with canvas and larger size
+      async () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Ingrandisci leggermente l'immagine
+        canvas.width = img.width * 1.2;
+        canvas.height = img.height * 1.2;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        return await this.reader.decodeFromImageElement(canvas);
+      },
+      
+      // Approccio 3: Try with higher contrast
+      async () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        // Aumenta il contrasto
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          // Aumenta il contrasto
+          data[i] = data[i] < 128 ? 0 : 255;     // R
+          data[i+1] = data[i+1] < 128 ? 0 : 255; // G
+          data[i+2] = data[i+2] < 128 ? 0 : 255; // B
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        return await this.reader.decodeFromImageElement(canvas);
+      }
+    ];
+    
+    // Prova ogni approccio in sequenza
+    for (let i = 0; i < approaches.length; i++) {
+      try {
+        const result = await approaches[i]();
+        if (result) {
+          const text = result.getText();
+          console.log(`Barcode riconosciuto (approccio ${i+1}):`, text);
+          
+          if (this.isValidIsbn(text)) {
+            return this._cleanIsbn(text);
+          }
+        }
+      } catch (err) {
+        console.log(`Approccio ${i+1} fallito`);
+      }
     }
+    
+    throw new Error('Nessun ISBN valido trovato');
+  } catch (error) {
+    console.error('Errore decodeFromImage:', error);
+    throw new Error('Impossibile riconoscere il codice ISBN');
   }
 }
 
+  // Helper per creare un'immagine da un URL dati
+  async _createImageFromData(imageData) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Errore caricamento immagine'));
+      img.src = imageData;
+    });
+  }
+  
+  // Verifica se una stringa è un ISBN valido
+  isValidIsbn(code) {
+    if (!code) return false;
+    
+    // Pulisci il codice
+    const cleanCode = this._cleanIsbn(code);
+    
+    // Verifica lunghezza
+    return /^(\d{10}|\d{13})$/.test(cleanCode);
+  }
+  
+  // Pulisci la stringa ISBN
+  _cleanIsbn(code) {
+    return code.replace(/[^0-9X]/gi, '');
+  }
+
+  destroy() {
+    if (this.reader) {
+      try {
+        this.reader.reset();
+      } catch (e) {
+        console.error('Errore nel reset del reader:', e);
+      }
+      this.reader = null;
+      this.isInitialized = false;
+    }
+  }
+}
 
 const barcodeServiceInstance = new BarcodeService();
 export default barcodeServiceInstance;

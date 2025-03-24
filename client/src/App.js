@@ -17,6 +17,8 @@ import EditBook from './pages/EditBook';
 import AddBook from './pages/AddBook';
 import NotFound from './pages/NotFound';
 import ApiTest from './components/ApiTest';
+import ISBNDebug from './pages/ISBNDebug';
+import ScanTest from './pages/ScanTest';
 import { FavoritesProvider } from './contexts/FavoritesContext';
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -39,6 +41,8 @@ function App() {
             <Route path="scan" element={<Navigate to="/" replace />} />
             <Route path="*" element={<NotFound />} />
             <Route path="/test-api" element={<ApiTest />} />
+            <Route path="/isbn-debug" element={<ISBNDebug />} />
+            <Route path="/scan-test" element={<ScanTest />} />
           </Route>
         </Routes>
       </Router>
