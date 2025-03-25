@@ -25,6 +25,7 @@ import {
   MenuBook as CoverIcon,
   Check as CheckIcon
 } from '@mui/icons-material';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import Webcam from 'react-webcam';
 import barcodeService from '../../services/barcode.service';
 import { processBookScan } from '../../services/bookScannerIntegration';
@@ -41,7 +42,8 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
   const [showStatus, setShowStatus] = useState(false);
   const [successMode, setSuccessMode] = useState(false);
   const [recognizedBook, setRecognizedBook] = useState(null);
-  const [scanMode, setScanMode] = useState('cover'); // 'cover' o 'multi'
+  const [scanMode, setScanMode] = useState('auto'); // 'cover' o 'multi'
+  
 
   // Configurazione webcam
   const videoConstraints = {
@@ -428,62 +430,87 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
   {!successMode && (
     <Fade in={true}>
       <Box sx={{ mb: 2 }}>
-        <ToggleButtonGroup
-          value={scanMode}
-          exclusive
-          onChange={(e, newMode) => {
-            // Previeni la deseleziona (almeno una modalità deve essere selezionata)
-            if (newMode !== null) {
-              setScanMode(newMode);
-              setStatusMessage(
-                newMode === 'cover' 
-                  ? 'Modalità scansione singola copertina' 
-                  : 'Modalità scansione multipla libri'
-              );
-              setShowStatus(true);
-            }
-          }}
-          aria-label="Modalità di scansione"
-          sx={{
-            bgcolor: 'rgba(255,255,255,0.12)',
-            borderRadius: 3,
-            '& .MuiToggleButtonGroup-grouped': {
-              border: 0,
-              color: 'white',
-              '&.Mui-selected': {
-                bgcolor: theme.palette.primary.main,
-                color: 'white',
-                '&:hover': {
-                  bgcolor: theme.palette.primary.dark,
-                }
-              },
-              '&:hover': {
-                bgcolor: 'rgba(255,255,255,0.2)',
-              }
-            }
-          }}
-        >
-          <ToggleButton 
-            value="cover" 
-            aria-label="Scansiona copertina"
-            sx={{ px: 2, py: 1, borderRadius: '24px 0 0 24px' }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CoverIcon sx={{ mr: 1 }} />
-              <Typography variant="body2">Copertina</Typography>
-            </Box>
-          </ToggleButton>
-          <ToggleButton 
-            value="multi" 
-            aria-label="Scansiona multipli libri"
-            sx={{ px: 2, py: 1, borderRadius: '0 24px 24px 0' }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <MultiBookIcon sx={{ mr: 1 }} />
-              <Typography variant="body2">Scaffale</Typography>
-            </Box>
-          </ToggleButton>
-        </ToggleButtonGroup>
+      <ToggleButtonGroup
+  value={scanMode}
+  exclusive
+  onChange={(e, newMode) => {
+    // Previeni la deseleziona (almeno una modalità deve essere selezionata)
+    if (newMode !== null) {
+      setScanMode(newMode);
+      setStatusMessage(
+        newMode === 'auto' 
+          ? 'Modalità auto: riconoscimento intelligente' 
+          : newMode === 'cover' 
+            ? 'Modalità scansione singola copertina' 
+            : 'Modalità scansione multipla libri'
+      );
+      setShowStatus(true);
+    }
+  }}
+  aria-label="Modalità di scansione"
+  sx={{
+    bgcolor: 'rgba(255,255,255,0.12)',
+    borderRadius: 3,
+    '& .MuiToggleButtonGroup-grouped': {
+      border: 0,
+      color: 'white',
+      '&.Mui-selected': {
+        bgcolor: theme.palette.primary.main,
+        color: 'white',
+        '&:hover': {
+          bgcolor: theme.palette.primary.dark,
+        }
+      },
+      '&:hover': {
+        bgcolor: 'rgba(255,255,255,0.2)',
+      }
+    }
+  }}
+>
+  <ToggleButton 
+    value="auto" 
+    aria-label="Riconoscimento intelligente"
+    sx={{ px: 2, py: 1, borderRadius: '24px 0 0 24px' }}
+  >
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <AutoFixHighIcon sx={{ mr: 1 }} />
+      <Typography variant="body2">Auto</Typography>
+    </Box>
+  </ToggleButton>
+  <ToggleButton 
+    value="cover" 
+    aria-label="Scansiona copertina"
+    sx={{ px: 2, py: 1 }}
+  >
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <CoverIcon sx={{ mr: 1 }} />
+      <Typography variant="body2">Copertina</Typography>
+    </Box>
+  </ToggleButton>
+  <ToggleButton 
+    value="multi" 
+    aria-label="Scansiona multipli libri"
+    sx={{ px: 2, py: 1, borderRadius: '0 24px 24px 0' }}
+  >
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <MultiBookIcon sx={{ mr: 1 }} />
+      <Typography variant="body2">Scaffale</Typography>
+    </Box>
+  </ToggleButton>
+</ToggleButtonGroup>
+
+// Aggiorna anche il testo informativo
+<Typography 
+  variant="body2" 
+  color="rgba(255,255,255,0.7)"
+  align="center"
+>
+  {scanMode === 'auto' 
+    ? 'Inquadra un libro o uno scaffale' 
+    : scanMode === 'cover' 
+      ? 'La copertina deve essere completamente visibile' 
+      : 'Inquadra più libri contemporaneamente'}
+</Typography>
       </Box>
     </Fade>
   )}

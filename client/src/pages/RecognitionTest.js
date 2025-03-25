@@ -1,3 +1,4 @@
+// client/src/pages/RecognitionTest.js (versione aggiornata)
 import React, { useState, useRef } from 'react';
 import { 
   Box, 
@@ -15,33 +16,73 @@ import {
   Alert,
   MenuItem,
   Select,
-  InputLabel
+  InputLabel,
+  LinearProgress,
+  Card,
+  Chip
 } from '@mui/material';
 import { 
   Camera as CameraIcon,
   FileUpload as UploadIcon,
-  Visibility as ViewIcon
+  Visibility as ViewIcon,
+  AutoFixHigh as AutoIcon,
+  Cached as CachedIcon
 } from '@mui/icons-material';
 import BookCard from '../components/book/BookCard';
-import coverRecognitionService from '../services/coverRecognitionService';
-import multiBookRecognitionService from '../services/multiBookRecognitionService';
-import isbnService from '../services/isbn.service';
+import smartScannerService from '../services/smartScanner.service';
 import simpleOcrService from '../services/simpleOcr.service';
+import recognitionCacheService from '../services/recognitionCache.service';
+import decisionEngineService from '../services/decisionEngine.service';
+import coverRecognitionService from '../services/coverRecognitionService';
 
 const RecognitionTest = () => {
-  const [mode, setMode] = useState('cover'); // 'cover', 'multi', 'spine'
+  const [mode, setMode] = useState('auto'); // 'auto', 'cover', 'spine', 'multi'
   const [language, setLanguage] = useState('ita'); // 'eng', 'ita', ecc.
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState(null);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [debug, setDebug] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+const [recognizedBook, setRecognizedBook] = useState(null);
   
   const fileInputRef = useRef(null);
   
   // Ottieni lingue disponibili
   const availableLanguages = simpleOcrService.getAvailableLanguages();
   
+// Aggiungi stato per le alternative
+const [alternativeResults, setAlternativeResults] = useState([]);
+
+// Nel gestore di riconoscimento
+const handleScanResult = (result) => {
+  if (result.success) {
+    setRecognizedBook(result.book);
+    
+    // Se ci sono alternative, salvale
+    if (result.book.alternatives) {
+      setAlternativeResults(result.book.alternatives);
+    }
+    
+    // Se è a bassa confidenza, mostra un messaggio
+    if (result.book.lowConfidence) {
+      setStatusMessage("Libro riconosciuto con bassa confidenza. Controlla se è corretto.");
+    }
+  } else {
+    // Se c'è un servizio da interrogare per le alternative
+    // Potremmo avere un endpoint specifico
+    if (coverRecognitionService.alternativeResults?.length > 0) {
+      setAlternativeResults(coverRecognitionService.alternativeResults.slice(0, 3));
+      setStatusMessage("Non siamo sicuri al 100%. Potrebbe essere uno di questi:");
+    } else {
+      setError("Nessun libro riconosciuto");
+    }
+  }
+};
+
+
   // Carica un'immagine da file
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -50,6 +91,8 @@ const RecognitionTest = () => {
     setError(null);
     setDebug(null);
     setResults(null);
+    setProgress(0);
+    setProgressMessage('');
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -77,87 +120,81 @@ const RecognitionTest = () => {
     setError(null);
     setDebug(null);
     setResults(null);
+    setProgress(10);
+    setProgressMessage('Avvio riconoscimento...');
     
     try {
-        let recognitionResults;
-        
-        if (mode === 'cover') {
-          // Riconoscimento copertina singola
-          recognitionResults = await coverRecognitionService.recognizeBookCover(image, language);
-          
-          if (recognitionResults) {
-            setResults(Array.isArray(recognitionResults) ? recognitionResults : [recognitionResults]);
-            
-            // Output di debug più dettagliato
-            const debugInfo = {
-                recognitionMethod: mode === 'cover' ? coverRecognitionService.recognitionStatus : 'multi',
-                extractedText: mode === 'cover' ? coverRecognitionService.lastExtractedText : 'N/A',
-                detectedLanguage: language,
-                searchQueries: [], // Sarà popolato dal servizio
-                timestamp: new Date().toLocaleTimeString(),
-                rawImageData: image.substring(0, 30) + '...' // Solo per debug
-              };
-              setDebug(debugInfo);
-          } else {
-            setError('Nessun libro riconosciuto');
+      // Utilizza il nuovo SmartScanner con progress callback
+      const scanResult = await smartScannerService.scan(
+        image, 
+        mode, 
+        language,
+        (progressUpdate) => {
+          if (progressUpdate.progress) {
+            setProgress(progressUpdate.progress);
           }
-        } 
-      else if (mode === 'multi') {
-        // Riconoscimento scaffale
-        recognitionResults = await multiBookRecognitionService.recognizeMultipleBooks(image);
-        
-        if (recognitionResults && recognitionResults.length > 0) {
-          setResults(recognitionResults);
-          setDebug({
-            segmentedImages: multiBookRecognitionService.getLastSegmentedImages(),
-            recognizedCount: recognitionResults.length
-          });
-        } else {
-          setError('Nessun libro riconosciuto nella scansione multipla');
+          if (progressUpdate.message) {
+            setProgressMessage(progressUpdate.message);
+          }
         }
-      }
-      else if (mode === 'spine') {
-        // Test estrazione ISBN dal testo
-        const ocrResult = await coverRecognitionService._recognizeViaOCR(image);
-        
-        if (ocrResult) {
-          setResults([ocrResult]);
-          
-          // Estrai eventuali ISBN dal testo OCR
-          const extractedText = coverRecognitionService.lastExtractedText;
-          const isbn = isbnService.extractFromText(extractedText);
-          
-          setDebug({
-            extractedText,
-            isbn: isbn || 'Nessun ISBN trovato nel testo'
-          });
-        } else {
-          setError('Nessun testo riconosciuto');
+      );
+      
+      // Debug dell'output del sistema di decisione
+      const decisionInfo = decisionEngineService.getLastAnalysis();
+      
+      // Mostra debug
+      setDebug({
+        scanResult,
+        decisionInfo,
+        cacheStats: recognitionCacheService.getStats(),
+        scannerStats: smartScannerService.getStats()
+      });
+      
+      // Gestisci i risultati con la nuova funzione
+      handleScanResult(scanResult);
+      
+      // Processa risultati (mantieni questo codice per compatibilità)
+      if (scanResult.success) {
+        if (scanResult.books && scanResult.books.length > 0) {
+          // Multilibro
+          setResults(scanResult.books);
+        } else if (scanResult.book) {
+          // Libro singolo
+          setResults([scanResult.book]);
         }
+      } else {
+        setError(scanResult.message || 'Nessun libro riconosciuto');
       }
     } catch (err) {
-        console.error('Errore durante il riconoscimento:', err);
-        const errorMessage = err.message || 'Errore sconosciuto durante il riconoscimento';
-        const errorStack = err.stack || '';
-        
-        setError(errorMessage);
-        setDebug({
-          error: errorMessage,
-          stack: errorStack,
-          timestamp: new Date().toLocaleTimeString()});
+      console.error('Errore durante il riconoscimento:', err);
+      setError(err.message || 'Errore durante il riconoscimento');
+      setDebug({
+        error: err.message,
+        stack: err.stack
+      });
     } finally {
       setLoading(false);
+      setProgress(100);
     }
+  };
+  
+  // Svuota la cache di riconoscimento
+  const clearCache = () => {
+    recognitionCacheService.clearCache();
+    setDebug({
+      ...debug,
+      cacheStats: recognitionCacheService.getStats()
+    });
   };
   
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="h5" gutterBottom>
-        Test Riconoscimento Libri
+        Test Smart Scanner
       </Typography>
       
       <Paper sx={{ p: 2, mb: 3 }}>
-      <FormControl component="fieldset" sx={{ mb: 2 }}>
+        <FormControl component="fieldset" sx={{ mb: 2 }}>
           <FormLabel component="legend">Modalità di riconoscimento</FormLabel>
           <RadioGroup
             row
@@ -165,14 +202,14 @@ const RecognitionTest = () => {
             value={mode}
             onChange={(e) => setMode(e.target.value)}
           >
+            <FormControlLabel value="auto" control={<Radio />} label="Auto (Smart)" />
             <FormControlLabel value="cover" control={<Radio />} label="Copertina" />
+            <FormControlLabel value="spine" control={<Radio />} label="Costa" />
             <FormControlLabel value="multi" control={<Radio />} label="Scaffale" />
-            <FormControlLabel value="spine" control={<Radio />} label="Costa/OCR" />
           </RadioGroup>
         </FormControl>
         
-{/* Selezione lingua OCR */}
-<FormControl sx={{ minWidth: 200, mb: 2 }}>
+        <FormControl sx={{ minWidth: 200, mb: 2 }}>
           <InputLabel id="language-select-label">Lingua OCR</InputLabel>
           <Select
             labelId="language-select-label"
@@ -204,6 +241,13 @@ const RecognitionTest = () => {
           >
             Usa fotocamera
           </Button>
+          <Button
+            variant="outlined"
+            startIcon={<CachedIcon />}
+            onClick={clearCache}
+          >
+            Svuota cache
+          </Button>
           <input
             type="file"
             accept="image/*"
@@ -212,7 +256,36 @@ const RecognitionTest = () => {
             ref={fileInputRef}
           />
         </Box>
-        
+        {statusMessage && !error && (
+  <Alert severity="info" sx={{ mt: 2 }}>
+    {statusMessage}
+  </Alert>
+)}
+        {alternativeResults.length > 0 && (
+  <Box>
+    <Typography variant="subtitle1">
+      Altri possibili libri:
+    </Typography>
+    {alternativeResults.map((book, index) => (
+      <Card key={index} sx={{ mb: 1, cursor: 'pointer' }} onClick={() => setRecognizedBook(book)}>
+        <Box sx={{ display: 'flex', p: 1 }}>
+          {book.coverImage && (
+            <img 
+              src={book.coverImage} 
+              alt={book.title} 
+              style={{ width: 50, height: 75, objectFit: 'contain' }}
+            />
+          )}
+          <Box sx={{ ml: 2 }}>
+            <Typography variant="subtitle2">{book.title}</Typography>
+            <Typography variant="body2" color="text.secondary">{book.author}</Typography>
+          </Box>
+        </Box>
+      </Card>
+    ))}
+  </Box>
+)}
+
         {image && (
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Typography variant="subtitle1" gutterBottom>
@@ -235,16 +308,26 @@ const RecognitionTest = () => {
               onClick={runRecognition}
               disabled={loading}
               sx={{ mt: 2 }}
+              startIcon={loading ? undefined : <AutoIcon />}
             >
               {loading ? (
                 <>
                   <CircularProgress size={24} sx={{ mr: 1, color: 'white' }} />
-                  Riconoscimento in corso...
+                  {progressMessage}
                 </>
               ) : (
-                'Esegui riconoscimento'
+                'Esegui riconoscimento intelligente'
               )}
             </Button>
+            
+            {loading && (
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <LinearProgress variant="determinate" value={progress} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {progressMessage}
+                </Typography>
+              </Box>
+            )}
           </Box>
         )}
         
@@ -257,9 +340,18 @@ const RecognitionTest = () => {
       
       {results && results.length > 0 && (
         <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Risultati del riconoscimento:
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              Risultati del riconoscimento:
+            </Typography>
+            {debug?.scanResult?.method && (
+              <Chip 
+                label={`Metodo: ${debug.scanResult.method}`} 
+                color={debug.scanResult.method === 'cache' ? 'success' : 'primary'}
+                size="small"
+              />
+            )}
+          </Box>
           
           <Grid container spacing={2}>
             {results.map((book, index) => (
@@ -281,6 +373,107 @@ const RecognitionTest = () => {
             Informazioni di debug
           </Typography>
           
+          {/* Cache Stats */}
+          {debug.cacheStats && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Statistiche Cache:
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Entries: ${debug.cacheStats.totalEntries}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Hit rate: ${(debug.cacheStats.hitRate * 100).toFixed(1)}%`} 
+                    size="small" 
+                    color="success"
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Hits: ${debug.cacheStats.hits}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Misses: ${debug.cacheStats.misses}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          
+          {/* Decision Engine Info */}
+          {debug.decisionInfo && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Decision Engine:
+              </Typography>
+              <Chip 
+                label={`Decisione: ${debug.decisionInfo.decision || 'nessuna'}`} 
+                size="small" 
+                color="primary"
+                sx={{ m: 0.5 }}
+              />
+              <Chip 
+                label={`Confidenza: ${debug.decisionInfo.confidence ? (debug.decisionInfo.confidence * 100).toFixed(1) + '%' : 'N/A'}`} 
+                size="small" 
+                sx={{ m: 0.5 }}
+              />
+            </Box>
+          )}
+          
+          {/* Scanner Stats */}
+          {debug.scannerStats && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Statistiche Scanner:
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Scansioni: ${debug.scannerStats.totalScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Successo: ${debug.scannerStats.successRate}`} 
+                    size="small" 
+                    color="success"
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`OK: ${debug.scannerStats.successfulScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`KO: ${debug.scannerStats.failedScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          
+          {/* Detailed Debug Data */}
           <Box 
             sx={{ 
               bgcolor: '#f5f5f5', 
@@ -294,31 +487,6 @@ const RecognitionTest = () => {
           >
             <pre>{JSON.stringify(debug, null, 2)}</pre>
           </Box>
-          
-          {debug.segmentedImages && debug.segmentedImages.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Immagini segmentate ({debug.segmentedImages.length}):
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                {debug.segmentedImages.map((img, index) => (
-                  <Box 
-                    key={index}
-                    component="img"
-                    src={img}
-                    alt={`Segmento ${index + 1}`}
-                    sx={{ 
-                      width: '150px',
-                      height: '200px',
-                      objectFit: 'cover',
-                      borderRadius: 1,
-                      border: '1px solid #ddd'
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
         </Paper>
       )}
     </Box>

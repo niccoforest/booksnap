@@ -10,14 +10,14 @@ const userSchema = new Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
+    unique: true,  // unique: true crea già un indice
     trim: true,
     lowercase: true,
     match: [/.+\@.+\..+/, 'Inserisci un indirizzo email valido']
   },
   googleId: {
     type: String,
-    unique: true,
+    unique: true,  // unique: true crea già un indice
     sparse: true  // Permette valori null/undefined (per utenti che non usano Google)
   },
   profilePicture: {
@@ -44,9 +44,9 @@ const userSchema = new Schema({
   timestamps: true // Aggiunge createdAt e updatedAt
 });
 
-// Indice per ricerche rapide
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
+// Rimuovi queste due righe che creano indici duplicati
+// userSchema.index({ email: 1 });
+// userSchema.index({ googleId: 1 });
 
 const User = mongoose.model('User', userSchema);
 

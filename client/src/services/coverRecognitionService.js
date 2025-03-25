@@ -116,7 +116,7 @@ async recognizeBookCover(imageData, language = 'ita') {
     try {
       console.log(`Tentativo riconoscimento tramite OCR (lingua: ${language})...`);
       
-      // 1. Estrai il testo dall'immagine con OCR semplificato
+      // 1. Estrai il testo dall'immagine con OCR
       const text = await simpleOcrService.recognizeText(imageData, language);
       
       if (!text || text.trim().length < 3) {
@@ -142,33 +142,100 @@ async recognizeBookCover(imageData, language = 'ita') {
       }
       
       // 3. Analizza il testo per estrarre titolo e autore
-      const { title, author } = simpleOcrService.analyzeText(text);
+      const extractedInfo = simpleOcrService.analyzeText(text);
       
-      if (!title) {
-        console.log('Impossibile estrarre un titolo valido dal testo');
-        return null;
+      // Se l'analisi ha trovato candidati multipli, li salviamo
+      this.candidateBooks = extractedInfo.allCandidates || [];
+      
+      const { title, author, confidence } = extractedInfo;
+      
+      // Se il confidence score è basso, proviamo diverse query di ricerca
+      const queries = [];
+      
+      if (title && author && confidence > 0.5) {
+        // Query principale: titolo + autore
+        queries.push({ query: `${title} ${author}`, weight: 1.0 });
       }
       
-      // 4. Cerca il libro tramite titolo e autore
-      console.log(`Ricerca libro con titolo: "${title}" e autore: "${author || 'non specificato'}"`);
+      if (title) {
+        // Solo titolo
+        queries.push({ query: title, weight: 0.8 });
+      }
       
-      // Costruisci la query di ricerca
-      let searchQuery = title;
-      
-      // Strategia di ricerca migliorata
-      // Prima cerca con titolo e autore
       if (author) {
-        const firstBookAttempt = await this._searchBookWithQuery(`${title} ${author}`);
-        if (firstBookAttempt) return firstBookAttempt;
+        // Solo autore
+        queries.push({ query: author, weight: 0.5 });
       }
       
-      // Se non trova nulla, cerca solo con il titolo
-      const secondBookAttempt = await this._searchBookWithQuery(title);
-      if (secondBookAttempt) return secondBookAttempt;
+      // Se non abbiamo query specifiche o il confidence è basso
+      if (queries.length === 0 || confidence < 0.3) {
+        // Estrai parole chiave dal testo
+        const keywords = this._extractKeywords(text);
+        if (keywords.length > 0) {
+          // Usa le prime 3-5 parole chiave
+          const keywordQuery = keywords.slice(0, 5).join(' ');
+          queries.push({ query: keywordQuery, weight: 0.4 });
+        }
+      }
       
-      // Se ancora non trova nulla, cerca utilizzando tutto il testo riconosciuto
-      const thirdBookAttempt = await this._searchBookWithQuery(text.replace(/\n/g, ' '));
-      if (thirdBookAttempt) return thirdBookAttempt;
+      // Se ancora non abbiamo query
+      if (queries.length === 0) {
+        // Ultima risorsa: cerca con il testo completo
+        queries.push({ query: text.replace(/\n/g, ' ').slice(0, 100), weight: 0.2 });
+      }
+      
+      // 4. Esegui tutte le query e raccogli i risultati
+      const allResults = [];
+      
+      for (const queryObj of queries) {
+        console.log(`Esecuzione ricerca con query: "${queryObj.query}"`);
+        const results = await googleBooksService.searchBooks(queryObj.query, 5);
+        
+        if (results && results.length > 0) {
+          // Calcola score ponderato per ogni risultato
+          results.forEach(book => {
+            // Cerca se questo libro è già nei risultati
+            const existingIndex = allResults.findIndex(r => 
+              r.book.googleBooksId === book.googleBooksId
+            );
+            
+            if (existingIndex >= 0) {
+              // Aggiorna lo score se è già presente
+              allResults[existingIndex].score += queryObj.weight;
+            } else {
+              // Aggiungi nuovo risultato
+              allResults.push({
+                book,
+                score: queryObj.weight,
+                matchedQuery: queryObj.query
+              });
+            }
+          });
+        }
+      }
+      
+      // Ordina per score
+      allResults.sort((a, b) => b.score - a.score);
+      
+      // Salva tutti i risultati trovati
+      this.alternativeResults = allResults.map(r => r.book);
+      
+      // 5. Restituisci il risultato con score più alto solo se supera una soglia
+      if (allResults.length > 0 && allResults[0].score > 0.5) {
+        console.log(`Libro trovato con ricerca "${allResults[0].matchedQuery}":`, allResults[0].book.title);
+        return allResults[0].book;
+      } else if (allResults.length > 0) {
+        // Abbiamo risultati ma con confidence bassa
+        // Se fossimo in una UI potremmo mostrare opzioni multiple
+        console.log(`Trovati ${allResults.length} possibili match con confidence bassa`);
+        
+        // Salva comunque il miglior risultato, ma aggiungiamo flag lowConfidence
+        const bestMatch = allResults[0].book;
+        bestMatch.lowConfidence = true;
+        bestMatch.alternatives = allResults.slice(1, 4).map(r => r.book);
+        
+        return bestMatch;
+      }
       
       console.log('Nessun libro trovato con i dati estratti');
       return null;
@@ -176,6 +243,25 @@ async recognizeBookCover(imageData, language = 'ita') {
       console.log('Riconoscimento tramite OCR fallito:', error.message);
       return null;
     }
+  }
+
+  _extractKeywords(text) {
+    // Rimuovi caratteri speciali e dividi in parole
+    const words = text
+      .replace(/[^\w\s]/g, ' ')
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(word => word.length > 3);
+    
+    // Rimuovi parole comuni
+    const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
+                      'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
+                      'quella', 'quelle', 'come', 'dove', 'quando', 'perché'];
+    
+    const keywords = words.filter(word => !stopwords.includes(word));
+    
+    // Restituisci le parole uniche
+    return [...new Set(keywords)];
   }
   
 /**

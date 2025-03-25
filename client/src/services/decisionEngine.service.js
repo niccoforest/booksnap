@@ -1,6 +1,5 @@
-// client/src/services/decisionEngine.service.js
+// client/src/services/decisionEngine.service.js - Versione semplificata
 import barcodeService from './barcode.service';
-import simpleOcrService from './simpleOcr.service';
 
 class DecisionEngineService {
   constructor() {
@@ -25,36 +24,36 @@ class DecisionEngineService {
       // Inizializza le variabili per il punteggio di confidenza
       const scores = {
         isbn: 0,
-        cover: 0,
+        cover: 0.3, // Default di base per cover
         spine: 0,
         multi: 0
       };
       
       // 1. Verifica se è un ISBN (barcode)
-      const isbnResult = await this._checkForIsbn(imageData);
-      if (isbnResult.found) {
-        console.log('Decision Engine: rilevato ISBN');
-        scores.isbn = 0.95; // Alta confidenza se troviamo un ISBN
+      try {
+        const isbnResult = await this._checkForIsbn(imageData);
+        if (isbnResult.found) {
+          console.log('Decision Engine: rilevato ISBN');
+          scores.isbn = 0.95; // Alta confidenza se troviamo un ISBN
+          scores.isbnValue = isbnResult.isbn;
+        }
+      } catch (error) {
+        console.log('Errore nella verifica ISBN:', error.message);
       }
       
       // 2. Analizza le dimensioni e proporzioni dell'immagine
-      const dimensionAnalysis = await this._analyzeDimensions(imageData);
-      
-      // Aggiorna i punteggi in base alle dimensioni
-      scores.cover += dimensionAnalysis.coverScore;
-      scores.spine += dimensionAnalysis.spineScore;
-      scores.multi += dimensionAnalysis.multiScore;
-      
-      // 3. Analisi OCR preliminare (se non abbiamo già un ISBN)
-      if (scores.isbn < 0.8) {
-        const ocrAnalysis = await this._analyzeOcrContent(imageData);
+      try {
+        const dimensionAnalysis = await this._analyzeDimensions(imageData);
         
-        // Aggiorna i punteggi in base al contenuto OCR
-        scores.cover += ocrAnalysis.coverScore;
-        scores.spine += ocrAnalysis.spineScore;
+        // Aggiorna i punteggi in base alle dimensioni
+        scores.cover += dimensionAnalysis.coverScore;
+        scores.spine += dimensionAnalysis.spineScore;
+        scores.multi += dimensionAnalysis.multiScore;
+      } catch (error) {
+        console.log('Errore nell\'analisi dimensioni:', error.message);
       }
       
-      // 4. Determina il tipo più probabile
+      // 3. Determina il tipo più probabile
       let decidedType = 'cover'; // Default
       let maxScore = scores.cover;
       
@@ -87,7 +86,7 @@ class DecisionEngineService {
         type: decidedType,
         confidence,
         details: scores,
-        isbnData: isbnResult.found ? { isbn: isbnResult.isbn } : null
+        isbnData: (decidedType === 'isbn' && scores.isbnValue) ? { isbn: scores.isbnValue } : null
       };
     } catch (error) {
       console.error('Errore nell\'analisi dell\'immagine:', error);
@@ -185,63 +184,6 @@ class DecisionEngineService {
       
       img.src = imageData;
     });
-  }
-  
-  /**
-   * Analizza rapidamente il contenuto OCR per determinare il tipo
-   * @private
-   */
-  async _analyzeOcrContent(imageData) {
-    try {
-      // Esegui OCR con parametri limitati (rapidità > accuratezza)
-      const text = await simpleOcrService.recognizeText(imageData);
-      
-      // Inizializza i punteggi
-      let coverScore = 0;
-      let spineScore = 0;
-      
-      if (!text || text.trim().length === 0) {
-        return { coverScore: 0.2, spineScore: 0.1 };
-      }
-      
-      // Analizza il testo per pattern che potrebbero suggerire una costa
-      const lines = text.split('\n').filter(line => line.trim().length > 0);
-      
-      // Analisi orientamento testo (verticale vs orizzontale)
-      if (lines.length > 3) {
-        // Più linee suggeriscono testo orizzontale (copertina)
-        coverScore += 0.3;
-      } else {
-        // Poche linee potrebbero suggerire testo verticale (costa)
-        spineScore += 0.2;
-      }
-      
-      // Analisi lunghezza linee
-      const shortLines = lines.filter(line => line.length < 5).length;
-      const longLines = lines.filter(line => line.length > 15).length;
-      
-      if (shortLines > longLines && lines.length > 0) {
-        // Molte linee corte suggeriscono una costa (testo verticale)
-        spineScore += 0.2;
-        coverScore -= 0.1;
-      } else if (longLines > 0) {
-        // Linee lunghe suggeriscono una copertina
-        coverScore += 0.2;
-        spineScore -= 0.1;
-      }
-      
-      return {
-        coverScore,
-        spineScore,
-        text
-      };
-    } catch (error) {
-      console.error('Errore nell\'analisi OCR:', error);
-      return {
-        coverScore: 0.2,
-        spineScore: 0.1
-      };
-    }
   }
   
   /**
