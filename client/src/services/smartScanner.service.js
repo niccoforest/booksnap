@@ -4,6 +4,7 @@ import coverRecognitionService from './coverRecognitionService';
 import googleBooksService from './googleBooks.service';
 import recognitionCacheService from './recognitionCache.service';
 import barcodeService from './barcode.service';
+import simpleOcrService from './simpleOcr.service';
 
 class SmartScannerService {
   constructor() {
@@ -49,7 +50,67 @@ class SmartScannerService {
           progress: 10
         });
       }
+
+      // Prima di tutto, prova con la cache
+      if (preferredMode === 'auto' || preferredMode === 'cover') {
+        try {
+          if (progressCallback) {
+            progressCallback({
+              status: 'processing',
+              message: 'Controllo della cache...',
+              progress: 30
+            });
+          }
+    
+    // Estrai il testo per cercare nella cache
+    const extractedText = await simpleOcrService.recognizeText(imageData, language);
+    console.log("SmartScanner: testo estratto per cache:", extractedText);
+    console.log("SmartScanner: stato cache enabled =", recognitionCacheService.enabled);
+    if (!recognitionCacheService.enabled) {
+      console.log("SmartScanner: abilitazione cache");
+      recognitionCacheService.setEnabled(true);
+    }
+    const bookFromCache = recognitionCacheService.findByOcrText(extractedText);
+
+
+    if (bookFromCache) {
+      console.log('Libro trovato nella cache!', bookFromCache.title);
+      scanResult.success = true;
+      scanResult.book = bookFromCache;
+      scanResult.method = 'cache';
+      scanResult.message = 'Libro riconosciuto dalla cache';
       
+      // Salva le alternative se disponibili
+       // Salva le alternative se disponibili
+       if (recognitionCacheService.alternativeMatches && 
+        recognitionCacheService.alternativeMatches.length > 0) {
+      scanResult.alternativeBooks = recognitionCacheService.alternativeMatches;
+    }
+      
+      // Aggiorna il contatore di metodi
+      const method = 'cache';
+      this.scanStats.recognitionMethods[method] = (this.scanStats.recognitionMethods[method] || 0) + 1;
+      
+      // Aggiorna statistiche
+      this.scanStats.successfulScans++
+      
+      if (progressCallback) {
+        progressCallback({
+          status: 'success',
+          message: 'Libro riconosciuto dalla cache!',
+          progress: 100,
+          book: bookFromCache
+        });
+      }
+      
+      return scanResult;
+    } else {
+      console.log("SmartScanner: nessuna corrispondenza trovata in cache");
+    }
+  } catch (error) {
+    console.error('Errore durante l\'uso della cache:', error);
+  }
+}
       // Se la modalità è 'auto', determina automaticamente la modalità di scansione
       if (preferredMode === 'auto') {
         await this._determineMode(imageData, scanResult, progressCallback);

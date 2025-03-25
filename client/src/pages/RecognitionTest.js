@@ -19,6 +19,7 @@ import {
   InputLabel,
   LinearProgress,
   Card,
+  Switch,
   Chip
 } from '@mui/material';
 import { 
@@ -26,6 +27,7 @@ import {
   FileUpload as UploadIcon,
   Visibility as ViewIcon,
   AutoFixHigh as AutoIcon,
+  Storage as DatabaseIcon,
   Cached as CachedIcon
 } from '@mui/icons-material';
 import BookCard from '../components/book/BookCard';
@@ -146,7 +148,15 @@ const handleScanResult = (result) => {
       setDebug({
         scanResult,
         decisionInfo,
-        cacheStats: recognitionCacheService.getStats(),
+        cacheStats: {
+          ...recognitionCacheService.getStats(),
+          // Aggiungi queste informazioni
+          isEnabled: recognitionCacheService.enabled,
+          cacheSize: Object.keys(recognitionCacheService.cache).length,
+          // Se hai accesso alle alternative, mostrale
+          alternativeMatches: recognitionCacheService.alternativeMatches ? 
+            recognitionCacheService.alternativeMatches.length : 0
+        },
         scannerStats: smartScannerService.getStats()
       });
       
@@ -241,6 +251,32 @@ const handleScanResult = (result) => {
           >
             Usa fotocamera
           </Button>
+
+          <Button
+  variant="outlined"
+  startIcon={<DatabaseIcon />}
+  onClick={() => {
+    // Assicurati che la cache sia abilitata
+    recognitionCacheService.setEnabled(true);
+    // Esegui il pre-popolamento
+    recognitionCacheService.prePopulateCache();
+  }}
+  disabled={loading}
+>
+  Pre-popola cache
+</Button>
+
+<FormControlLabel
+  control={
+    <Switch
+      checked={recognitionCacheService.enabled}
+      onChange={(e) => recognitionCacheService.setEnabled(e.target.checked)}
+      color="primary"
+    />
+  }
+  label="Cache abilitata"
+/>
+
           <Button
             variant="outlined"
             startIcon={<CachedIcon />}
