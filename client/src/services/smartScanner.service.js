@@ -15,7 +15,9 @@ class SmartScannerService {
       failedScans: 0,
       recognitionMethods: {}
     };
+    this.failedAttempts = {}; // Traccia tentativi falliti per immagine
   }
+  
   
   /**
    * Scansiona un'immagine e identifica i libri in modo intelligente
@@ -26,155 +28,335 @@ class SmartScannerService {
    * @returns {Promise<Object>} - Risultato della scansione
    */
   async scan(imageData, preferredMode = 'auto', language = 'ita', progressCallback = null) {
+    // Genera un hash semplificato dell'immagine per tenerne traccia
+    const imageHash = this._generateSimpleHash(imageData);
+    
+    // Incrementa il contatore di tentativi falliti per questa immagine
+    if (!this.failedAttempts[imageHash]) {
+      this.failedAttempts[imageHash] = 0;
+    }
+    
     try {
+      // Aggiorna le statistiche
       this.scanStats.totalScans++;
       
-      // Inizializza il risultato
+      // Inizializza l'oggetto risultato
       const scanResult = {
         success: false,
-        mode: preferredMode,
-        detectedMode: null,
-        book: null,
-        books: null,
-        method: null,
+        image: imageData,
+        detectedMode: preferredMode,
         confidence: 0,
-        message: 'Scansione in corso...',
-        image: imageData
+        message: '',
+        method: ''
       };
       
       // Aggiorna il progresso
       if (progressCallback) {
         progressCallback({
           status: 'processing',
-          message: 'Analisi dell\'immagine in corso...',
+          message: 'Inizializzazione scansione...',
           progress: 10
         });
       }
-
-      // Prima di tutto, prova con la cache
-      if (preferredMode === 'auto' || preferredMode === 'cover') {
-        try {
-          if (progressCallback) {
-            progressCallback({
-              status: 'processing',
-              message: 'Controllo della cache...',
-              progress: 30
-            });
-          }
-    
-    // Estrai il testo per cercare nella cache
-    const extractedText = await simpleOcrService.recognizeText(imageData, language);
-    console.log("SmartScanner: testo estratto per cache:", extractedText);
-    console.log("SmartScanner: stato cache enabled =", recognitionCacheService.enabled);
-    if (!recognitionCacheService.enabled) {
-      console.log("SmartScanner: abilitazione cache");
-      recognitionCacheService.setEnabled(true);
-    }
-    const bookFromCache = recognitionCacheService.findByOcrText(extractedText);
-
-
-    if (bookFromCache) {
-      console.log('Libro trovato nella cache!', bookFromCache.title);
-      scanResult.success = true;
-      scanResult.book = bookFromCache;
-      scanResult.method = 'cache';
-      scanResult.message = 'Libro riconosciuto dalla cache';
       
-      // Salva le alternative se disponibili
-       // Salva le alternative se disponibili
-       if (recognitionCacheService.alternativeMatches && 
-        recognitionCacheService.alternativeMatches.length > 0) {
-      scanResult.alternativeBooks = recognitionCacheService.alternativeMatches;
-    }
-      
-      // Aggiorna il contatore di metodi
-      const method = 'cache';
-      this.scanStats.recognitionMethods[method] = (this.scanStats.recognitionMethods[method] || 0) + 1;
-      
-      // Aggiorna statistiche
-      this.scanStats.successfulScans++
-      
-      if (progressCallback) {
-        progressCallback({
-          status: 'success',
-          message: 'Libro riconosciuto dalla cache!',
-          progress: 100,
-          book: bookFromCache
-        });
-      }
-      
-      return scanResult;
-    } else {
-      console.log("SmartScanner: nessuna corrispondenza trovata in cache");
-    }
-  } catch (error) {
-    console.error('Errore durante l\'uso della cache:', error);
-  }
-}
-      // Se la modalità è 'auto', determina automaticamente la modalità di scansione
+      // Se la modalità è 'auto', determina la modalità ottimale
       if (preferredMode === 'auto') {
         await this._determineMode(imageData, scanResult, progressCallback);
       } else {
         scanResult.detectedMode = preferredMode;
+        scanResult.confidence = 1.0; // Modalità scelta dall'utente
       }
       
-      // Aggiorna il progresso
-      if (progressCallback) {
-        progressCallback({
-          status: 'processing',
-          message: `Riconoscimento in modalità ${this._getModeName(scanResult.detectedMode)}...`,
-          progress: 40
-        });
-      }
+      console.log(`SmartScanner: modalità ${scanResult.detectedMode} (${this._getModeName(scanResult.detectedMode)})`);
       
-      // Esegui la scansione in base alla modalità rilevata
+      // Processa l'immagine in base alla modalità rilevata
       switch (scanResult.detectedMode) {
         case 'isbn':
           await this._processIsbn(scanResult, progressCallback);
           break;
-          
         case 'cover':
           await this._processCover(imageData, scanResult, language, progressCallback);
           break;
-          
+        case 'spine':
+          // Per ora trattiamo le coste come copertine
+          await this._processCover(imageData, scanResult, language, progressCallback);
+          break;
         case 'multi':
           await this._processMulti(imageData, scanResult, language, progressCallback);
           break;
-          
         default:
-          // Fallback a cover
-          scanResult.detectedMode = 'cover';
+          // Fallback alla modalità copertina
           await this._processCover(imageData, scanResult, language, progressCallback);
       }
       
-      // Aggiorna le statistiche
-      if (scanResult.success) {
-        this.scanStats.successfulScans++;
+      // Se raggiungiamo 3 tentativi falliti, attiva il fallback a Google Vision
+      if (!scanResult.success && this.failedAttempts[imageHash] >= 2) { // 2 + 1 = 3 tentativi totali
+        console.log(`Attivazione fallback Google Vision dopo ${this.failedAttempts[imageHash] + 1} tentativi`);
         
-        // Aggiorna il contatore del metodo di riconoscimento
-        const method = scanResult.method || 'unknown';
-        this.scanStats.recognitionMethods[method] = (this.scanStats.recognitionMethods[method] || 0) + 1;
-      } else {
-        this.scanStats.failedScans++;
+        if (progressCallback) {
+          progressCallback({
+            status: 'processing',
+            message: 'Attivazione riconoscimento avanzato (Google Vision)...',
+            progress: 50
+          });
+        }
+        
+        try {
+          // Chiama il servizio di fallback
+          const visionResult = await this._processWithGoogleVision(imageData, progressCallback);
+          
+          if (visionResult.success) {
+            // Se il fallback ha successo, resetta i tentativi falliti
+            delete this.failedAttempts[imageHash];
+            
+            // Aggiorna le statistiche
+            this.scanStats.successfulScans++;
+            this.scanStats.recognitionMethods['vision'] = (this.scanStats.recognitionMethods['vision'] || 0) + 1;
+            
+            // Salva l'ultimo scan e ritorna il risultato
+            this.lastScan = visionResult;
+            return visionResult;
+          }
+        } catch (visionError) {
+          console.error('Errore nel fallback Google Vision:', visionError);
+        }
       }
       
-      // Salva l'ultimo scan
-      this.lastScan = scanResult;
-      
-      return scanResult;
+      // Aggiorna le statistiche in base al risultato
+      if (scanResult.success) {
+        this.scanStats.successfulScans++;
+        this.scanStats.recognitionMethods[scanResult.method] = 
+          (this.scanStats.recognitionMethods[scanResult.method] || 0) + 1;
+        
+        // Salva l'ultimo scan
+        this.lastScan = scanResult;
+        return scanResult;
+      } else {
+        // Incrementa il contatore di tentativi falliti
+        this.failedAttempts[imageHash]++;
+        console.log(`Tentativo fallito ${this.failedAttempts[imageHash]} per immagine ${imageHash}`);
+        
+        // Se dopo molti tentativi ancora fallisce, pulisci per evitare overflow
+        if (this.failedAttempts[imageHash] > 5) {
+          delete this.failedAttempts[imageHash];
+        }
+        
+        // Aggiorna statistiche e ritorna il risultato fallito
+        this.scanStats.failedScans++;
+        return {
+          success: false,
+          message: scanResult.message || 'Libro non riconosciuto. Prova con un\'inquadratura migliore o un\'altra modalità.',
+          error: 'recognition_failed'
+        };
+      }
     } catch (error) {
-      console.error('Errore durante la scansione intelligente:', error);
-      
-      this.scanStats.failedScans++;
-      
+      console.error('Errore durante la scansione:', error);
       return {
         success: false,
-        message: 'Errore durante la scansione: ' + error.message,
-        error: error.message
+        message: `Errore durante la scansione: ${error.message}`,
+        error: 'scan_error'
       };
     }
   }
   
+  _generateSimpleHash(imageData) {
+    // Estrai un sottoinsieme di dati per creare un "hash" approssimativo
+    // Nota: questa non è una funzione di hash crittografica, solo un identificatore per tracciare tentativi simili
+    try {
+      const sample = imageData.substr(500, 500); // Prendi una porzione dell'immagine
+      let hash = 0;
+      for (let i = 0; i < sample.length; i++) {
+        hash = ((hash << 5) - hash) + sample.charCodeAt(i);
+        hash |= 0; // Converti a integer a 32 bit
+      }
+      return Math.abs(hash).toString(16); // Converti a stringa esadecimale
+    } catch (e) {
+      // In caso di errore, genera un ID casuale
+      return Date.now().toString(16);
+    }
+  }
+  
+  // Metodo per il fallback a Google Vision API
+  async _processWithGoogleVision(imageData, progressCallback) {
+    try {
+      if (progressCallback) {
+        progressCallback({
+          status: 'processing',
+          message: 'Analisi avanzata dell\'immagine in corso...',
+          progress: 60
+        });
+      }
+      
+      // Estrai la parte base64 dell'immagine (rimuovi il prefisso data:image/jpeg;base64,)
+      const base64Image = imageData.split(',')[1];
+      
+      // Prepara la richiesta per l'API Vision
+      const visionRequest = {
+        requests: [
+          {
+            image: {
+              content: base64Image
+            },
+            features: [
+              {
+                type: 'TEXT_DETECTION',
+                maxResults: 1
+              },
+              {
+                type: 'LOGO_DETECTION',
+                maxResults: 5
+              }
+            ]
+          }
+        ]
+      };
+      
+      // Chiama l'API Vision tramite il backend
+      const response = await fetch('/api/vision', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(visionRequest)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Errore API Vision: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (progressCallback) {
+        progressCallback({
+          status: 'processing',
+          message: 'Processamento risultati riconoscimento avanzato...',
+          progress: 80
+        });
+      }
+      
+      // Estrai il testo riconosciuto
+      const textAnnotations = data.responses[0]?.textAnnotations;
+      if (!textAnnotations || textAnnotations.length === 0) {
+        return {
+          success: false,
+          message: 'Nessun testo riconosciuto dall\'API Vision',
+          method: 'vision'
+        };
+      }
+      
+      // Il primo elemento contiene il testo completo
+      const extractedText = textAnnotations[0].description;
+      
+      // Cerca libro in base al testo estratto
+      // Prima controlla nella cache locale
+      const bookFromCache = recognitionCacheService.findByOcrText(extractedText);
+      
+      if (bookFromCache) {
+        return {
+          success: true,
+          book: bookFromCache,
+          method: 'vision+cache',
+          message: 'Libro riconosciuto tramite API Vision e cache'
+        };
+      }
+      
+      // Se non è in cache, cerca con Google Books
+      const searchTerms = this._extractSearchTerms(extractedText);
+      const book = await this._searchBookWithTerms(searchTerms);
+      
+      if (book) {
+        // Aggiungi alla cache per uso futuro
+        recognitionCacheService.addToCache(extractedText, book);
+        
+        return {
+          success: true,
+          book,
+          method: 'vision',
+          message: 'Libro riconosciuto tramite API Vision'
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Nessun libro trovato con il testo riconosciuto dall\'API Vision',
+        method: 'vision'
+      };
+    } catch (error) {
+      console.error('Errore nell\'elaborazione con Google Vision:', error);
+      return {
+        success: false,
+        message: 'Errore nell\'elaborazione con Google Vision: ' + error.message,
+        method: 'vision',
+        error: error.message
+      };
+    }
+  }
+
+// Metodo per estrarre termini di ricerca dal testo OCR
+_extractSearchTerms(text) {
+  // Dividi in righe
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  
+  // Estrai i termini più rilevanti
+  let title = '';
+  let author = '';
+  
+  // Cerca possibili autori (primo terzo dell'estratto)
+  const possibleAuthorLines = lines.slice(0, Math.max(1, Math.floor(lines.length / 3)));
+  for (const line of possibleAuthorLines) {
+    if (/^[A-Z][a-z]+ [A-Z]\.? ?[A-Z][a-z]+$/.test(line)) {
+      author = line;
+      break;
+    }
+  }
+  
+  // Cerca possibili titoli (parte centrale, spesso in maiuscolo o più lungo)
+  const possibleTitleLines = lines.slice(Math.floor(lines.length / 3), Math.floor(lines.length * 2/3));
+  for (const line of possibleTitleLines) {
+    if (line === line.toUpperCase() && line.length > 3) {
+      title = line;
+      break;
+    }
+  }
+  
+  // Se non abbiamo trovato un titolo, prendi la linea più lunga
+  if (!title) {
+    title = lines.sort((a, b) => b.length - a.length)[0] || '';
+  }
+  
+  return { title, author, fullText: text };
+}
+
+// Metodo per cercare un libro con i termini estratti
+async _searchBookWithTerms({ title, author, fullText }) {
+  try {
+    let query = '';
+    
+    if (title && author) {
+      query = `${title} ${author}`;
+    } else if (title) {
+      query = title;
+    } else if (author) {
+      query = author;
+    } else {
+      // Se non abbiamo titolo né autore, prendi le prime parole del testo
+      query = fullText.split(' ').slice(0, 6).join(' ');
+    }
+    
+    // Cerca con Google Books API
+    const results = await googleBooksService.searchBooks(query, 5);
+    
+    if (results && results.length > 0) {
+      return results[0]; // Ritorna il primo risultato
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Errore nella ricerca libro con termini:', error);
+    return null;
+  }
+}
+
   /**
    * Determina la modalità ottimale per la scansione
    * @private

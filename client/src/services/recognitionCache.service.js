@@ -2,23 +2,19 @@
 import googleBooksService from './googleBooks.service.js';  // Importa il servizio Google Books
 class RecognitionCacheService {
   constructor() {
-    this.cache = {};
-    this.hits = 0;
-    this.misses = 0;
-    this.enabled = true;
-    this.alternativeMatches = []; // Per memorizzare i match alternativi
-    
-    // Carica la cache salvata in localStorage
-    this._loadFromStorage();
-    
-    // Se la cache è vuota, pre-popolala (ma in modo asincrono)
-    if (Object.keys(this.cache).length === 0) {
-      // Usiamo setTimeout per non bloccare l'inizializzazione
-      setTimeout(() => {
-        this.prePopulateCache();
-      }, 1000);
-    }
-  }
+  this.cache = {};
+  this.index = {}; // Indice invertito
+  this.falsePositives = {}; // Array di falsi positivi
+  this.userFeedbacks = []; // Array dei feedback utente
+  this.hits = 0;
+  this.misses = 0;
+  this.enabled = true;
+  this.alternativeMatches = [];
+  
+  // Carica la cache salvata in localStorage
+  this._loadFromStorage();
+}
+
   
   /**
    * Cerca un libro nella cache in base al testo OCR
@@ -35,12 +31,21 @@ class RecognitionCacheService {
     try {
       // Normalizza il testo per la ricerca
       const normalizedQuery = this._normalizeText(ocrText);
-      console.log("Cache: testo OCR normalizzato:", normalizedQuery);
+      const queryKeywords = this._extractKeywords(normalizedQuery);
       
       // Estrai parole chiave
-      const queryKeywords = this._extractKeywords(normalizedQuery);
-      console.log("Cache: parole chiave estratte:", queryKeywords);
       
+      console.log("Cache: parole chiave estratte:", queryKeywords);
+      const candidateKeys = new Set();
+      for (const keyword of queryKeywords) {
+        if (this.index[keyword]) {
+          for (const key of this.index[keyword]) {
+            candidateKeys.add(key);
+          }
+        }
+      }
+
+
       if (queryKeywords.length === 0) {
         console.log("Cache: nessuna parola chiave estratta, impossibile cercare");
         return null;
@@ -63,34 +68,39 @@ class RecognitionCacheService {
       // Cerca negli entry di cache
       console.log("Cache: verifica in", Object.keys(this.cache).length, "elementi in cache");
       
-      // Resto del codice esistente
-      const potentialMatches = [];
+       // Calcola similarità solo per i candidati
+  const potentialMatches = [];
+  
+  for (const key of candidateKeys) {
+    const entry = this.cache[key];
+    // Salta entry scadute
+    if (entry.timestamp && Date.now() - entry.timestamp > 30 * 24 * 60 * 60 * 1000) {
+      delete this.cache[key];
+      continue;
+    }
+    
+// Filtra fuori i falsi positivi noti
+  if (this.falsePositives) {
+    const normalizedOcr = this._normalizeText(ocrText);
+    potentialMatches = potentialMatches.filter(match => {
+      const key = `${normalizedOcr}_${match.entry.bookData.googleBooksId}`;
+      return !this.falsePositives[key];
+    });
+  }
+
+    // Calcola similarità
+    const similarity = this._calculateTextSimilarity(normalizedQuery, entry.normalizedText);
+    
+    // Soglia di similarità (abbassata a 0.2 per essere più inclusivi)
+    if (similarity > 0.2) {
+      potentialMatches.push({
+        entry,
+        score: similarity * (1 + Math.min(1, entry.usageCount / 10))
+      });
+    }
+  }
+        
       
-      for (const cacheKey in this.cache) {
-        const entry = this.cache[cacheKey];
-        
-        // Salta entry scadute (più vecchie di 30 giorni)
-        if (entry.timestamp && Date.now() - entry.timestamp > 30 * 24 * 60 * 60 * 1000) {
-          delete this.cache[cacheKey];
-          continue;
-        }
-        
-        // Calcola similarità
-        const similarity = this._calculateTextSimilarity(normalizedQuery, entry.normalizedText);
-        
-        console.log(`Cache: similarità ${similarity.toFixed(2)} per "${entry.bookData.title}"`);
-        
-        // Se la similarità è sufficiente, aggiungilo ai potenziali match
-        // Ridotta la soglia da 0.3 a 0.2 per essere più inclusivi
-        if (similarity > 0.2) {
-          potentialMatches.push({
-            entry,
-            score: similarity * (1 + Math.min(1, entry.usageCount / 10)) // Aumenta score per entry usate spesso
-          });
-        }
-      }
-      
-      // Resto del codice...
     } catch (error) {
       console.error('Errore nella ricerca in cache:', error);
       return null;
@@ -167,6 +177,130 @@ async prePopulateCache() {
   }
 }
 
+
+async importBooksFromSource(source, options = {}) {
+  try {
+    console.log(`Importazione libri da ${source}...`);
+    
+    let books = [];
+    switch(source) {
+      case 'googleBooks':
+        books = await this._importFromGoogleBooks(options);
+        break;
+      case 'csv':
+        books = await this._importFromCSV(options.file);
+        break;
+      case 'json':
+        books = await this._importFromJSON(options.data);
+        break;
+      default:
+        throw new Error(`Fonte non supportata: ${source}`);
+    }
+    
+    // Aggiungi i libri alla cache
+    let added = 0;
+    for (const book of books) {
+      // Genera OCR simulato per ogni libro
+      const simulatedOcrText = this._generateSimulatedOcr(book);
+      this.addToCache(simulatedOcrText, book);
+      added++;
+    }
+    
+    console.log(`Importati ${added} libri da ${source}`);
+    return added;
+  } catch (error) {
+    console.error(`Errore nell'importazione da ${source}:`, error);
+    return 0;
+  }
+}
+
+// Genera OCR simulato da un libro
+_generateSimulatedOcr(book) {
+  let ocrText = '';
+  
+  // Aggiungi varie combinazioni di testo che potrebbero apparire su una copertina
+  if (book.author) ocrText += book.author + ' ';
+  if (book.title) ocrText += book.title + ' ';
+  if (book.publisher) ocrText += book.publisher + ' ';
+  
+  // Aggiungi varianti (maiuscole, spazi errati, ecc.) per simulare errori OCR
+  if (book.title) {
+    ocrText += book.title.toUpperCase() + ' ';
+    ocrText += book.title.replace(/\s+/g, '') + ' ';
+  }
+  
+  return ocrText.trim();
+}
+
+// Importa da Google Books API (popolari e bestseller)
+async _importFromGoogleBooks({ query = 'subject:fiction', maxResults = 40 } = {}) {
+  const books = [];
+  
+  try {
+    // Usa googleBooksService per cercare libri
+    const results = await googleBooksService.searchBooks(query, maxResults);
+    
+    for (const book of results) {
+      books.push(book);
+    }
+  } catch (error) {
+    console.error('Errore nell\'importazione da Google Books:', error);
+  }
+  
+  return books;
+}
+
+async syncFeedbacksWithServer() {
+  if (!this.userFeedbacks || this.userFeedbacks.length === 0) {
+    console.log('Nessun feedback da sincronizzare');
+    return false;
+  }
+  
+  try {
+    // Raccogli i feedback non ancora sincronizzati
+    const unsyncedFeedbacks = this.userFeedbacks.filter(f => !f.synced);
+    
+    if (unsyncedFeedbacks.length === 0) {
+      console.log('Tutti i feedback sono già sincronizzati');
+      return true;
+    }
+    
+    // Chiama il backend per salvare i feedback
+    const response = await fetch('/api/recognition-feedbacks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ feedbacks: unsyncedFeedbacks })
+    });
+    
+    if (response.ok) {
+      // Aggiorna lo stato dei feedback sincronizzati
+      const syncedIds = await response.json();
+      
+      // Marca i feedback come sincronizzati
+      this.userFeedbacks = this.userFeedbacks.map(f => {
+        if (syncedIds.includes(f.id)) {
+          return { ...f, synced: true };
+        }
+        return f;
+      });
+      
+      // Salva lo stato aggiornato
+      this._saveToStorage();
+      
+      console.log(`Sincronizzati ${syncedIds.length} feedback con il server`);
+      return true;
+    } else {
+      console.error('Errore nella sincronizzazione dei feedback:', await response.text());
+      return false;
+    }
+  } catch (error) {
+    console.error('Errore durante la sincronizzazione dei feedback:', error);
+    return false;
+  }
+}
+
   /**
    * Aggiunge un'associazione testo OCR -> libro alla cache
    * @param {string} ocrText - Testo OCR
@@ -190,18 +324,24 @@ async prePopulateCache() {
         return;
       }
       
-      // Genera chiave univoca
-      const cacheKey = `${bookData.googleBooksId || bookData.title}_${Date.now()}`;
+    // Crea entry di cache
+  const cacheKey = `${bookData.googleBooksId || bookData.title}_${Date.now()}`;
+  this.cache[cacheKey] = {
+    normalizedText,
+    keywords,
+    bookData,
+    timestamp: Date.now(),
+    usageCount: 1
+  };
       
-      // Crea entry di cache
-      this.cache[cacheKey] = {
-        normalizedText,
-        keywords,
-        bookData,
-        timestamp: Date.now(),
-        usageCount: 1
-      };
-      
+// Aggiorna l'indice invertito
+for (const keyword of keywords) {
+  if (!this.index[keyword]) {
+    this.index[keyword] = [];
+  }
+  this.index[keyword].push(cacheKey);
+}
+
       console.log(`Aggiunto alla cache: "${bookData.title}"`);
       
       // Controlla se la cache ha raggiunto il limite massimo
@@ -288,55 +428,80 @@ async prePopulateCache() {
 _calculateTextSimilarity(text1, text2) {
   if (!text1 || !text2) return 0;
   
-  // Converti entrambi i testi in minuscolo
-  const lowerText1 = text1.toLowerCase();
-  const lowerText2 = text2.toLowerCase();
+  // Tokenizzazione: dividi in parole significative
+  const tokens1 = this._tokenize(text1);
+  const tokens2 = this._tokenize(text2);
   
-  // Estrai parole chiave significative da entrambi i testi
-  const keywords1 = this._extractKeywords(lowerText1);
-  const keywords2 = this._extractKeywords(lowerText2);
+  if (tokens1.length === 0 || tokens2.length === 0) return 0;
   
-  // Se non ci sono parole chiave, non c'è corrispondenza
-  if (keywords1.length === 0 || keywords2.length === 0) {
-    return 0.1;
+  // TF-IDF semplificato
+  // Invece di calcolare i pesi reali TF-IDF, usiamo una versione semplificata
+  // dove le parole più rare (più lunghe) hanno più peso
+  
+  // Crea un insieme di tutti i token unici
+  const allTokens = new Set([...tokens1, ...tokens2]);
+  
+  // Calcola il vettore per ogni testo
+  const vector1 = this._createVector(tokens1, allTokens);
+  const vector2 = this._createVector(tokens2, allTokens);
+  
+  // Calcola il prodotto scalare
+  let dotProduct = 0;
+  let magnitude1 = 0;
+  let magnitude2 = 0;
+  
+  for (const token of allTokens) {
+    dotProduct += vector1[token] * vector2[token];
+    magnitude1 += vector1[token] * vector1[token];
+    magnitude2 += vector2[token] * vector2[token];
   }
   
-  // Verifica parole chiave specifiche per libri famosi
-  const significantPairs = [
-    ["giardino", "segreto"],
-    ["piccolo", "principe"],
-    ["promessi", "sposi"],
-    ["divina", "commedia"],
-    ["guerra", "pace"]
-  ];
+  // Evita divisione per zero
+  if (magnitude1 === 0 || magnitude2 === 0) return 0;
   
-  // Verifica se le parole chiave significative sono presenti in entrambi i testi
-  for (const [word1, word2] of significantPairs) {
-    if (lowerText1.includes(word1) && lowerText1.includes(word2) && 
-        lowerText2.includes(word1) && lowerText2.includes(word2)) {
-      return 0.9; // Alta similarità se troviamo coppie significative
-    }
+  // Calcola cosine similarity
+  return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
+}
+// Tokenizza il testo in parole significative
+_tokenize(text) {
+  if (!text) return [];
+  
+  // Pulisci il testo e dividi in parole
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2);
+  
+  // Lista di stopwords (parole comuni da ignorare)
+  const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
+                    'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
+                    'quella', 'quelle', 'come', 'dove', 'quando', 'perché',
+                    'più', 'meno', 'poco', 'molto', 'troppo', 'con', 'senza',
+                    'per', 'dal', 'del', 'una', 'uno', 'che', 'chi', 'gli'];
+  
+  // Rimuovi stopwords e restituisci
+  return words.filter(word => !stopwords.includes(word));
+}
+
+// Crea un vettore di caratteristiche con pesi
+_createVector(tokens, allTokens) {
+  const vector = {};
+  
+  // Inizializza tutti i token a 0
+  for (const token of allTokens) {
+    vector[token] = 0;
   }
   
-  // Verifica autori famosi
-  const famousAuthors = ["burnett", "dante", "manzoni", "collodi", "exupery", "rowling", "tolstoj", "eco"];
-  for (const author of famousAuthors) {
-    if (lowerText1.includes(author) && lowerText2.includes(author)) {
-      return 0.7; // Buona similarità se l'autore corrisponde
-    }
+  // Calcola la frequenza di ogni token
+  for (const token of tokens) {
+    vector[token] = (vector[token] || 0) + 1;
+    
+    // Aggiungi peso extra per parole più lunghe (più distintive)
+    if (token.length > 5) vector[token] *= 1.5;
+    if (token.length > 8) vector[token] *= 1.5;
   }
   
-  // Conta le parole chiave in comune
-  let matchCount = 0;
-  for (const word of keywords1) {
-    if (keywords2.includes(word)) {
-      matchCount++;
-    }
-  }
-  
-  // Calcola un punteggio basato sulla percentuale di parole in comune
-  const matchRatio = matchCount / Math.min(keywords1.length, keywords2.length);
-  return matchRatio > 0.3 ? matchRatio : 0.1;
+  return vector;
 }
   
   /**
@@ -375,29 +540,120 @@ _calculateTextSimilarity(text1, text2) {
   * Salva la cache in localStorage
   * @private
   */
- _saveToStorage() {
+ __saveToStorage() {
   try {
+    // Salva la cache principale
     localStorage.setItem('booksnap_recognition_cache', JSON.stringify(this.cache));
+    
+    // Salva i falsi positivi
+    localStorage.setItem('booksnap_false_positives', JSON.stringify(this.falsePositives));
+    
+    // Salva i feedback utente (ultimi 500 per non occupare troppo spazio)
+    const limitedFeedbacks = this.userFeedbacks.slice(-500);
+    localStorage.setItem('booksnap_user_feedbacks', JSON.stringify(limitedFeedbacks));
+    
+    // Salva anche le statistiche
+    const stats = {
+      hits: this.hits,
+      misses: this.misses,
+      lastUpdate: new Date().toISOString()
+    };
+    localStorage.setItem('booksnap_cache_stats', JSON.stringify(stats));
   } catch (error) {
-    console.warn('Impossibile salvare la cache in localStorage:', error);
+    console.warn('Impossibile salvare in localStorage:', error);
   }
 }
 
-/**
- * Carica la cache da localStorage
- * @private
- */
+// Modifica il metodo _loadFromStorage per caricare anche i feedback
 _loadFromStorage() {
   try {
+    // Carica la cache principale
     const savedCache = localStorage.getItem('booksnap_recognition_cache');
     if (savedCache) {
       this.cache = JSON.parse(savedCache);
       console.log(`Cache caricata: ${Object.keys(this.cache).length} entry`);
+      
+      // Ricostruisci l'indice dopo aver caricato la cache
+      this._rebuildIndex();
+    }
+    
+    // Carica i falsi positivi
+    const savedFalsePositives = localStorage.getItem('booksnap_false_positives');
+    if (savedFalsePositives) {
+      this.falsePositives = JSON.parse(savedFalsePositives);
+      console.log(`Falsi positivi caricati: ${Object.keys(this.falsePositives).length}`);
+    }
+    
+    // Carica i feedback utente
+    const savedFeedbacks = localStorage.getItem('booksnap_user_feedbacks');
+    if (savedFeedbacks) {
+      this.userFeedbacks = JSON.parse(savedFeedbacks);
+      console.log(`Feedback utente caricati: ${this.userFeedbacks.length}`);
+    }
+    
+    // Carica le statistiche
+    const savedStats = localStorage.getItem('booksnap_cache_stats');
+    if (savedStats) {
+      const stats = JSON.parse(savedStats);
+      this.hits = stats.hits || 0;
+      this.misses = stats.misses || 0;
+      console.log(`Statistiche cache caricate - Hits: ${this.hits}, Misses: ${this.misses}`);
     }
   } catch (error) {
-    console.warn('Impossibile caricare la cache da localStorage:', error);
+    console.warn('Impossibile caricare da localStorage:', error);
     this.cache = {};
+    this.falsePositives = {};
+    this.userFeedbacks = [];
   }
+}
+
+// Metodo per ricostruire l'indice invertito dalla cache
+_rebuildIndex() {
+  this.index = {};
+  
+  for (const cacheKey in this.cache) {
+    const entry = this.cache[cacheKey];
+    
+    if (entry.keywords && Array.isArray(entry.keywords)) {
+      for (const keyword of entry.keywords) {
+        if (!this.index[keyword]) {
+          this.index[keyword] = [];
+        }
+        this.index[keyword].push(cacheKey);
+      }
+    }
+  }
+  
+  console.log(`Indice ricostruito con ${Object.keys(this.index).length} parole chiave`);
+}
+
+// Modifica il metodo learnFromUserFeedback per salvare i feedback
+learnFromUserFeedback(ocrText, correctBookData, incorrectBookData = null) {
+  // Registra il feedback
+  const feedback = {
+    timestamp: Date.now(),
+    ocrText,
+    correctBook: correctBookData ? {
+      title: correctBookData.title,
+      author: correctBookData.author,
+      googleBooksId: correctBookData.googleBooksId
+    } : null,
+    incorrectBook: incorrectBookData ? {
+      title: incorrectBookData.title,
+      author: incorrectBookData.author,
+      googleBooksId: incorrectBookData.googleBooksId
+    } : null
+  };
+  
+  // Aggiungi alla lista di feedback
+  this.userFeedbacks.push(feedback);
+  
+  // Resto del codice esistente per gestire il feedback
+  
+  // Salva dopo aver applicato le modifiche
+  this._saveToStorage();
+  
+  return true;
 }
 
 /**
