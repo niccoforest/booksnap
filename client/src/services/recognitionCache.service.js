@@ -1,358 +1,318 @@
-// client/src/services/recognitionCache.service.js
-import googleBooksService from './googleBooks.service.js';  // Importa il servizio Google Books
+// client/src/services/recognitionCache.service.js (versione corretta)
+import apiService from './api.service';
+
 class RecognitionCacheService {
   constructor() {
-  this.cache = {};
-  this.index = {}; // Indice invertito
-  this.falsePositives = {}; // Array di falsi positivi
-  this.userFeedbacks = []; // Array dei feedback utente
-  this.hits = 0;
-  this.misses = 0;
-  this.enabled = true;
-  this.alternativeMatches = [];
-  
-  // Carica la cache salvata in localStorage
-  this._loadFromStorage();
-}
+    this.enabled = true;
+    this.localCache = {}; // Cache temporanea in-memory
+    this.hits = 0;
+    this.misses = 0;
+    this.alternativeMatches = []; // Per tenere traccia dei possibili match alternativi
+  }
 
-  
   /**
    * Cerca un libro nella cache in base al testo OCR
    * @param {string} ocrText - Testo OCR da cercare
-   * @returns {Object|null} - Dati del libro se trovato in cache, altrimenti null
+   * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
    */
-  
-  findByOcrText(ocrText) {
+  async findByOcrText(ocrText) {
     if (!this.enabled || !ocrText || ocrText.length < 5) {
       console.log("Cache: ricerca non eseguita - cache disabilitata o testo OCR non valido");
       return null;
     }
-    
+
     try {
-      // Normalizza il testo per la ricerca
-      const normalizedQuery = this._normalizeText(ocrText);
-      const queryKeywords = this._extractKeywords(normalizedQuery);
+      console.log("Cache: ricerca libro per testo OCR...");
       
-      // Estrai parole chiave
+      // Normalizza il testo OCR - prima definizione di normalizedText
+      const normalizedText = this._normalizeText(ocrText);
       
-      console.log("Cache: parole chiave estratte:", queryKeywords);
-      const candidateKeys = new Set();
-      for (const keyword of queryKeywords) {
-        if (this.index[keyword]) {
-          for (const key of this.index[keyword]) {
-            candidateKeys.add(key);
-          }
-        }
-      }
-
-
-      if (queryKeywords.length === 0) {
-        console.log("Cache: nessuna parola chiave estratta, impossibile cercare");
-        return null;
+      // 1. Prima controlla nella cache locale
+      const localCacheKey = this._generateLocalCacheKey(normalizedText);
+      
+      if (this.localCache[localCacheKey]) {
+        console.log("Cache: hit da cache locale!");
+        this.hits++;
+        return this.localCache[localCacheKey];
       }
       
-      // DEBUG: Verifica manuale per "Il giardino segreto"
-      if (normalizedQuery.includes("burnett") && (normalizedQuery.includes("giardino") || normalizedQuery.includes("garden") || normalizedQuery.includes("segreto"))) {
-        console.log("Cache: rilevato 'Il giardino segreto' attraverso parole chiave");
-        // Trova l'entry corrispondente
-        for (const cacheKey in this.cache) {
-          const entry = this.cache[cacheKey];
-          if (entry.bookData && entry.bookData.title && entry.bookData.title.toLowerCase().includes("giardino")) {
-            console.log("Cache hit! Forzato match per 'Il giardino segreto'");
-            this.hits++;
-            return entry.bookData;
-          }
-        }
-      }
-      
-      // Cerca negli entry di cache
-      console.log("Cache: verifica in", Object.keys(this.cache).length, "elementi in cache");
-      
-       // Calcola similarità solo per i candidati
-  const potentialMatches = [];
-  
-  for (const key of candidateKeys) {
-    const entry = this.cache[key];
-    // Salta entry scadute
-    if (entry.timestamp && Date.now() - entry.timestamp > 30 * 24 * 60 * 60 * 1000) {
-      delete this.cache[key];
-      continue;
-    }
-    
-// Filtra fuori i falsi positivi noti
-  if (this.falsePositives) {
-    const normalizedOcr = this._normalizeText(ocrText);
-    potentialMatches = potentialMatches.filter(match => {
-      const key = `${normalizedOcr}_${match.entry.bookData.googleBooksId}`;
-      return !this.falsePositives[key];
-    });
-  }
-
-    // Calcola similarità
-    const similarity = this._calculateTextSimilarity(normalizedQuery, entry.normalizedText);
-    
-    // Soglia di similarità (abbassata a 0.2 per essere più inclusivi)
-    if (similarity > 0.2) {
-      potentialMatches.push({
-        entry,
-        score: similarity * (1 + Math.min(1, entry.usageCount / 10))
+      // 2. Se non in cache locale, chiedi al server
+      const response = await apiService.post('/recognition-cache/find-by-ocr', {
+        ocrText,
+        normalizedText // Ora normalizedText è definito
       });
-    }
-  }
-        
       
+      if (response.success) {
+        console.log("Cache: hit da server!");
+        this.hits++;
+        
+        // Salva nella cache locale per uso futuro
+        this.localCache[localCacheKey] = response.data;
+        
+        // Salva anche le alternative
+        if (response.alternatives) {
+          this.alternativeMatches = response.alternatives;
+        }
+        
+        return response.data;
+      }
+      
+      // Se arriviamo qui, non abbiamo trovato nulla
+      console.log("Cache: nessun match trovato");
+      this.misses++;
+      return null;
     } catch (error) {
       console.error('Errore nella ricerca in cache:', error);
+      this.misses++;
       return null;
     }
   }
-  
-
-// Aggiungi questo metodo alla classe RecognitionCacheService
-/**
- * Pre-popola la cache con libri popolari
- * @returns {Promise<void>}
- */
-async prePopulateCache() {
-  try {
-    console.log('Pre-popolamento della cache di riconoscimento...');
-    
-    // Lista di libri popolari italiani da aggiungere alla cache
-    const popularBooks = [
-      // Mantieni i libri esistenti e aggiungi questi:
-      { 
-        title: "Guerra e Pace", 
-        author: "Lev Tolstoj", 
-        ocrText: "Lev Tolstoj GUERRA E PACE Romanzo storico Mondadori" 
-      },
-      { 
-        title: "Il Nome della Rosa", 
-        author: "Umberto Eco", 
-        ocrText: "Umberto Eco IL NOME DELLA ROSA Bompiani" 
-      },
-      { 
-        title: "Il Giardino Segreto", 
-        author: "Frances H. Burnett",
-        ocrText: "Frances Hodgson Burnett IL GIARDINO SEGRETO De Agostini Ragazzi" 
-      },
-      { 
-        title: "Harry Potter e la Pietra Filosofale", 
-        author: "J.K. Rowling", 
-        ocrText: "J.K. Rowling HARRY POTTER E LA PIETRA FILOSOFALE Salani" 
-      },
-      // Aggiungi altri libri popolari
-    ];
-    
-    let successCount = 0;
-    
-    // Per ogni libro, aggiungi una voce nella cache
-    for (const book of popularBooks) {
-      try {
-        console.log(`Cerco il libro "${book.title}" di ${book.author}...`);
-        
-        // Cerca il libro con Google Books API
-        const searchResults = await googleBooksService.searchBooks(`${book.title} ${book.author}`, 1);
-        
-        if (searchResults && searchResults.length > 0) {
-          const bookData = searchResults[0];
-          
-          // Aggiungi alla cache con alta confidenza
-          this.addToCache(book.ocrText, bookData);
-          successCount++;
-          
-          console.log(`Pre-popolato: "${bookData.title}" di ${bookData.author}`);
-        } else {
-          console.log(`Nessun risultato per "${book.title}"`);
-        }
-      } catch (error) {
-        console.warn(`Errore nel pre-popolamento per "${book.title}":`, error);
-      }
-    }
-    
-    // Salva alla fine
-    this._saveToStorage();
-    console.log(`Pre-popolamento completato: ${successCount} libri aggiunti, ${Object.keys(this.cache).length} totali in cache`);
-  } catch (error) {
-    console.error('Errore durante il pre-popolamento della cache:', error);
-  }
-}
-
-
-async importBooksFromSource(source, options = {}) {
-  try {
-    console.log(`Importazione libri da ${source}...`);
-    
-    let books = [];
-    switch(source) {
-      case 'googleBooks':
-        books = await this._importFromGoogleBooks(options);
-        break;
-      case 'csv':
-        books = await this._importFromCSV(options.file);
-        break;
-      case 'json':
-        books = await this._importFromJSON(options.data);
-        break;
-      default:
-        throw new Error(`Fonte non supportata: ${source}`);
-    }
-    
-    // Aggiungi i libri alla cache
-    let added = 0;
-    for (const book of books) {
-      // Genera OCR simulato per ogni libro
-      const simulatedOcrText = this._generateSimulatedOcr(book);
-      this.addToCache(simulatedOcrText, book);
-      added++;
-    }
-    
-    console.log(`Importati ${added} libri da ${source}`);
-    return added;
-  } catch (error) {
-    console.error(`Errore nell'importazione da ${source}:`, error);
-    return 0;
-  }
-}
-
-// Genera OCR simulato da un libro
-_generateSimulatedOcr(book) {
-  let ocrText = '';
-  
-  // Aggiungi varie combinazioni di testo che potrebbero apparire su una copertina
-  if (book.author) ocrText += book.author + ' ';
-  if (book.title) ocrText += book.title + ' ';
-  if (book.publisher) ocrText += book.publisher + ' ';
-  
-  // Aggiungi varianti (maiuscole, spazi errati, ecc.) per simulare errori OCR
-  if (book.title) {
-    ocrText += book.title.toUpperCase() + ' ';
-    ocrText += book.title.replace(/\s+/g, '') + ' ';
-  }
-  
-  return ocrText.trim();
-}
-
-// Importa da Google Books API (popolari e bestseller)
-async _importFromGoogleBooks({ query = 'subject:fiction', maxResults = 40 } = {}) {
-  const books = [];
-  
-  try {
-    // Usa googleBooksService per cercare libri
-    const results = await googleBooksService.searchBooks(query, maxResults);
-    
-    for (const book of results) {
-      books.push(book);
-    }
-  } catch (error) {
-    console.error('Errore nell\'importazione da Google Books:', error);
-  }
-  
-  return books;
-}
-
-async syncFeedbacksWithServer() {
-  if (!this.userFeedbacks || this.userFeedbacks.length === 0) {
-    console.log('Nessun feedback da sincronizzare');
-    return false;
-  }
-  
-  try {
-    // Raccogli i feedback non ancora sincronizzati
-    const unsyncedFeedbacks = this.userFeedbacks.filter(f => !f.synced);
-    
-    if (unsyncedFeedbacks.length === 0) {
-      console.log('Tutti i feedback sono già sincronizzati');
-      return true;
-    }
-    
-    // Chiama il backend per salvare i feedback
-    const response = await fetch('/api/recognition-feedbacks', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ feedbacks: unsyncedFeedbacks })
-    });
-    
-    if (response.ok) {
-      // Aggiorna lo stato dei feedback sincronizzati
-      const syncedIds = await response.json();
-      
-      // Marca i feedback come sincronizzati
-      this.userFeedbacks = this.userFeedbacks.map(f => {
-        if (syncedIds.includes(f.id)) {
-          return { ...f, synced: true };
-        }
-        return f;
-      });
-      
-      // Salva lo stato aggiornato
-      this._saveToStorage();
-      
-      console.log(`Sincronizzati ${syncedIds.length} feedback con il server`);
-      return true;
-    } else {
-      console.error('Errore nella sincronizzazione dei feedback:', await response.text());
-      return false;
-    }
-  } catch (error) {
-    console.error('Errore durante la sincronizzazione dei feedback:', error);
-    return false;
-  }
-}
 
   /**
-   * Aggiunge un'associazione testo OCR -> libro alla cache
+   * Estrai parole chiave significative dal testo
+   * @private
+   */
+  _extractSignificantKeywords(text) {
+    if (!text) return [];
+    
+    // Converti testo in parole
+    const words = text.toLowerCase()
+      .replace(/[^\w\s\u00C0-\u017F]/g, ' ') // Mantiene anche le lettere accentate
+      .split(/\s+/)
+      .filter(w => w.length > 3);
+    
+    // Rimuovi stopwords
+    const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
+                       'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
+                       'quella', 'quelle', 'come', 'dove', 'quando', 'perché'];
+    
+    const filteredWords = words.filter(w => !stopwords.includes(w));
+    
+    // Estrai parole più frequenti e più lunghe
+    const wordFrequency = {};
+    filteredWords.forEach(word => {
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+    });
+    
+    // Calcola un punteggio combinato di frequenza e lunghezza
+    const scoredWords = Object.keys(wordFrequency).map(word => ({
+      word,
+      score: wordFrequency[word] * (word.length / 5) // Normalizzato
+    }));
+    
+    // Ordina per punteggio e prendi le migliori
+    return scoredWords
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map(w => w.word);
+  }
+
+  /**
+   * Costruisce frasi significative dal testo
+   * @private
+   */
+  _buildSignificantSubstrings(text) {
+    // Estrai frasi significative dal testo OCR
+    const lines = text.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 10 && line.length < 100);
+    
+    // Prendi le linee più promettenti (prima, più lunga e centrata)
+    const significantLines = [];
+    if (lines.length > 0) significantLines.push(lines[0]);
+    if (lines.length > 2) significantLines.push(lines[Math.floor(lines.length / 2)]);
+    
+    // Aggiungi la linea più lunga se non è già inclusa
+    const longestLine = lines.reduce((max, line) => 
+      line.length > max.length ? line : max, '');
+    if (longestLine && !significantLines.includes(longestLine)) 
+      significantLines.push(longestLine);
+    
+    return significantLines;
+  }
+  
+  /**
+   * Cerca un libro nella cache in base a parole chiave
+   * @param {Array<string>} keywords - Parole chiave da cercare
+   * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
+   */
+  async findByKeywords(keywords) {
+    if (!this.enabled || !keywords || keywords.length === 0) {
+      return null;
+    }
+    
+    try {
+      console.log("Cache: ricerca libro per parole chiave:", keywords);
+      
+      const response = await apiService.post('/recognition-cache/find-by-keywords', {
+        keywords
+      });
+      
+      if (response.data.success) {
+        console.log("Cache: hit da server per parole chiave!");
+        this.hits++;
+        
+        // Salva anche le alternative
+        if (response.data.alternatives) {
+          this.alternativeMatches = response.data.alternatives;
+        }
+        
+        return response.data.data;
+      }
+      
+      console.log("Cache: nessun match trovato per parole chiave");
+      this.misses++;
+      return null;
+    } catch (error) {
+      console.error('Errore nella ricerca in cache per parole chiave:', error);
+      this.misses++;
+      return null;
+    }
+  }
+
+  /**
+   * Aggiungi un'associazione testo OCR -> libro alla cache
    * @param {string} ocrText - Testo OCR
    * @param {Object} bookData - Dati del libro
+   * @param {string} source - Fonte dell'associazione
+   * @param {number} confidence - Livello di confidenza
    */
-  addToCache(ocrText, bookData) {
+  async addToCache(ocrText, bookData, source = 'user', confidence = 0.7) {
     if (!this.enabled || !ocrText || !bookData || ocrText.length < 5) {
       console.log("Cache: impossibile aggiungere alla cache - parametri non validi");
       return;
     }
     
     try {
-      console.log(`Cache: tentativo di aggiungere "${bookData.title}" alla cache`);
-      // Normalizza il testo
+      console.log(`Cache: aggiunta di "${bookData.title}" alla cache remota`);
+      
+      // Normalizza il testo OCR
       const normalizedText = this._normalizeText(ocrText);
       
-      // Estrai parole chiave
-      const keywords = this._extractKeywords(normalizedText);
+      // Aggiungi alla cache locale immediatamente
+      const localKey = this._generateLocalCacheKey(normalizedText);
+      this.localCache[localKey] = bookData;
       
-      if (keywords.length === 0) {
-        return;
-      }
+      // Aggiungi alla cache remota
+      await apiService.post('/recognition-cache/add', {
+        ocrText,
+        bookData,
+        source,
+        confidence
+      });
       
-    // Crea entry di cache
-  const cacheKey = `${bookData.googleBooksId || bookData.title}_${Date.now()}`;
-  this.cache[cacheKey] = {
-    normalizedText,
-    keywords,
-    bookData,
-    timestamp: Date.now(),
-    usageCount: 1
-  };
-      
-// Aggiorna l'indice invertito
-for (const keyword of keywords) {
-  if (!this.index[keyword]) {
-    this.index[keyword] = [];
-  }
-  this.index[keyword].push(cacheKey);
-}
-
-      console.log(`Aggiunto alla cache: "${bookData.title}"`);
-      
-      // Controlla se la cache ha raggiunto il limite massimo
-      this._pruneCache();
-      
-      // Salva la cache aggiornata
-      this._saveToStorage();
-      console.log(`Cache: libro "${bookData.title}" aggiunto con successo. Totale entry: ${Object.keys(this.cache).length}`);
+      console.log(`Cache: libro "${bookData.title}" aggiunto con successo`);
     } catch (error) {
       console.error('Errore nell\'aggiunta alla cache:', error);
     }
+  }
+  
+  /**
+   * Impara dal feedback dell'utente
+   * @param {string} ocrText - Testo OCR originale
+   * @param {Object} correctBook - Libro corretto
+   * @param {Object} incorrectBook - Libro riconosciuto erroneamente
+   */
+  async learnFromUserFeedback(ocrText, correctBook, incorrectBook = null) {
+    if (!ocrText) {
+      return false;
+    }
+    
+    try {
+      console.log("Cache: elaborazione feedback utente");
+      
+      // Se abbiamo sia il libro corretto che quello errato
+      if (correctBook && incorrectBook) {
+        await apiService.post('/recognition-cache/correction', {
+          ocrText,
+          incorrectBookId: incorrectBook.googleBooksId,
+          correctBookId: correctBook.googleBooksId
+        });
+        console.log("Feedback: correzione registrata");
+        return true;
+      } 
+      // Se abbiamo solo il libro errato
+      else if (incorrectBook) {
+        await apiService.post('/recognition-cache/false-positive', {
+          ocrText,
+          bookId: incorrectBook.googleBooksId
+        });
+        console.log("Feedback: falso positivo registrato");
+        return true;
+      }
+      // Se abbiamo solo il libro corretto
+      else if (correctBook) {
+        await this.addToCache(ocrText, correctBook, 'corrected', 0.9);
+        console.log("Feedback: aggiunto libro corretto alla cache");
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Errore nell\'elaborazione feedback:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Pre-popola la cache
+   */
+  async prePopulateCache() {
+    try {
+      console.log("Avvio pre-popolamento cache...");
+      
+      const response = await apiService.post('/recognition-cache/prepopulate');
+      
+      if (response && response.data && response.data.success) {
+        console.log("Richiesta di pre-popolamento inviata con successo");
+        return true;
+      }
+      
+      console.warn("Pre-popolamento avviato, ma risposta non standard:", response?.data);
+      return Boolean(response?.data);
+    } catch (error) {
+      console.error('Errore nel pre-popolamento cache:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Attiva/disattiva la cache
+   */
+  setEnabled(enabled) {
+    this.enabled = Boolean(enabled);
+    console.log(`Cache ${this.enabled ? 'attivata' : 'disattivata'}`);
+  }
+  
+  /**
+   * Ottieni statistiche sulla cache
+   */
+  async getRemoteStats() {
+    try {
+      const response = await apiService.get('/recognition-cache/statistics');
+      
+      if (response.data.success) {
+        return response.data.statistics;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Errore nel recupero statistiche cache:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Ottieni statistiche locali sulla cache
+   */
+  getStats() {
+    return {
+      totalEntries: Object.keys(this.localCache).length,
+      hits: this.hits,
+      misses: this.misses,
+      hitRate: this.hits + this.misses > 0 ? this.hits / (this.hits + this.misses) : 0,
+      enabled: this.enabled
+    };
   }
   
   /**
@@ -362,330 +322,101 @@ for (const keyword of keywords) {
   _normalizeText(text) {
     return text
       .toLowerCase()
-      .replace(/[^\w\s]/g, ' ') // Rimuovi caratteri speciali
-      .replace(/\s+/g, ' ')     // Normalizza spazi
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
   }
   
- /**
- * Estrae parole chiave da un testo
- * @private
- */
- _extractKeywords(text) {
-  if (!text) return [];
-  
-  // Preprocessing: normalizza ulteriormente il testo
-  const cleanedText = text
-    .replace(/[^\w\s]/g, ' ')  // Rimuovi caratteri speciali
-    .toLowerCase()
-    .replace(/\s+/g, ' ')     // Normalizza spazi
-    .trim();
-  
-  // Dividi in parole
-  const words = cleanedText.split(' ');
-  
-  // Lista di stopwords italiane
-  const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
-                    'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
-                    'quella', 'quelle', 'come', 'dove', 'quando', 'perché',
-                    'più', 'meno', 'poco', 'molto', 'troppo', 'con', 'senza'];
-  
-  // Parole significative per libri specifici
-  const significantWords = [
-    // Giardino segreto
-    'giardino', 'segreto', 'burnett', 'frances', 'hodgson', 
-    // Piccolo principe
-    'piccolo', 'principe', 'exupery', 'saint', 
-    // Altri libri famosi
-    'promessi', 'sposi', 'manzoni', 'divina', 'commedia', 'dante', 'alighieri',
-    'pinocchio', 'collodi', 'guerra', 'pace', 'tolstoj', 'harry', 'potter',
-    'rowling', 'nome', 'rosa', 'eco'
-  ];
-  
-  // Cerca parole significative nel testo (anche parziali match)
-  const foundSignificant = [];
-  
-  for (const word of significantWords) {
-    if (cleanedText.includes(word)) {
-      foundSignificant.push(word);
-    }
-  }
-  
-  // Filtra le parole: mantieni solo quelle più lunghe di 3 caratteri e non nella lista stopwords
-  const filteredWords = words
-    .filter(word => word.length > 3 && !stopwords.includes(word))
-    .sort((a, b) => b.length - a.length) // Ordina per lunghezza decrescente
-    .slice(0, 10);  // Prendi le 10 parole più lunghe
-  
-  // Combina parole significative con filtrate, eliminando duplicati
-  return [...new Set([...foundSignificant, ...filteredWords])];
-}
-  
-/**
- * Calcola la similarità tra due testi
- * @private
- */
-_calculateTextSimilarity(text1, text2) {
-  if (!text1 || !text2) return 0;
-  
-  // Tokenizzazione: dividi in parole significative
-  const tokens1 = this._tokenize(text1);
-  const tokens2 = this._tokenize(text2);
-  
-  if (tokens1.length === 0 || tokens2.length === 0) return 0;
-  
-  // TF-IDF semplificato
-  // Invece di calcolare i pesi reali TF-IDF, usiamo una versione semplificata
-  // dove le parole più rare (più lunghe) hanno più peso
-  
-  // Crea un insieme di tutti i token unici
-  const allTokens = new Set([...tokens1, ...tokens2]);
-  
-  // Calcola il vettore per ogni testo
-  const vector1 = this._createVector(tokens1, allTokens);
-  const vector2 = this._createVector(tokens2, allTokens);
-  
-  // Calcola il prodotto scalare
-  let dotProduct = 0;
-  let magnitude1 = 0;
-  let magnitude2 = 0;
-  
-  for (const token of allTokens) {
-    dotProduct += vector1[token] * vector2[token];
-    magnitude1 += vector1[token] * vector1[token];
-    magnitude2 += vector2[token] * vector2[token];
-  }
-  
-  // Evita divisione per zero
-  if (magnitude1 === 0 || magnitude2 === 0) return 0;
-  
-  // Calcola cosine similarity
-  return dotProduct / (Math.sqrt(magnitude1) * Math.sqrt(magnitude2));
-}
-// Tokenizza il testo in parole significative
-_tokenize(text) {
-  if (!text) return [];
-  
-  // Pulisci il testo e dividi in parole
-  const words = text.toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter(w => w.length > 2);
-  
-  // Lista di stopwords (parole comuni da ignorare)
-  const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
-                    'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
-                    'quella', 'quelle', 'come', 'dove', 'quando', 'perché',
-                    'più', 'meno', 'poco', 'molto', 'troppo', 'con', 'senza',
-                    'per', 'dal', 'del', 'una', 'uno', 'che', 'chi', 'gli'];
-  
-  // Rimuovi stopwords e restituisci
-  return words.filter(word => !stopwords.includes(word));
-}
-
-// Crea un vettore di caratteristiche con pesi
-_createVector(tokens, allTokens) {
-  const vector = {};
-  
-  // Inizializza tutti i token a 0
-  for (const token of allTokens) {
-    vector[token] = 0;
-  }
-  
-  // Calcola la frequenza di ogni token
-  for (const token of tokens) {
-    vector[token] = (vector[token] || 0) + 1;
-    
-    // Aggiungi peso extra per parole più lunghe (più distintive)
-    if (token.length > 5) vector[token] *= 1.5;
-    if (token.length > 8) vector[token] *= 1.5;
-  }
-  
-  return vector;
-}
-  
   /**
-   * Rimuove le entry meno utilizzate se la cache supera la dimensione massima
+   * Genera una chiave per la cache locale
    * @private
    */
-  _pruneCache() {
-    const entries = Object.entries(this.cache);
+  _generateLocalCacheKey(normalizedText) {
+    // Prendi i primi 50 caratteri del testo normalizzato come chiave
+    const baseKey = normalizedText.substring(0, 50);
     
-    if (entries.length <= 300) { // Massimo 300 elementi in cache
-      return;
+    // Semplice hash per rendere la chiave più compatta
+    let hash = 0;
+    for (let i = 0; i < baseKey.length; i++) {
+      hash = ((hash << 5) - hash) + baseKey.charCodeAt(i);
+      hash |= 0; // Converti a integer a 32 bit
     }
     
-    // Ordina per usageCount e timestamp (crescente)
-    entries.sort(([, a], [, b]) => {
-      // Prima per conteggio uso
-      if (a.usageCount !== b.usageCount) {
-        return a.usageCount - b.usageCount;
-      }
-      // Poi per timestamp (più vecchi prima)
-      return a.timestamp - b.timestamp;
-    });
-    
-    // Rimuovi il 20% delle entry meno utilizzate
-    const removeCount = Math.ceil(entries.length * 0.2);
-    for (let i = 0; i < removeCount; i++) {
-      if (entries[i]) {
-        delete this.cache[entries[i][0]];
-      }
-    }
-    
-    console.log(`Cache pruning: rimosse ${removeCount} entry`);
+    return `${Math.abs(hash).toString(16)}_${baseKey.length}`;
   }
-  
+
   /**
-  * Salva la cache in localStorage
-  * @private
-  */
- __saveToStorage() {
-  try {
-    // Salva la cache principale
-    localStorage.setItem('booksnap_recognition_cache', JSON.stringify(this.cache));
+   * Estrai parole chiave da un testo
+   * @private
+   */
+  _extractKeywords(text) {
+    if (!text) return [];
     
-    // Salva i falsi positivi
-    localStorage.setItem('booksnap_false_positives', JSON.stringify(this.falsePositives));
+    // Preprocessing: normalizza ulteriormente il testo
+    const cleanedText = text
+      .replace(/[^\w\s]/g, ' ')  // Rimuovi caratteri speciali
+      .toLowerCase()
+      .replace(/\s+/g, ' ')     // Normalizza spazi
+      .trim();
     
-    // Salva i feedback utente (ultimi 500 per non occupare troppo spazio)
-    const limitedFeedbacks = this.userFeedbacks.slice(-500);
-    localStorage.setItem('booksnap_user_feedbacks', JSON.stringify(limitedFeedbacks));
+    // Dividi in parole
+    const words = cleanedText.split(' ');
     
-    // Salva anche le statistiche
-    const stats = {
-      hits: this.hits,
-      misses: this.misses,
-      lastUpdate: new Date().toISOString()
-    };
-    localStorage.setItem('booksnap_cache_stats', JSON.stringify(stats));
-  } catch (error) {
-    console.warn('Impossibile salvare in localStorage:', error);
+    // Lista di stopwords italiane
+    const stopwords = ['della', 'dello', 'degli', 'delle', 'nella', 'nello', 
+                      'negli', 'nelle', 'sono', 'essere', 'questo', 'questi', 
+                      'quella', 'quelle', 'come', 'dove', 'quando', 'perché',
+                      'più', 'meno', 'poco', 'molto', 'troppo', 'con', 'senza'];
+    
+    // Filtra le parole: mantieni solo quelle più lunghe di 3 caratteri e non nella lista stopwords
+    const filteredWords = words
+      .filter(word => word.length > 3 && !stopwords.includes(word))
+      .sort((a, b) => b.length - a.length) // Ordina per lunghezza decrescente
+      .slice(0, 10);  // Prendi le 10 parole più lunghe
+    
+    return filteredWords;
   }
-}
 
-// Modifica il metodo _loadFromStorage per caricare anche i feedback
-_loadFromStorage() {
-  try {
-    // Carica la cache principale
-    const savedCache = localStorage.getItem('booksnap_recognition_cache');
-    if (savedCache) {
-      this.cache = JSON.parse(savedCache);
-      console.log(`Cache caricata: ${Object.keys(this.cache).length} entry`);
+  /**
+   * Cerca un libro utilizzando OCR e Google Books
+   * @param {string} ocrText - Testo OCR da cercare
+   * @returns {Promise<Object>} - Risultato della ricerca
+   */
+  async searchWithOcr(ocrText) {
+    if (!ocrText || ocrText.length < 5) {
+      console.log("Ricerca OCR: testo OCR non valido");
+      return { success: false, message: "Testo OCR non valido" };
+    }
+    
+    try {
+      console.log("Ricerca OCR: avvio ricerca distribuita...");
       
-      // Ricostruisci l'indice dopo aver caricato la cache
-      this._rebuildIndex();
-    }
-    
-    // Carica i falsi positivi
-    const savedFalsePositives = localStorage.getItem('booksnap_false_positives');
-    if (savedFalsePositives) {
-      this.falsePositives = JSON.parse(savedFalsePositives);
-      console.log(`Falsi positivi caricati: ${Object.keys(this.falsePositives).length}`);
-    }
-    
-    // Carica i feedback utente
-    const savedFeedbacks = localStorage.getItem('booksnap_user_feedbacks');
-    if (savedFeedbacks) {
-      this.userFeedbacks = JSON.parse(savedFeedbacks);
-      console.log(`Feedback utente caricati: ${this.userFeedbacks.length}`);
-    }
-    
-    // Carica le statistiche
-    const savedStats = localStorage.getItem('booksnap_cache_stats');
-    if (savedStats) {
-      const stats = JSON.parse(savedStats);
-      this.hits = stats.hits || 0;
-      this.misses = stats.misses || 0;
-      console.log(`Statistiche cache caricate - Hits: ${this.hits}, Misses: ${this.misses}`);
-    }
-  } catch (error) {
-    console.warn('Impossibile caricare da localStorage:', error);
-    this.cache = {};
-    this.falsePositives = {};
-    this.userFeedbacks = [];
-  }
-}
-
-// Metodo per ricostruire l'indice invertito dalla cache
-_rebuildIndex() {
-  this.index = {};
-  
-  for (const cacheKey in this.cache) {
-    const entry = this.cache[cacheKey];
-    
-    if (entry.keywords && Array.isArray(entry.keywords)) {
-      for (const keyword of entry.keywords) {
-        if (!this.index[keyword]) {
-          this.index[keyword] = [];
-        }
-        this.index[keyword].push(cacheKey);
+      const response = await apiService.post('/recognition-cache/search-with-ocr', {
+        ocrText
+      });
+      
+      // Salva alternative se presenti
+      if (response.data.alternatives) {
+        this.alternativeMatches = response.data.alternatives;
       }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Errore nella ricerca OCR:', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
-  
-  console.log(`Indice ricostruito con ${Object.keys(this.index).length} parole chiave`);
-}
 
-// Modifica il metodo learnFromUserFeedback per salvare i feedback
-learnFromUserFeedback(ocrText, correctBookData, incorrectBookData = null) {
-  // Registra il feedback
-  const feedback = {
-    timestamp: Date.now(),
-    ocrText,
-    correctBook: correctBookData ? {
-      title: correctBookData.title,
-      author: correctBookData.author,
-      googleBooksId: correctBookData.googleBooksId
-    } : null,
-    incorrectBook: incorrectBookData ? {
-      title: incorrectBookData.title,
-      author: incorrectBookData.author,
-      googleBooksId: incorrectBookData.googleBooksId
-    } : null
-  };
-  
-  // Aggiungi alla lista di feedback
-  this.userFeedbacks.push(feedback);
-  
-  // Resto del codice esistente per gestire il feedback
-  
-  // Salva dopo aver applicato le modifiche
-  this._saveToStorage();
-  
-  return true;
-}
-
-/**
- * Svuota la cache
- */
-clearCache() {
-  this.cache = {};
-  this._saveToStorage();
-  console.log('Cache svuotata');
-}
-
-/**
- * Attiva/disattiva la cache
- * @param {boolean} enabled - Stato di attivazione
- */
-setEnabled(enabled) {
-  this.enabled = Boolean(enabled);
-  console.log(`Cache ${this.enabled ? 'attivata' : 'disattivata'}`);
-}
-
-/**
- * Ottiene statistiche sulla cache
- */
-getStats() {
-  return {
-    totalEntries: Object.keys(this.cache).length,
-    hits: this.hits,
-    misses: this.misses,
-    hitRate: this.hits + this.misses > 0 ? this.hits / (this.hits + this.misses) : 0,
-    enabled: this.enabled
-  };
-}
+  /**
+   * Svuota la cache locale
+   */
+  clearLocalCache() {
+    this.localCache = {};
+    console.log('Cache locale svuotata');
+  }
 }
 
 const recognitionCacheService = new RecognitionCacheService();

@@ -15,6 +15,8 @@ const bookRoutes = require('./routes/book.routes');
 const libraryRoutes = require('./routes/library.routes');
 const userBookRoutes = require('./routes/userbook.routes');
 const reviewRoutes = require('./routes/review.routes');
+const recognitionCacheRoutes = require('./routes/recognitionCache.routes');
+
 
 // Recupera la stringa di connessione MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -66,6 +68,8 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
   });
 }
+
+app.use('/api/recognition-cache', recognitionCacheRoutes);
 
 // Porta del server
 const PORT = process.env.PORT || 5000;

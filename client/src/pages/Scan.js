@@ -1,4 +1,4 @@
-// client/src/pages/Scan.js - VERSIONE RIVISTA
+// client/src/pages/Scan.js - VERSIONE AGGIORNATA
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -13,10 +13,16 @@ import {
   Divider,
   Snackbar
 } from '@mui/material';
-import { Add as AddIcon, Camera as CameraIcon, ArrowBack as ArrowBackIcon, 
-  ArrowForward as ArrowForwardIcon  } from '@mui/icons-material';
+import { 
+  Add as AddIcon, 
+  Camera as CameraIcon, 
+  ArrowBack as ArrowBackIcon, 
+  ArrowForward as ArrowForwardIcon,
+  Feedback as FeedbackIcon  // Importa l'icona di feedback
+} from '@mui/icons-material';
 
 import ScannerOverlay from '../components/scan/ScannerOverlay';
+import BookFeedbackDialog from '../components/common/BookFeedbackDialog'; // Importa il dialogo
 import barcodeService from '../services/barcode.service';
 import bookService from '../services/book.service';
 
@@ -26,6 +32,11 @@ const Scan = () => {
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [multiScanResults, setMultiScanResults] = useState(null);
+  const [currentBookIndex, setCurrentBookIndex] = useState(0);
+  const [extractedText, setExtractedText] = useState(''); // Aggiungi stato per il testo OCR
+  const [alternativeBooks, setAlternativeBooks] = useState([]); // Aggiungi stato per i libri alternativi
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false); // Stato per il dialog
   
   // Apre lo scanner automaticamente all'apertura della pagina
   useEffect(() => {
@@ -57,6 +68,18 @@ const Scan = () => {
     setDebugInfo(null);
     
     try {
+      // Salva il testo OCR estratto se disponibile
+      if (captureData.ocrText) {
+        setExtractedText(captureData.ocrText);
+      }
+      
+      // Salva le alternative se disponibili
+      if (captureData.alternatives && Array.isArray(captureData.alternatives)) {
+        setAlternativeBooks(captureData.alternatives);
+      } else {
+        setAlternativeBooks([]);
+      }
+      
       // Determina il tipo di risultato
       if (captureData.mode === 'multi' && Array.isArray(captureData.result) && captureData.result.length > 0) {
         // Scansione multipla (scaffale)
@@ -71,18 +94,15 @@ const Scan = () => {
         
         setDebugInfo(`Riconosciuti ${captureData.result.length} libri dallo scaffale`);
       } 
-      else if (captureData.mode === 'cover' && captureData.result) {
-        // Scansione singola (copertina)
+      else if (captureData.result) {
+        // Scansione singola (copertina o isbn)
         setScannerOpen(false);
         setScanResult(captureData.result);
         setMultiScanResults(null);
-        setDebugInfo('Libro riconosciuto dalla copertina');
+        setDebugInfo(`Libro riconosciuto (metodo: ${captureData.method || 'sconosciuto'})`);
+      } else {
+        setError('Nessun libro riconosciuto');
       }
-      
-      // Chiude lo scanner e imposta il risultato
-      setScannerOpen(false);
-      setScanResult(bookData);
-      setDebugInfo(null);
     } catch (err) {
       console.error('Errore durante la scansione:', err);
       setError(err.message || 'Si è verificato un errore durante la scansione');
@@ -90,22 +110,20 @@ const Scan = () => {
       setIsProcessing(false);
     }
   };
-  const [multiScanResults, setMultiScanResults] = useState(null);
-const [currentBookIndex, setCurrentBookIndex] = useState(0);
 
-const showNextBook = () => {
-  if (multiScanResults && currentBookIndex < multiScanResults.length - 1) {
-    setCurrentBookIndex(prev => prev + 1);
-    setScanResult(multiScanResults[currentBookIndex + 1]);
-  }
-};
+  const showNextBook = () => {
+    if (multiScanResults && currentBookIndex < multiScanResults.length - 1) {
+      setCurrentBookIndex(prev => prev + 1);
+      setScanResult(multiScanResults[currentBookIndex + 1]);
+    }
+  };
 
-const showPreviousBook = () => {
-  if (multiScanResults && currentBookIndex > 0) {
-    setCurrentBookIndex(prev => prev - 1);
-    setScanResult(multiScanResults[currentBookIndex - 1]);
-  }
-};
+  const showPreviousBook = () => {
+    if (multiScanResults && currentBookIndex > 0) {
+      setCurrentBookIndex(prev => prev - 1);
+      setScanResult(multiScanResults[currentBookIndex - 1]);
+    }
+  };
 
   // Aggiunge il libro alla libreria personale
   const handleAddToLibrary = async () => {
@@ -120,6 +138,8 @@ const showPreviousBook = () => {
       
       // Reset dello stato per una nuova scansione
       setScanResult(null);
+      setAlternativeBooks([]);
+      setExtractedText('');
       setScannerOpen(true);
     } catch (err) {
       console.error('Errore nell\'aggiunta del libro:', err);
@@ -132,9 +152,23 @@ const showPreviousBook = () => {
   // Apre lo scanner per una nuova scansione
   const handleNewScan = () => {
     setScanResult(null);
+    setAlternativeBooks([]);
+    setExtractedText('');
     setError(null);
     setDebugInfo(null);
     setScannerOpen(true);
+  };
+
+  // Gestisce il feedback dell'utente
+  const handleFeedbackSubmitted = (type, correctBook) => {
+    if (type === 'alternative_book' && correctBook) {
+      // Aggiorna il libro riconosciuto con quello corretto
+      setScanResult(correctBook);
+      setDebugInfo('Grazie per il tuo feedback! Il libro corretto è stato selezionato.');
+    } else if (type === 'wrong_book') {
+      setDebugInfo('Grazie per il tuo feedback! Ci aiuterà a migliorare il riconoscimento.');
+      // Opzionalmente, potresti voler mostrare un'opzione per cercare manualmente
+    }
   };
 
   return (
@@ -207,7 +241,7 @@ const showPreviousBook = () => {
               <Typography variant="body1" color="text.primary">
                 {Array.isArray(scanResult.authors) 
                   ? scanResult.authors.join(', ') 
-                  : scanResult.authors}
+                  : scanResult.authors || scanResult.author}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 {scanResult.publisher} 
@@ -233,29 +267,28 @@ const showPreviousBook = () => {
           </Card>
 
           {multiScanResults && multiScanResults.length > 1 && (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-    <Button 
-      variant="outlined" 
-      disabled={currentBookIndex === 0}
-      onClick={showPreviousBook}
-      startIcon={<ArrowBackIcon />}
-    >
-      Precedente
-    </Button>
-    <Typography variant="body2" sx={{ alignSelf: 'center' }}>
-      {currentBookIndex + 1} di {multiScanResults.length}
-    </Typography>
-    <Button 
-      variant="outlined" 
-      disabled={currentBookIndex === multiScanResults.length - 1}
-      onClick={showNextBook}
-      endIcon={<ArrowForwardIcon />}
-    >
-      Successivo
-    </Button>
-  </Box>
-)}
-
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Button 
+                variant="outlined" 
+                disabled={currentBookIndex === 0}
+                onClick={showPreviousBook}
+                startIcon={<ArrowBackIcon />}
+              >
+                Precedente
+              </Button>
+              <Typography variant="body2" sx={{ alignSelf: 'center' }}>
+                {currentBookIndex + 1} di {multiScanResults.length}
+              </Typography>
+              <Button 
+                variant="outlined" 
+                disabled={currentBookIndex === multiScanResults.length - 1}
+                onClick={showNextBook}
+                endIcon={<ArrowForwardIcon />}
+              >
+                Successivo
+              </Button>
+            </Box>
+          )}
           
           {scanResult.description && (
             <Box sx={{ mb: 2 }}>
@@ -270,6 +303,18 @@ const showPreviousBook = () => {
               </Typography>
             </Box>
           )}
+          
+          {/* Pulsante Feedback */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => setFeedbackDialogOpen(true)}
+              startIcon={<FeedbackIcon />}
+            >
+              Questo non è il libro giusto?
+            </Button>
+          </Box>
           
           <Box sx={{ mt: 'auto', display: 'flex', gap: 2 }}>
             <Button 
@@ -319,6 +364,16 @@ const showPreviousBook = () => {
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onCapture={handleCapture}
+      />
+      
+      {/* Dialog Feedback */}
+      <BookFeedbackDialog
+        open={feedbackDialogOpen}
+        onClose={() => setFeedbackDialogOpen(false)}
+        recognizedBook={scanResult}
+        alternativeBooks={alternativeBooks}
+        ocrText={extractedText}
+        onFeedbackSubmitted={handleFeedbackSubmitted}
       />
       
       {/* Feedback Snackbar */}

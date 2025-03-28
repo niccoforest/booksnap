@@ -6,7 +6,8 @@ class SimpleOcrService {
     this.worker = null;
     this.isInitializing = false;
     this.isReady = false;
-    this.languageLoaded = null; // Tiene traccia della lingua attualmente caricata
+    this.languageLoaded = null;
+    this.progressCallbacks = [];  // Aggiunto per registrare callback esterni
   }
 
   /**
@@ -41,7 +42,21 @@ class SimpleOcrService {
       
       // In Tesseract.js 6.0.0 il worker viene inizializzato direttamente con la lingua
       try {
-        this.worker = await createWorker(language);
+        // Opzioni avanzate per Tesseract v6 - RIMUOVIAMO LA FUNZIONE LOGGER
+        const initOptions = {
+          langPath: 'https://raw.githubusercontent.com/naptha/tessdata/4.0.0'
+          // Rimuoviamo 'logger' che causa l'errore di clonazione
+        };
+        
+        this.worker = await createWorker(language, initOptions);
+        
+        // Configurazione avanzata del motore Tesseract
+        await this.worker.setParameters({
+          tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,\'-:;!?"()[]& àèéìòùÀÈÉÌÒÙ',
+          tessedit_pageseg_mode: '6', // Prova PSM_SINGLE_BLOCK
+          tessedit_ocr_engine_mode: '1', // LSTM engine
+        });
+        
         this.isReady = true;
         this.languageLoaded = language;
         return this.worker;
@@ -56,7 +71,9 @@ class SimpleOcrService {
         // Cerca di impostare parametri se possibile
         try {
           await this.worker.setParameters({
-            tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,\'-:;!?"()[]& ',
+            tessedit_char_whitelist: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,\'-:;!?"()[]& àèéìòùÀÈÉÌÒÙ',
+            tessedit_pageseg_mode: '6', // PSM_SINGLE_BLOCK
+            tessedit_ocr_engine_mode: '1', // LSTM engine
           });
         } catch (paramError) {
           console.warn('Impossibile impostare i parametri, proseguo senza:', paramError);
@@ -76,6 +93,28 @@ class SimpleOcrService {
     }
   }
 
+  addProgressCallback(callback) {
+    if (typeof callback === 'function') {
+      this.progressCallbacks.push(callback);
+    }
+  }
+  
+  // Metodo per rimuovere callback di progresso
+  removeProgressCallback(callback) {
+    this.progressCallbacks = this.progressCallbacks.filter(cb => cb !== callback);
+  }
+  
+  // Metodo per notificare il progresso
+  _notifyProgress(progress, message) {
+    this.progressCallbacks.forEach(callback => {
+      try {
+        callback({ progress, message });
+      } catch (e) {
+        console.error('Errore in callback progresso:', e);
+      }
+    });
+  }
+
   /**
    * Riconosce testo da un'immagine usando un approccio migliorato
    * @param {string} imageData - Immagine in formato base64
@@ -86,24 +125,32 @@ class SimpleOcrService {
     try {
       console.log(`Riconoscimento testo con OCR (lingua: ${language})...`);
       
+      // Notifica inizio
+      this._notifyProgress(0, 'Preparazione OCR...');
+      
       // Pre-elaborazione immagine migliorata
+      this._notifyProgress(10, 'Pre-elaborazione immagine...');
       const processedImage = await this._preprocessImage(imageData);
       
       // Inizializza il worker con la lingua corretta
+      this._notifyProgress(30, 'Inizializzazione OCR...');
       const worker = await this._initializeWorker(language);
       
       // Esegui il riconoscimento
+      this._notifyProgress(40, 'Avvio riconoscimento OCR...');
       console.log('Avvio riconoscimento OCR...');
       let result;
       try {
         // Versione per Tesseract.js 6.0.0
         result = await worker.recognize(processedImage);
+        this._notifyProgress(90, 'Completamento OCR...');
       } catch (error) {
         console.error('Errore nel formato di riconoscimento v6.0.0:', error);
         throw error;
       }
       
       console.log('Riconoscimento OCR completato');
+      this._notifyProgress(100, 'OCR completato!');
       
       // Estrai il testo - formato v6.0.0
       let extractedText = '';
@@ -163,11 +210,13 @@ class SimpleOcrService {
   _postprocessText(text) {
     if (!text) return '';
     
-    // Rimuovi caratteri problematici
+    // Log del testo originale per debug
+    console.log("Testo originale OCR:", text);
+    
+    // Normalizza i newline e gli spazi
     let cleanedText = text
       .replace(/[\t\v\f\r\n]+/g, '\n')  // Normalizza i newline
-      .replace(/[|\\/{}<>^~`]/g, ' ')   // Rimuovi caratteri speciali problematici
-      .replace(/\s+/g, ' ')            // Comprimi spazi multipli
+      .replace(/\s+/g, ' ')            // Comprimi spazi multipli all'interno delle righe
       .trim();
     
     // Dividi in linee
@@ -175,20 +224,32 @@ class SimpleOcrService {
       .map(line => line.trim())
       .filter(line => line.length > 0);
     
-    // Rimuovi righe che sembrano rumore
+    // Logga le linee prima del filtraggio
+    console.log("Linee prima del filtraggio:", lines);
+    
+    // Filtraggio meno aggressivo per le linee
     const filteredLines = lines.filter(line => {
-      // Rimuovi linee troppo corte o con troppi caratteri speciali
+      // Rimuovi linee troppo corte
       if (line.length < 2) return false;
       
-      // Conta caratteri speciali e normali
-      const specialChars = line.replace(/[a-zA-Z0-9\s]/g, '').length;
-      const normalChars = line.length - specialChars;
+      // Conta caratteri alfanumerici (inclusi accenti italiani)
+      const alphanumericChars = line.replace(/[^a-zA-Z0-9àèéìòùÀÈÉÌÒÙ]/g, '').length;
       
-      // Filtro basato sul rapporto tra caratteri speciali e normali
-      return normalChars > specialChars;
+      // Richiedi almeno 2 caratteri alfanumerici per considerare valida la linea
+      const minAlphanumeric = 2;
+      
+      return alphanumericChars >= minAlphanumeric;
     });
     
-    return filteredLines.join('\n');
+    // Logga le linee dopo il filtraggio
+    console.log("Linee dopo il filtraggio:", filteredLines);
+    
+    // Rimuovi caratteri problematici SOLO dopo il filtraggio
+    const finalLines = filteredLines.map(line => 
+      line.replace(/[|\\^~]/g, '')  // Rimuovi alcuni caratteri problematici che spesso sono errori OCR
+    );
+    
+    return finalLines.join('\n');
   }
   
   /**
@@ -204,8 +265,8 @@ class SimpleOcrService {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          // Ridimensiona per ottimizzare OCR
-          const MAX_SIZE = 1600;
+          // Ridimensiona per ottimizzare OCR - bilancia qualità e performance
+          const MAX_SIZE = 1800; // Leggermente aumentato per qualità
           let width = img.width;
           let height = img.height;
           
@@ -225,57 +286,56 @@ class SimpleOcrService {
           // Disegna l'immagine
           ctx.drawImage(img, 0, 0, width, height);
           
-          // Miglioramento avanzato del contrasto
+          // Analisi dell'immagine per determinare il miglior approccio di pre-processing
           const imageData = ctx.getImageData(0, 0, width, height);
           const data = imageData.data;
           
-          // Calcola l'istogramma
+          // Calcolo istogramma luminosità
           const histogram = new Array(256).fill(0);
           for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            const brightness = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+            const brightness = Math.round(0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]);
             histogram[brightness]++;
           }
           
-          // Calcola i valori minimo e massimo significativi
-          let min = 0;
-          let max = 255;
-          const pixelCount = width * height;
-          const cutoffLow = pixelCount * 0.01;  // 1% dei pixel
+          // Analisi dell'istogramma
+          const totalPixels = width * height;
+          let darkPixels = 0;
+          let lightPixels = 0;
           
-          let count = 0;
-          for (let i = 0; i < 256; i++) {
-            count += histogram[i];
-            if (count > cutoffLow) {
-              min = i;
+          // Conta pixel scuri (< 64) e chiari (> 192)
+          for (let i = 0; i < 64; i++) darkPixels += histogram[i];
+          for (let i = 192; i < 256; i++) lightPixels += histogram[i];
+          
+          const darkRatio = darkPixels / totalPixels;
+          const lightRatio = lightPixels / totalPixels;
+          
+          // Determina strategia di pre-processing basata su analisi immagine
+          let strategy = 'normal';
+          if (darkRatio > 0.6) strategy = 'darken'; // Immagine molto scura
+          else if (lightRatio > 0.6) strategy = 'lighten'; // Immagine molto chiara
+          else if (Math.abs(darkRatio - lightRatio) < 0.1) strategy = 'highContrast'; // Contrasto bilanciato
+          
+          console.log(`Strategia pre-processing: ${strategy} (scuri: ${(darkRatio*100).toFixed(1)}%, chiari: ${(lightRatio*100).toFixed(1)}%)`);
+          
+          // Applica strategia di pre-processing
+          switch (strategy) {
+            case 'darken':
+              this._applyDarkeningFilter(data);
               break;
-            }
-          }
-          
-          count = 0;
-          for (let i = 255; i >= 0; i--) {
-            count += histogram[i];
-            if (count > cutoffLow) {
-              max = i;
+            case 'lighten':
+              this._applyLighteningFilter(data);
               break;
-            }
-          }
-          
-          // Applica il miglioramento del contrasto
-          for (let i = 0; i < data.length; i += 4) {
-            for (let j = 0; j < 3; j++) {
-              const value = data[i + j];
-              // Normalizza i valori
-              data[i + j] = Math.min(255, Math.max(0, Math.round(((value - min) / (max - min)) * 255)));
-            }
+            case 'highContrast':
+              this._applyHighContrastFilter(data);
+              break;
+            default:
+              this._applyNormalFilter(data);
           }
           
           ctx.putImageData(imageData, 0, 0);
           
           // Ritorna l'immagine pre-elaborata
-          resolve(canvas.toDataURL('image/jpeg', 0.95));
+          resolve(canvas.toDataURL('image/jpeg', 0.92));
         };
         
         img.onerror = () => {
@@ -290,7 +350,54 @@ class SimpleOcrService {
       }
     });
   }
+  _applyDarkeningFilter(data) {
+    // Aumenta luminosità e contrasto per immagini scure
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = Math.min(255, data[i] * 1.4);     // R
+      data[i+1] = Math.min(255, data[i+1] * 1.4); // G
+      data[i+2] = Math.min(255, data[i+2] * 1.4); // B
+    }
+  }
   
+  _applyLighteningFilter(data) {
+    // Aumenta contrasto per immagini chiare
+    for (let i = 0; i < data.length; i += 4) {
+      data[i] = data[i] * 0.9;     // R
+      data[i+1] = data[i+1] * 0.9; // G
+      data[i+2] = data[i+2] * 0.9; // B
+    }
+  }
+  
+  _applyHighContrastFilter(data) {
+    // Ottimizza il contrasto per immagini bilanciate
+    for (let i = 0; i < data.length; i += 4) {
+      // Converti in scala di grigi con pesi ottimizzati per testo
+      const gray = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+      
+      // Applica contrasto a S-curve per enfatizzare testo
+      const contrast = 1.5; // Fattore di contrasto
+      const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      const newValue = factor * (gray - 128) + 128;
+      
+      data[i] = newValue;     // R
+      data[i+1] = newValue;   // G
+      data[i+2] = newValue;   // B
+    }
+  }
+  
+  _applyNormalFilter(data) {
+    // Filtro bilanciato per casi generici
+    for (let i = 0; i < data.length; i += 4) {
+      // Leggero incremento di contrasto
+      const avg = (data[i] + data[i+1] + data[i+2]) / 3;
+      const delta = avg - 128;
+      const adjusted = 128 + delta * 1.2;
+      
+      data[i] = adjusted;     // R
+      data[i+1] = adjusted;   // G
+      data[i+2] = adjusted;   // B
+    }
+  }
   /**
    * Il resto delle funzioni rimane invariato
    */
@@ -313,60 +420,231 @@ class SimpleOcrService {
   }
   
   analyzeText(text) {
-    if (!text) return { title: null, author: null };
+    if (!text) return { title: null, author: null, confidence: 0 };
     
-    // Normalizza il testo per l'analisi
-    const cleanedText = text
-      .replace(/[^\w\s\.,'"\-:;]/g, ' ')  // Rimuovi caratteri speciali inutili
-      .replace(/\s+/g, ' ')               // Normalizza spazi
-      .trim();
-    
-    console.log('Testo normalizzato:', cleanedText);
-    
-    // Dividi in linee per analisi
-    const lines = cleanedText.split('\n')
+    // Dividi in linee e pulisci
+    const lines = text.split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 3);
     
-    // Strategie multiple di estrazione
-    const strategies = [
-      this._extractTitleAuthorByPattern,     // Pattern tipici (IL, LA + MAIUSCOLO)
-      this._extractTitleAuthorByPosition,    // Posizione tipica (titolo in mezzo, autore in alto)
-      this._extractTitleAuthorByFormatting,  // Formattazione (MAIUSCOLO, lunghezza)
-      this._extractTitleAuthorByKeywords     // Parole chiave (Editore, Classici, etc.)
-    ];
+    // Candidati per titolo e autore con punteggi di confidenza
+    const candidates = {
+      titles: [],
+      authors: []
+    };
     
-    // Prova diverse strategie e raccogli i risultati con punteggio
-    const candidates = [];
+    // Analisi strutturale del testo
+    this._analyzeStructuralPatterns(lines, candidates);
     
-    for (const strategy of strategies) {
-      const result = strategy.call(this, cleanedText, lines);
-      if (result && (result.title || result.author)) {
-        candidates.push({
-          title: result.title,
-          author: result.author,
-          confidence: result.confidence || 0.5
-        });
+    // Analisi contestuale (cerca pattern tipici di libri)
+    this._analyzeContextualPatterns(text, candidates);
+    
+    // Analisi specifica per libri italiani
+    this._analyzeItalianBookPatterns(text, candidates);
+    
+    // Seleziona i candidati migliori
+    candidates.titles.sort((a, b) => b.score - a.score);
+    candidates.authors.sort((a, b) => b.score - a.score);
+    
+    // Stampa candidati per debug
+    if (candidates.titles.length > 0) {
+      console.log('Candidati titolo:', candidates.titles.slice(0, 3));
+    }
+    if (candidates.authors.length > 0) {
+      console.log('Candidati autore:', candidates.authors.slice(0, 3));
+    }
+    
+    // Calcola confidenza complessiva
+    const titleConfidence = candidates.titles.length > 0 ? candidates.titles[0].score : 0;
+    const authorConfidence = candidates.authors.length > 0 ? candidates.authors[0].score : 0;
+    const overallConfidence = (titleConfidence + authorConfidence) / 2;
+    
+    // Crea risultato
+    return {
+      title: candidates.titles.length > 0 ? candidates.titles[0].text : null,
+      author: candidates.authors.length > 0 ? candidates.authors[0].text : null,
+      confidence: overallConfidence,
+      allCandidates: {
+        titles: candidates.titles.slice(0, 3),
+        authors: candidates.authors.slice(0, 3)
+      }
+    };
+  }
+  
+  // Metodi di supporto avanzati
+  _analyzeStructuralPatterns(lines, candidates) {
+    // Analizza la struttura del testo OCR
+    
+    // Le prime righe spesso contengono il titolo
+    if (lines.length > 0) {
+      // Titolo potenziale nelle prime linee
+      for (let i = 0; i < Math.min(3, lines.length); i++) {
+        const line = lines[i];
+        
+        // Punteggio base per posizione
+        const positionScore = 1 - (i * 0.2); // 1.0, 0.8, 0.6
+        
+        // Linee in MAIUSCOLO hanno probabilità maggiore di essere titoli
+        if (line === line.toUpperCase() && line.length > 5) {
+          candidates.titles.push({
+            text: this._normalizeTitleCase(line),
+            score: 0.8 + positionScore,
+            source: 'uppercase_first_lines'
+          });
+        }
+        
+        // Linee lunghe hanno buona probabilità di essere titoli
+        if (line.length > 15 && line.length < 50) {
+          candidates.titles.push({
+            text: this._normalizeTitleCase(line),
+            score: 0.6 + positionScore,
+            source: 'long_first_lines'
+          });
+        }
       }
     }
     
-    // Ordina i candidati per confidenza
-    candidates.sort((a, b) => b.confidence - a.confidence);
-    
-    console.log('Candidati trovati:', candidates);
-    
-    // Se abbiamo almeno un candidato, usa il migliore
-    if (candidates.length > 0) {
-      return {
-        title: candidates[0].title,
-        author: candidates[0].author,
-        confidence: candidates[0].confidence,
-        allCandidates: candidates  // Restituisce tutti i candidati per uso futuro
-      };
+    // Cerca pattern di autore (Nome Cognome) nelle prime linee
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i];
+      
+      // Pattern comune per autori: "Nome Cognome"
+      if (/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(line)) {
+        candidates.authors.push({
+          text: line,
+          score: 0.9 - (i * 0.1),
+          source: 'name_pattern'
+        });
+      }
+      
+      // Pattern per autori con middle initial: "Nome M. Cognome"
+      if (/^[A-Z][a-z]+ [A-Z]\. [A-Z][a-z]+$/.test(line)) {
+        candidates.authors.push({
+          text: line,
+          score: 0.95 - (i * 0.1),
+          source: 'name_with_middle'
+        });
+      }
+      
+      // Pattern COGNOME, Nome
+      if (/^[A-Z][A-Z]+ [A-Z][a-z]+$/.test(line) || /^[A-Z][A-Z]+, [A-Z][a-z]+$/.test(line)) {
+        candidates.authors.push({
+          text: line,
+          score: 0.85 - (i * 0.1),
+          source: 'surname_first'
+        });
+      }
+    }
+  }
+  
+  _analyzeContextualPatterns(text, candidates) {
+    // Cerca pattern come "di [Autore]", "by [Autore]"
+    const byAuthorMatches = text.match(/(?:di|by|scritto da)\s+([A-Z][a-z]+ [A-Z][a-z]+)/gi);
+    if (byAuthorMatches) {
+      byAuthorMatches.forEach(match => {
+        const author = match.replace(/(?:di|by|scritto da)\s+/i, '').trim();
+        candidates.authors.push({
+          text: author,
+          score: 0.85,
+          source: 'by_author_pattern'
+        });
+      });
     }
     
-    // Nessun candidato trovato
-    return { title: null, author: null, confidence: 0 };
+    // Cerca titoli tra virgolette
+    const quotedMatches = text.match(/"([^"]{5,50})"/g);
+    if (quotedMatches) {
+      quotedMatches.forEach(match => {
+        const title = match.replace(/"/g, '').trim();
+        candidates.titles.push({
+          text: this._normalizeTitleCase(title),
+          score: 0.75,
+          source: 'quoted_title'
+        });
+      });
+    }
+    
+    // Cerca pattern editoriali (Editore, Anno)
+    const publisherMatches = text.match(/(?:editore|publisher):\s+([A-Za-z\s&]+)/i);
+    if (publisherMatches) {
+      // Usa informazioni editore per migliorare altri risultati
+      // Spesso il titolo appare prima del publisher
+      const publisherPos = text.indexOf(publisherMatches[0]);
+      if (publisherPos > 20) {
+        const beforePublisher = text.substring(0, publisherPos).trim();
+        const lines = beforePublisher.split('\n');
+        if (lines.length > 0) {
+          const lastLine = lines[lines.length - 1].trim();
+          if (lastLine.length > 5 && lastLine.length < 80) {
+            candidates.titles.push({
+              text: this._normalizeTitleCase(lastLine),
+              score: 0.7,
+              source: 'before_publisher'
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  _analyzeItalianBookPatterns(text, candidates) {
+    // Pattern specifici per libri italiani
+    
+    // Titoli comuni in italiano (spesso iniziano con articoli)
+    const italianTitlePattern = /\b(IL|LA|I|GLI|LE|UN|UNA|LO)\s+([A-Z][a-z][A-Za-z\s]+)/i;
+    const italianMatches = text.match(italianTitlePattern);
+    
+    if (italianMatches) {
+      italianMatches.forEach(match => {
+        candidates.titles.push({
+          text: this._normalizeTitleCase(match),
+          score: 0.8,
+          source: 'italian_article_pattern'
+        });
+      });
+    }
+    
+    // Cerca specifici pattern editoriali italiani
+    const italianPublishers = [
+      'Mondadori', 'Einaudi', 'Feltrinelli', 'Rizzoli', 'Adelphi', 
+      'Garzanti', 'Bompiani', 'Laterza', 'Sellerio', 'Longanesi'
+    ];
+    
+    for (const publisher of italianPublishers) {
+      if (text.includes(publisher)) {
+        const publisherIndex = text.indexOf(publisher);
+        // Cerca titolo nella parte precedente
+        const beforePublisher = text.substring(0, publisherIndex).trim();
+        const lines = beforePublisher.split('\n');
+        
+        // Prende le ultime 2 linee prima dell'editore
+        const relevantLines = lines.slice(-2);
+        
+        relevantLines.forEach((line, idx) => {
+          if (line.length > 5) {
+            candidates.titles.push({
+              text: this._normalizeTitleCase(line),
+              score: 0.75 - (idx * 0.1),
+              source: `before_italian_publisher_${publisher}`
+            });
+          }
+        });
+        
+        break;
+      }
+    }
+  }
+  
+  _normalizeTitleCase(text) {
+    // Normalizza maiuscole/minuscole per titoli
+    if (!text) return '';
+    
+    // Se tutto maiuscolo, converti in Title Case
+    if (text === text.toUpperCase()) {
+      return text.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    return text;
   }
   
   // Pattern di riconoscimento comuni per libri italiani

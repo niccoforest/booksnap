@@ -1,4 +1,4 @@
-// client/src/pages/RecognitionTest.js (versione migliorata)
+// client/src/pages/RecognitionTest.js (versione corretta)
 import React, { useState, useRef, useCallback, useReducer } from 'react';
 import { 
   Box, 
@@ -33,9 +33,7 @@ import {
   AccordionDetails,
   TextField,
   Tooltip,
-  IconButton,
-  Fade,
-  Zoom
+  IconButton
 } from '@mui/material';
 import { 
   Camera as CameraIcon,
@@ -51,9 +49,11 @@ import {
   Save as SaveIcon,
   Image as ImageIcon,
   TextFields as TextFieldsIcon,
-  Timeline as TimelineIcon
+  Timeline as TimelineIcon,
+  Feedback as FeedbackIcon  // Aggiungi l'import dell'icona feedback
 } from '@mui/icons-material';
 import BookCard from '../components/book/BookCard';
+import BookFeedbackDialog from '../components/common/BookFeedbackDialog'; // Importa il componente
 import smartScannerService from '../services/smartScanner.service';
 import simpleOcrService from '../services/simpleOcr.service';
 import recognitionCacheService from '../services/recognitionCache.service';
@@ -174,6 +174,9 @@ const RecognitionTest = () => {
   // Stato per i tab
   const [activeTab, setActiveTab] = useState('main');
   
+  // Stato per il dialog di feedback
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  
   const fileInputRef = useRef(null);
   
   // Ottieni lingue disponibili
@@ -243,6 +246,59 @@ const RecognitionTest = () => {
     }
   }, []);
 
+  async function debugImageProcessing(imageData) {
+    const img = new Image();
+    img.src = imageData;
+    await new Promise(resolve => img.onload = resolve);
+    
+    // Crea un div per contenere i canvas di debug
+    const debugDiv = document.createElement('div');
+    debugDiv.style.display = 'flex';
+    debugDiv.style.flexWrap = 'wrap';
+    debugDiv.style.gap = '10px';
+    
+    // Originale
+    const originalCanvas = document.createElement('canvas');
+    originalCanvas.width = img.width;
+    originalCanvas.height = img.height;
+    const originalCtx = originalCanvas.getContext('2d');
+    originalCtx.drawImage(img, 0, 0);
+    
+    // Scala di grigi
+    const grayCanvas = document.createElement('canvas');
+    grayCanvas.width = img.width;
+    grayCanvas.height = img.height;
+    const grayCtx = grayCanvas.getContext('2d');
+    grayCtx.drawImage(img, 0, 0);
+    const grayData = grayCtx.getImageData(0, 0, img.width, img.height);
+    for (let i = 0; i < grayData.data.length; i += 4) {
+      const avg = (grayData.data[i] + grayData.data[i + 1] + grayData.data[i + 2]) / 3;
+      grayData.data[i] = avg;
+      grayData.data[i + 1] = avg;
+      grayData.data[i + 2] = avg;
+    }
+    grayCtx.putImageData(grayData, 0, 0);
+    
+    // Aggiungi titoli e canvas al div
+    const addCanvas = (canvas, title) => {
+      const wrapper = document.createElement('div');
+      wrapper.style.textAlign = 'center';
+      
+      const titleElem = document.createElement('p');
+      titleElem.textContent = title;
+      titleElem.style.margin = '5px';
+      
+      wrapper.appendChild(titleElem);
+      wrapper.appendChild(canvas);
+      debugDiv.appendChild(wrapper);
+    };
+    
+    addCanvas(originalCanvas, 'Originale');
+    addCanvas(grayCanvas, 'Scala di grigi');
+    
+    // Aggiungi div al documento
+    document.body.appendChild(debugDiv);
+  }
 
   // Carica un'immagine da file
   const handleFileUpload = useCallback((event) => {
@@ -484,6 +540,24 @@ const RecognitionTest = () => {
       payload: 'Test salvato per confronti futuri' 
     });
   }, [image, mode, language, results, extractedText, processSteps]);
+
+  // Gestisce il feedback dell'utente dal dialog
+  const handleFeedbackSubmitted = (type, book) => {
+    if (type === 'alternative_book' && book) {
+      // Aggiorna il libro riconosciuto con quello corretto
+      dispatch({ type: 'SET_RECOGNIZED_BOOK', payload: book });
+      dispatch({ type: 'SET_RESULTS', payload: [book] });
+      dispatch({ 
+        type: 'SET_STATUS_MESSAGE', 
+        payload: "Grazie! Abbiamo registrato la tua scelta per migliorare i riconoscimenti futuri." 
+      });
+    } else if (type === 'wrong_book') {
+      dispatch({ 
+        type: 'SET_STATUS_MESSAGE', 
+        payload: "Feedback registrato. Questo libro NON sarà più proposto per questa scansione." 
+      });
+    }
+  };
 
   return (
     <Box sx={{ p: 2 }}>
@@ -768,8 +842,32 @@ const RecognitionTest = () => {
                 </Grid>
               </Box>
             )}
+            
+            {/* Pulsante Feedback avanzato */}
+            {results[0] && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => setFeedbackDialogOpen(true)}
+                  startIcon={<FeedbackIcon />}
+                >
+                  Fornisci feedback sul riconoscimento
+                </Button>
+              </Box>
+            )}
           </Paper>
         )}
+        
+        {/* Dialog Feedback */}
+        <BookFeedbackDialog
+          open={feedbackDialogOpen}
+          onClose={() => setFeedbackDialogOpen(false)}
+          recognizedBook={results && results.length > 0 ? results[0] : null}
+          alternativeBooks={alternativeResults}
+          ocrText={extractedText}
+          onFeedbackSubmitted={handleFeedbackSubmitted}
+        />
         
         {/* Pulsante per salvare il test corrente */}
         {results && (
@@ -815,360 +913,360 @@ const RecognitionTest = () => {
                     <Typography>{step.description}</Typography>
                     {step.details && (
                       <Accordion sx={{ mt: 1 }}>
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Typography variant="body2">Dettagli</Typography>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Box 
-                            sx={{ 
-                              bgcolor: '#f5f5f5', 
-                              p: 1, 
-                              borderRadius: 1,
-                              fontFamily: 'monospace',
-                              fontSize: '0.75rem',
-                              maxHeight: '200px',
-                              overflow: 'auto'
-                            }}
-                          >
-                            <pre>{step.details}</pre>
-                          </Box>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
-                  </StepContent>
-                </Step>
-              ))}
-            </Stepper>
-          )}
-        </Paper>
-      </TabPanel>
-      
-      {/* Tab testo OCR */}
-      <TabPanel value={activeTab} index="ocr">
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Testo OCR Estratto
-          </Typography>
-          
-          {!extractedText ? (
-            <Alert severity="info">
-              Nessun testo OCR estratto. Carica un'immagine e avvia il riconoscimento per visualizzare il testo estratto.
-            </Alert>
-          ) : (
-            <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="subtitle1">
-                  {extractedText.length} caratteri estratti
-                </Typography>
-                <Chip 
-                  label={`Lingua: ${language}`} 
-                  size="small" 
-                  color="primary"
-                />
-              </Box>
-              
-              <TextField
-                fullWidth
-                multiline
-                variant="outlined"
-                value={extractedText}
-                InputProps={{
-                  readOnly: true,
-                  style: { fontFamily: 'monospace', fontSize: '0.875rem' }
-                }}
-                minRows={10}
-                maxRows={20}
-              />
-              
-              <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
-                Analisi del testo
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="body2">Dettagli</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box 
+                          sx={{ 
+                            bgcolor: '#f5f5f5', 
+                            p: 1, 
+                            borderRadius: 1,
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            maxHeight: '200px',
+                            overflow: 'auto'
+                          }}
+                        >
+                          <pre>{step.details}</pre>
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  )}
+                </StepContent>
+              </Step>
+            ))}
+          </Stepper>
+        )}
+      </Paper>
+    </TabPanel>
+    
+    {/* Tab testo OCR */}
+    <TabPanel value={activeTab} index="ocr">
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Testo OCR Estratto
+        </Typography>
+        
+        {!extractedText ? (
+          <Alert severity="info">
+            Nessun testo OCR estratto. Carica un'immagine e avvia il riconoscimento per visualizzare il testo estratto.
+          </Alert>
+        ) : (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+              <Typography variant="subtitle1">
+                {extractedText.length} caratteri estratti
               </Typography>
-              
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Possibili titoli:
-                    </Typography>
-                    {extractedText.split('\n')
-                      .filter(line => line.length > 10)
-                      .slice(0, 3)
-                      .map((line, index) => (
-                        <Chip 
-                          key={index}
-                          label={line.length > 40 ? line.substring(0, 40) + '...' : line} 
-                          size="small" 
-                          sx={{ m: 0.5 }}
-                        />
-                      ))}
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle2" gutterBottom>
-                      Possibili autori:
-                    </Typography>
-                    {extractedText.split('\n')
-                      .filter(line => /^[A-Z][a-z]+ [A-Z][a-z]+/.test(line))
-                      .slice(0, 3)
-                      .map((line, index) => (
-                        <Chip 
-                          key={index}
-                          label={line} 
-                          size="small" 
-                          sx={{ m: 0.5 }}
-                        />
-                      ))}
-                  </Paper>
-                </Grid>
-              </Grid>
-            </>
-          )}
-        </Paper>
-      </TabPanel>
-      
-      {/* Tab debug */}
-      <TabPanel value={activeTab} index="debug">
-        {debug && (
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-              <ViewIcon sx={{ mr: 1 }} />
-              Informazioni di debug
+              <Chip 
+                label={`Lingua: ${language}`} 
+                size="small" 
+                color="primary"
+              />
+            </Box>
+            
+            <TextField
+              fullWidth
+              multiline
+              variant="outlined"
+              value={extractedText}
+              InputProps={{
+                readOnly: true,
+                style: { fontFamily: 'monospace', fontSize: '0.875rem' }
+              }}
+              minRows={10}
+              maxRows={20}
+            />
+            
+            <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
+              Analisi del testo
             </Typography>
             
-            {/* Cache Stats */}
-            {debug.cacheStats && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Statistiche Cache:
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Entries: ${debug.cacheStats.totalEntries}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Hit rate: ${(debug.cacheStats.hitRate * 100).toFixed(1)}%`} 
-                      size="small" 
-                      color="success"
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Hits: ${debug.cacheStats.hits}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Misses: ${debug.cacheStats.misses}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-            
-            {/* Decision Engine Info */}
-            {debug.decisionInfo && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Decision Engine:
-                </Typography>
-                <Chip 
-                  label={`Decisione: ${debug.decisionInfo.decision || 'nessuna'}`} 
-                  size="small" 
-                  color="primary"
-                  sx={{ m: 0.5 }}
-                />
-                <Chip 
-                  label={`Confidenza: ${debug.decisionInfo.confidence ? (debug.decisionInfo.confidence * 100).toFixed(1) + '%' : 'N/A'}`} 
-                  size="small" 
-                  sx={{ m: 0.5 }}
-                />
-              </Box>
-            )}
-            
-            {/* Scanner Stats */}
-            {debug.scannerStats && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Statistiche Scanner:
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Scansioni: ${debug.scannerStats.totalScans}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`Successo: ${debug.scannerStats.successRate}`} 
-                      size="small" 
-                      color="success"
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`OK: ${debug.scannerStats.successfulScans}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                  <Grid item xs={6} sm={3}>
-                    <Chip 
-                      label={`KO: ${debug.scannerStats.failedScans}`} 
-                      size="small" 
-                      sx={{ m: 0.5 }}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-            
-            {/* Detailed Debug Data */}
-            <Box 
-              sx={{ 
-                bgcolor: '#f5f5f5', 
-                p: 2, 
-                borderRadius: 1,
-                fontFamily: 'monospace',
-                fontSize: '0.875rem',
-                maxHeight: '300px',
-                overflow: 'auto'
-              }}
-            >
-              <pre>{JSON.stringify(debug, null, 2)}</pre>
-            </Box>
-          </Paper>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Possibili titoli:
+                  </Typography>
+                  {extractedText.split('\n')
+                    .filter(line => line.length > 10)
+                    .slice(0, 3)
+                    .map((line, index) => (
+                      <Chip 
+                        key={index}
+                        label={line.length > 40 ? line.substring(0, 40) + '...' : line} 
+                        size="small" 
+                        sx={{ m: 0.5 }}
+                      />
+                    ))}
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Possibili autori:
+                  </Typography>
+                  {extractedText.split('\n')
+                    .filter(line => /^[A-Z][a-z]+ [A-Z][a-z]+/.test(line))
+                    .slice(0, 3)
+                    .map((line, index) => (
+                      <Chip 
+                        key={index}
+                        label={line} 
+                        size="small" 
+                        sx={{ m: 0.5 }}
+                      />
+                    ))}
+                </Paper>
+              </Grid>
+            </Grid>
+          </>
         )}
-        
-        {!debug && (
-          <Alert severity="info">
-            Nessuna informazione di debug disponibile. Esegui un riconoscimento per visualizzare i dati di debug.
-          </Alert>
-        )}
-      </TabPanel>
-      
-      {/* Tab confronto */}
-      <TabPanel value={activeTab} index="compare">
+      </Paper>
+    </TabPanel>
+    
+    {/* Tab debug */}
+    <TabPanel value={activeTab} index="debug">
+      {debug && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>
-            Confronto Test
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+            <ViewIcon sx={{ mr: 1 }} />
+            Informazioni di debug
           </Typography>
           
-          {state.comparisons.length === 0 ? (
-            <Alert severity="info">
-              Nessun test salvato per il confronto. Esegui un riconoscimento e salva il test per confrontarlo con altri.
-            </Alert>
-          ) : (
-            <>
-              <Typography variant="subtitle1" gutterBottom>
-                Test salvati:
+          {/* Cache Stats */}
+          {debug.cacheStats && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Statistiche Cache:
               </Typography>
-              
               <Grid container spacing={2}>
-                {state.comparisons.map((comparison, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Card 
-                      sx={{ 
-                        cursor: 'pointer',
-                        border: state.activeComparison === index ? '2px solid #1976d2' : 'none'
-                      }}
-                      onClick={() => dispatch({ type: 'SET_ACTIVE_COMPARISON', payload: index })}
-                    >
-                      <CardContent>
-                        <Typography variant="subtitle2">
-                          Test #{index + 1} - {new Date(comparison.timestamp).toLocaleTimeString()}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Modalità: {comparison.mode}, Lingua: {comparison.language}
-                        </Typography>
-                        {comparison.results && comparison.results[0] && (
-                          <Typography variant="body2" noWrap>
-                            {comparison.results[0].title}
-                          </Typography>
-                        )}
-                      </CardContent>
-                      {comparison.image && (
-                        <Box sx={{ p: 1, textAlign: 'center' }}>
-                          <img 
-                            src={comparison.image} 
-                            alt={`Test ${index + 1}`}
-                            style={{ 
-                              maxWidth: '100%', 
-                              maxHeight: '100px',
-                              objectFit: 'contain'
-                            }}
-                          />
-                        </Box>
-                      )}
-                    </Card>
-                  </Grid>
-                ))}
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Entries: ${debug.cacheStats.totalEntries}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Hit rate: ${(debug.cacheStats.hitRate * 100).toFixed(1)}%`} 
+                    size="small" 
+                    color="success"
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Hits: ${debug.cacheStats.hits}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Misses: ${debug.cacheStats.misses}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
               </Grid>
-              
-              {state.activeComparison !== null && state.comparisons[state.activeComparison] && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Dettagli Test #{state.activeComparison + 1}
-                  </Typography>
-                  
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <Paper variant="outlined" sx={{ p: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>
-                          Configurazione
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Modalità:</strong> {state.comparisons[state.activeComparison].mode}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Lingua:</strong> {state.comparisons[state.activeComparison].language}
-                        </Typography>
-                        <Typography variant="body2">
-                          <strong>Data:</strong> {new Date(state.comparisons[state.activeComparison].timestamp).toLocaleString()}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    
-                    <Grid item xs={12} md={6}>
-                      <Paper variant="outlined" sx={{ p: 2 }}>
-                        <Typography variant="subtitle1" gutterBottom>
-                          Risultati
-                        </Typography>
-                        {state.comparisons[state.activeComparison].results && 
-                         state.comparisons[state.activeComparison].results[0] && (
-                          <>
-                            <Typography variant="body2">
-                              <strong>Titolo:</strong> {state.comparisons[state.activeComparison].results[0].title}
-                            </Typography>
-                            <Typography variant="body2">
-                              <strong>Autore:</strong> {state.comparisons[state.activeComparison].results[0].author}
-                            </Typography>
-                          </>
-                        )}
-                      </Paper>
-                    </Grid>
-                  </Grid>
-                </Box>
-              )}
-            </>
+            </Box>
           )}
+          
+          {/* Decision Engine Info */}
+          {debug.decisionInfo && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Decision Engine:
+              </Typography>
+              <Chip 
+                label={`Decisione: ${debug.decisionInfo.decision || 'nessuna'}`} 
+                size="small" 
+                color="primary"
+                sx={{ m: 0.5 }}
+              />
+              <Chip 
+                label={`Confidenza: ${debug.decisionInfo.confidence ? (debug.decisionInfo.confidence * 100).toFixed(1) + '%' : 'N/A'}`} 
+                size="small" 
+                sx={{ m: 0.5 }}
+              />
+            </Box>
+          )}
+          
+          {/* Scanner Stats */}
+          {debug.scannerStats && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Statistiche Scanner:
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Scansioni: ${debug.scannerStats.totalScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`Successo: ${debug.scannerStats.successRate}`} 
+                    size="small" 
+                    color="success"
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`OK: ${debug.scannerStats.successfulScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <Chip 
+                    label={`KO: ${debug.scannerStats.failedScans}`} 
+                    size="small" 
+                    sx={{ m: 0.5 }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+          
+          {/* Detailed Debug Data */}
+          <Box 
+            sx={{ 
+              bgcolor: '#f5f5f5', 
+              p: 2, 
+              borderRadius: 1,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              maxHeight: '300px',
+              overflow: 'auto'
+            }}
+          >
+            <pre>{JSON.stringify(debug, null, 2)}</pre>
+          </Box>
         </Paper>
-      </TabPanel>
-    </Box>
-  );
+      )}
+      
+      {!debug && (
+        <Alert severity="info">
+          Nessuna informazione di debug disponibile. Esegui un riconoscimento per visualizzare i dati di debug.
+        </Alert>
+      )}
+    </TabPanel>
+    
+    {/* Tab confronto */}
+    <TabPanel value={activeTab} index="compare">
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Confronto Test
+        </Typography>
+        
+        {state.comparisons.length === 0 ? (
+          <Alert severity="info">
+            Nessun test salvato per il confronto. Esegui un riconoscimento e salva il test per confrontarlo con altri.
+          </Alert>
+        ) : (
+          <>
+            <Typography variant="subtitle1" gutterBottom>
+              Test salvati:
+            </Typography>
+            
+            <Grid container spacing={2}>
+              {state.comparisons.map((comparison, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card 
+                    sx={{ 
+                      cursor: 'pointer',
+                      border: state.activeComparison === index ? '2px solid #1976d2' : 'none'
+                    }}
+                    onClick={() => dispatch({ type: 'SET_ACTIVE_COMPARISON', payload: index })}
+                  >
+                    <CardContent>
+                      <Typography variant="subtitle2">
+                        Test #{index + 1} - {new Date(comparison.timestamp).toLocaleTimeString()}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Modalità: {comparison.mode}, Lingua: {comparison.language}
+                      </Typography>
+                      {comparison.results && comparison.results[0] && (
+                        <Typography variant="body2" noWrap>
+                          {comparison.results[0].title}
+                        </Typography>
+                      )}
+                    </CardContent>
+                    {comparison.image && (
+                      <Box sx={{ p: 1, textAlign: 'center' }}>
+                        <img 
+                          src={comparison.image} 
+                          alt={`Test ${index + 1}`}
+                          style={{ 
+                            maxWidth: '100%', 
+                            maxHeight: '100px',
+                            objectFit: 'contain'
+                          }}
+                        />
+                      </Box>
+                    )}
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+            
+            {state.activeComparison !== null && state.comparisons[state.activeComparison] && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Dettagli Test #{state.activeComparison + 1}
+                </Typography>
+                
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Configurazione
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Modalità:</strong> {state.comparisons[state.activeComparison].mode}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Lingua:</strong> {state.comparisons[state.activeComparison].language}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Data:</strong> {new Date(state.comparisons[state.activeComparison].timestamp).toLocaleString()}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <Paper variant="outlined" sx={{ p: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Risultati
+                      </Typography>
+                      {state.comparisons[state.activeComparison].results && 
+                       state.comparisons[state.activeComparison].results[0] && (
+                        <>
+                          <Typography variant="body2">
+                            <strong>Titolo:</strong> {state.comparisons[state.activeComparison].results[0].title}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Autore:</strong> {state.comparisons[state.activeComparison].results[0].author}
+                          </Typography>
+                        </>
+                      )}
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Box>
+            )}
+          </>
+        )}
+      </Paper>
+    </TabPanel>
+  </Box>
+);
 };
 
 export default RecognitionTest;

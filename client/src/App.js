@@ -20,6 +20,8 @@ import ApiTest from './components/ApiTest';
 import ISBNDebug from './pages/ISBNDebug';
 import ScanTest from './pages/ScanTest';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import CacheTestPage from './pages/CacheTestPage';
+import CacheAdmin from './pages/AdminCache';
 
 import RecognitionTest from './pages/RecognitionTest';
 // ID utente temporaneo (da sostituire con autenticazione)
@@ -46,6 +48,8 @@ function App() {
             <Route path="/isbn-debug" element={<ISBNDebug />} />
             <Route path="/scan-test" element={<ScanTest />} />
             <Route path="/recognition-test" element={<RecognitionTest />} />
+            <Route path="/cache-test" element={<CacheTestPage />} />
+            <Route path="/admin/cache" element={<CacheAdmin />} />
           </Route>
         </Routes>
       </Router>

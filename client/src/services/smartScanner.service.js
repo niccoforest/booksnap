@@ -488,18 +488,36 @@ async _searchBookWithTerms({ title, author, fullText }) {
         progressCallback({
           status: 'processing',
           message: 'Riconoscimento copertina...',
-          progress: 50
+          progress: 30
         });
       }
       
-      // Utilizza direttamente il servizio di riconoscimento copertina
-      const book = await coverRecognitionService.recognizeBookCover(imageData, language);
+      // Primo step: estrai il testo OCR
+      const ocrText = await simpleOcrService.recognizeText(imageData, language);
       
-      if (book) {
+      // Aggiorna il progresso
+      if (progressCallback) {
+        progressCallback({
+          status: 'processing',
+          message: 'Analisi del testo estratto...',
+          progress: 50,
+          ocrText // Passa il testo OCR per mostrarlo nell'UI
+        });
+      }
+      
+      // Utilizza il nuovo servizio di cache distribuita
+      const result = await recognitionCacheService.searchWithOcr(ocrText);
+      
+      if (result.success) {
         scanResult.success = true;
-        scanResult.book = book;
-        scanResult.method = 'cover';
+        scanResult.book = result.book;
+        scanResult.method = result.method || 'ocr_cache';
         scanResult.message = 'Libro riconosciuto dalla copertina';
+        
+        // Se ci sono alternative, le salviamo
+        if (result.alternatives && result.alternatives.length > 0) {
+          scanResult.book.alternatives = result.alternatives;
+        }
         
         // Aggiorna il progresso
         if (progressCallback) {
@@ -507,20 +525,44 @@ async _searchBookWithTerms({ title, author, fullText }) {
             status: 'success',
             message: 'Libro riconosciuto con successo!',
             progress: 100,
-            book
+            book: result.book
           });
         }
       } else {
-        scanResult.success = false;
-        scanResult.message = 'Nessun libro riconosciuto dalla copertina';
+        // In caso di fallimento, utilizza il metodo tradizionale
+        // come fallback
+        const book = await coverRecognitionService.recognizeBookCover(imageData, language);
         
-        // Aggiorna il progresso
-        if (progressCallback) {
-          progressCallback({
-            status: 'error',
-            message: 'Nessun libro riconosciuto dalla copertina',
-            progress: 100
-          });
+        if (book) {
+          scanResult.success = true;
+          scanResult.book = book;
+          scanResult.method = 'cover_fallback';
+          scanResult.message = 'Libro riconosciuto dalla copertina (fallback)';
+          
+          // Salva nella cache per usi futuri
+          recognitionCacheService.addToCache(ocrText, book);
+          
+          // Aggiorna il progresso
+          if (progressCallback) {
+            progressCallback({
+              status: 'success',
+              message: 'Libro riconosciuto con successo!',
+              progress: 100,
+              book
+            });
+          }
+        } else {
+          scanResult.success = false;
+          scanResult.message = 'Nessun libro riconosciuto dalla copertina';
+          
+          // Aggiorna il progresso
+          if (progressCallback) {
+            progressCallback({
+              status: 'error',
+              message: 'Nessun libro riconosciuto dalla copertina',
+              progress: 100
+            });
+          }
         }
       }
     } catch (error) {
