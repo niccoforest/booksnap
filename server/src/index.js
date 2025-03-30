@@ -17,7 +17,7 @@ const userBookRoutes = require('./routes/userbook.routes');
 const reviewRoutes = require('./routes/review.routes');
 const recognitionCacheRoutes = require('./routes/recognitionCache.routes');
 
-
+const googleVisionRoutes = require('./routes/googleVision.routes');
 // Recupera la stringa di connessione MongoDB
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -68,6 +68,7 @@ if (process.env.NODE_ENV === 'production') {
     res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
   });
 }
+app.use('/api/google-vision', googleVisionRoutes);
 
 app.use('/api/recognition-cache', recognitionCacheRoutes);
 

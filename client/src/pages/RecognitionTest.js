@@ -50,6 +50,7 @@ import {
   Image as ImageIcon,
   TextFields as TextFieldsIcon,
   Timeline as TimelineIcon,
+  Info as InfoIcon,
   Feedback as FeedbackIcon  // Aggiungi l'import dell'icona feedback
 } from '@mui/icons-material';
 import BookCard from '../components/book/BookCard';
@@ -59,6 +60,10 @@ import simpleOcrService from '../services/simpleOcr.service';
 import recognitionCacheService from '../services/recognitionCache.service';
 import decisionEngineService from '../services/decisionEngine.service';
 import coverRecognitionService from '../services/coverRecognitionService';
+import googleVisionService from '../services/googleVision.service';
+import { useEffect } from 'react';
+
+
 
 // Reducer per gestire lo stato complesso
 const initialState = {
@@ -77,7 +82,9 @@ const initialState = {
   alternativeResults: [],
   processSteps: [],
   comparisons: [],
-  activeComparison: null
+  activeComparison: null,
+  useVision: false,
+  visionAvailable: false
 };
 
 function recognitionReducer(state, action) {
@@ -106,6 +113,10 @@ function recognitionReducer(state, action) {
       return { ...state, recognizedBook: action.payload };
     case 'SET_EXTRACTED_TEXT':
       return { ...state, extractedText: action.payload };
+    case 'SET_USE_VISION':
+      return { ...state, useVision: action.payload };
+    case 'SET_VISION_AVAILABLE':
+      return { ...state, visionAvailable: action.payload };
     case 'SET_ALTERNATIVE_RESULTS':
       return { ...state, alternativeResults: action.payload };
     case 'ADD_PROCESS_STEP':
@@ -141,6 +152,8 @@ function recognitionReducer(state, action) {
       return state;
   }
 }
+
+
 
 // Componente TabPanel per gestire il contenuto dei tab
 function TabPanel(props) {
@@ -244,6 +257,20 @@ const RecognitionTest = () => {
         });
       }
     }
+  }, []);
+
+  useEffect(() => {
+    async function checkVisionStatus() {
+      try {
+        const isConfigured = await googleVisionService.checkConfiguration();
+        dispatch({ type: 'SET_VISION_AVAILABLE', payload: isConfigured });
+      } catch (err) {
+        console.error('Errore nel controllo stato Vision API:', err);
+        dispatch({ type: 'SET_VISION_AVAILABLE', payload: false });
+      }
+    }
+    
+    checkVisionStatus();
   }, []);
 
   async function debugImageProcessing(imageData) {
@@ -405,27 +432,34 @@ const RecognitionTest = () => {
         mode, 
         language,
         (progressUpdate) => {
-          if (progressUpdate.progress) {
-            dispatch({ type: 'SET_PROGRESS', payload: progressUpdate.progress });
+          // Verifica che progressUpdate abbia la struttura attesa
+          console.log("Progress Update:", progressUpdate);
+          
+          // Gestisci il caso in cui progressUpdate potrebbe non avere tutti i campi attesi
+          if (progressUpdate) {
+            if (progressUpdate.progress !== undefined) {
+              dispatch({ type: 'SET_PROGRESS', payload: progressUpdate.progress });
+            }
+            if (progressUpdate.message) {
+              dispatch({ type: 'SET_PROGRESS_MESSAGE', payload: progressUpdate.message });
+              
+              // Aggiungi anche come step del processo
+              dispatch({
+                type: 'ADD_PROCESS_STEP',
+                payload: {
+                  name: 'Progresso riconoscimento',
+                  description: progressUpdate.message,
+                  status: 'processing'
+                }
+              });
+            }
+            // Se il progressUpdate include il testo OCR, salvalo
+            if (progressUpdate.ocrText) {
+              dispatch({ type: 'SET_EXTRACTED_TEXT', payload: progressUpdate.ocrText });
+            }
           }
-          if (progressUpdate.message) {
-            dispatch({ type: 'SET_PROGRESS_MESSAGE', payload: progressUpdate.message });
-            
-            // Aggiungi anche come step del processo
-            dispatch({
-              type: 'ADD_PROCESS_STEP',
-              payload: {
-                name: 'Progresso riconoscimento',
-                description: progressUpdate.message,
-                status: 'processing'
-              }
-            });
-          }
-          // Se il progressUpdate include il testo OCR, salvalo
-          if (progressUpdate.ocrText) {
-            dispatch({ type: 'SET_EXTRACTED_TEXT', payload: progressUpdate.ocrText });
-          }
-        }
+        },
+        state.useVision 
       );
       
       // Debug dell'output del sistema di decisione
@@ -612,6 +646,29 @@ const RecognitionTest = () => {
           </FormControl>
           
           <Divider sx={{ my: 2 }} />
+
+
+
+          <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+  <FormControlLabel
+    control={
+      <Switch
+        checked={state.useVision}
+        onChange={(e) => dispatch({ type: 'SET_USE_VISION', payload: e.target.checked })}
+        disabled={!state.visionAvailable}
+        color="primary"
+      />
+    }
+    label="Usa Google Vision API"
+  />
+  {!state.visionAvailable && (
+    <Tooltip title="Google Vision API non configurata sul server">
+      <IconButton size="small" color="primary">
+        <InfoIcon />
+      </IconButton>
+    </Tooltip>
+  )}
+</Box>
           
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <Button

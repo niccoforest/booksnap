@@ -4,6 +4,8 @@ import googleBooksService from './googleBooks.service';
 import isbnService from './isbn.service';
 import spineRecognitionService from './spineRecognition.service';
 import simpleOcrService from './simpleOcr.service';
+import googleVisionService from './googleVision.service';
+import recognitionCacheService from './recognitionCache.service';
 
 class CoverRecognitionService {
   constructor() {
@@ -13,51 +15,58 @@ class CoverRecognitionService {
     this.recognitionStatus = null;
   }
 
- /**
- * Riconosce una copertina di libro da un'immagine
+
+
+
+/**
+ * Riconosce un libro da un'immagine della copertina
  * @param {string} imageData - Immagine in formato base64
- * @param {string} language - Lingua per l'OCR (default: 'ita')
- * @returns {Promise<Object>} - Dati del libro riconosciuto
+ * @param {string} language - Lingua per OCR
+ * @param {boolean} useVision - Usa Google Vision API, se disponibile
+ * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
  */
-async recognizeBookCover(imageData, language = 'ita') {
+async recognizeBookCover(imageData, language = 'eng', useVision = false) {
+  if (!imageData) {
+    throw new Error('Immagine non valida');
+  }
+  
+  console.log(`Inizio riconoscimento libro (lingua: ${language})...`);
+  
   try {
-    console.log(`Inizio riconoscimento libro (lingua: ${language})...`);
-    this.lastProcessedImage = imageData;
-    this.recognitionStatus = 'processing';
+    // 1. Prima tentativo con barcode
+    console.log("Tentativo riconoscimento tramite barcode...");
+    const barcodeResult = await this._recognizeViaBarcode(imageData);
     
-    // 1. Verifica se l'immagine è probabilmente una costa di libro
-    const isSpine = await this._isLikelyBookSpine(imageData);
+    if (barcodeResult) {
+      console.log("Libro riconosciuto tramite ISBN:", barcodeResult.title);
+      return barcodeResult;
+    }
     
-    let bookData = null;
+    console.log("Riconoscimento tramite barcode fallito: Impossibile riconoscere il codice ISBN");
     
-    // 2. Prima prova con barcode/ISBN che è indipendente dalla lingua
-    bookData = await this._recognizeViaBarcode(imageData);
-      
-    if (bookData) {
-      this.recognitionStatus = 'success_barcode';
-    } else {
-      // 3. Se il barcode fallisce, prova con OCR
-      bookData = await this._recognizeViaOCR(imageData, language);
-      
-      if (bookData) {
-        this.recognitionStatus = 'success_ocr';
-      } else {
-        this.recognitionStatus = 'failed';
+    // 2. Se richiesto e disponibile, prova Google Vision API
+    if (useVision && googleVisionService.enabled) {
+      const visionResult = await this._recognizeViaGoogleVision(imageData, language);
+      if (visionResult) {
+        console.log("Libro riconosciuto tramite Google Vision API:", visionResult.title);
+        return visionResult;
       }
     }
     
-    // 4. Se tutti i metodi falliscono, ritorna null
-    if (!bookData) {
-      console.log('Nessun libro riconosciuto');
-      return null;
+    // 3. Tentativo con OCR standard
+    console.log(`Tentativo riconoscimento tramite OCR (lingua: ${language})...`);
+    const ocrResult = await this._recognizeViaOcr(imageData, language);
+    
+    if (ocrResult) {
+      console.log("Libro riconosciuto tramite OCR:", ocrResult.title);
+      return ocrResult;
     }
     
-    this.lastResult = bookData;
-    console.log('Libro riconosciuto:', bookData.title);
-    return bookData;
+    // Se arriviamo qui, tutti i tentativi sono falliti
+    console.log("Tutti i metodi di riconoscimento hanno fallito");
+    return null;
   } catch (error) {
-    console.error('Errore nel riconoscimento:', error);
-    this.recognitionStatus = 'error';
+    console.error("Errore durante il riconoscimento della copertina:", error);
     throw error;
   }
 }
@@ -103,147 +112,200 @@ async recognizeBookCover(imageData, language = 'ita') {
   
 
 
-
-  
-  /**
- * Tenta di riconoscere il libro tramite OCR
- * @private
+/**
+ * Tenta di riconoscere la copertina utilizzando Google Cloud Vision
  * @param {string} imageData - Immagine in formato base64
- * @param {string} language - Lingua per l'OCR (default: 'ita')
+ * @param {string} language - Lingua per OCR
+ * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
  */
-
-  async _recognizeViaOCR(imageData, language = 'ita') {
-    try {
-      console.log(`Tentativo riconoscimento tramite OCR (lingua: ${language})...`);
-      
-      // 1. Estrai il testo dall'immagine con OCR
-      const text = await simpleOcrService.recognizeText(imageData, language);
-      
-      if (!text || text.trim().length < 3) {
-        console.log('Nessun testo rilevato nell\'immagine');
-        return null;
-      }
-      
-      // Salva il testo estratto per debug
-      this.lastExtractedText = text;
-      console.log('Testo rilevato dalla copertina:', text);
-      
-      // 2. Prima cerca se c'è un ISBN nel testo
-      const isbn = simpleOcrService.extractIsbn(text);
-      
-      if (isbn) {
-        console.log('ISBN estratto dal testo:', isbn);
-        
-        // Cerca libro tramite ISBN
-        const bookData = await googleBooksService.getBookByIsbn(isbn);
-        if (bookData) {
-          return bookData;
-        }
-      }
-      
-      // 3. Analizza il testo per estrarre titolo e autore
-      const extractedInfo = simpleOcrService.analyzeText(text);
-      
-      // Se l'analisi ha trovato candidati multipli, li salviamo
-      this.candidateBooks = extractedInfo.allCandidates || [];
-      
-      const { title, author, confidence } = extractedInfo;
-      
-      // Se il confidence score è basso, proviamo diverse query di ricerca
-      const queries = [];
-      
-      if (title && author && confidence > 0.5) {
-        // Query principale: titolo + autore
-        queries.push({ query: `${title} ${author}`, weight: 1.0 });
-      }
-      
-      if (title) {
-        // Solo titolo
-        queries.push({ query: title, weight: 0.8 });
-      }
-      
-      if (author) {
-        // Solo autore
-        queries.push({ query: author, weight: 0.5 });
-      }
-      
-      // Se non abbiamo query specifiche o il confidence è basso
-      if (queries.length === 0 || confidence < 0.3) {
-        // Estrai parole chiave dal testo
-        const keywords = this._extractKeywords(text);
-        if (keywords.length > 0) {
-          // Usa le prime 3-5 parole chiave
-          const keywordQuery = keywords.slice(0, 5).join(' ');
-          queries.push({ query: keywordQuery, weight: 0.4 });
-        }
-      }
-      
-      // Se ancora non abbiamo query
-      if (queries.length === 0) {
-        // Ultima risorsa: cerca con il testo completo
-        queries.push({ query: text.replace(/\n/g, ' ').slice(0, 100), weight: 0.2 });
-      }
-      
-      // 4. Esegui tutte le query e raccogli i risultati
-      const allResults = [];
-      
-      for (const queryObj of queries) {
-        console.log(`Esecuzione ricerca con query: "${queryObj.query}"`);
-        const results = await googleBooksService.searchBooks(queryObj.query, 5);
-        
-        if (results && results.length > 0) {
-          // Calcola score ponderato per ogni risultato
-          results.forEach(book => {
-            // Cerca se questo libro è già nei risultati
-            const existingIndex = allResults.findIndex(r => 
-              r.book.googleBooksId === book.googleBooksId
-            );
-            
-            if (existingIndex >= 0) {
-              // Aggiorna lo score se è già presente
-              allResults[existingIndex].score += queryObj.weight;
-            } else {
-              // Aggiungi nuovo risultato
-              allResults.push({
-                book,
-                score: queryObj.weight,
-                matchedQuery: queryObj.query
-              });
-            }
-          });
-        }
-      }
-      
-      // Ordina per score
-      allResults.sort((a, b) => b.score - a.score);
-      
-      // Salva tutti i risultati trovati
-      this.alternativeResults = allResults.map(r => r.book);
-      
-      // 5. Restituisci il risultato con score più alto solo se supera una soglia
-      if (allResults.length > 0 && allResults[0].score > 0.5) {
-        console.log(`Libro trovato con ricerca "${allResults[0].matchedQuery}":`, allResults[0].book.title);
-        return allResults[0].book;
-      } else if (allResults.length > 0) {
-        // Abbiamo risultati ma con confidence bassa
-        // Se fossimo in una UI potremmo mostrare opzioni multiple
-        console.log(`Trovati ${allResults.length} possibili match con confidence bassa`);
-        
-        // Salva comunque il miglior risultato, ma aggiungiamo flag lowConfidence
-        const bestMatch = allResults[0].book;
-        bestMatch.lowConfidence = true;
-        bestMatch.alternatives = allResults.slice(1, 4).map(r => r.book);
-        
-        return bestMatch;
-      }
-      
-      console.log('Nessun libro trovato con i dati estratti');
-      return null;
-    } catch (error) {
-      console.log('Riconoscimento tramite OCR fallito:', error.message);
+async _recognizeViaGoogleVision(imageData, language) {
+  if (!googleVisionService.enabled) {
+    console.log("Riconoscimento Google Vision disabilitato");
+    return null;
+  }
+  
+  try {
+    console.log("Tentativo riconoscimento tramite Google Vision API...");
+    
+    // Riconosci il testo con Vision API
+    const visionText = await googleVisionService.recognizeText(imageData);
+    
+    if (!visionText || visionText.trim().length < 5) {
+      console.log("Google Vision: nessun testo rilevante trovato");
       return null;
     }
+    
+    console.log("Testo rilevato da Google Vision:", visionText);
+    
+    // Analizza il testo per estrarre titolo e autore
+    const textAnalysis = simpleOcrService.analyzeText(visionText);
+    console.log("Analisi testo Google Vision:", textAnalysis);
+    
+    // Cerca il libro in base al testo riconosciuto da Google Vision
+    let book = null;
+    
+    // 1. Cerca nella cache
+    if (recognitionCacheService.enabled) {
+      book = await recognitionCacheService.findByOcrText(visionText);
+      if (book) {
+        console.log("Libro trovato nella cache con Google Vision:", book.title);
+        return book;
+      }
+    }
+    
+    // 2. Cerca su Google Books con titolo+autore
+    if (textAnalysis.title && textAnalysis.author) {
+      const searchQuery = `${textAnalysis.title} ${textAnalysis.author}`;
+      console.log("Ricerca Google Books con Vision:", searchQuery);
+      
+      const results = await googleBooksService.searchBooks(searchQuery, 3);
+      if (results && results.length > 0) {
+        console.log("Libro trovato su Google Books con Vision:", results[0].title);
+        
+        // Imposta come fonte il riconoscimento Vision
+        results[0].recognitionSource = 'google_vision';
+        
+        // Aggiungi alla cache per futuri riconoscimenti
+        if (recognitionCacheService.enabled) {
+          recognitionCacheService.addToCache(visionText, results[0], 'google_vision', textAnalysis.confidence);
+        }
+        
+        return results[0];
+      }
+    }
+    
+    // 3. Cerca per frasi chiave estratte
+    const searchText = this._extractSearchText(visionText);
+    if (searchText) {
+      console.log("Esecuzione ricerca con query da Vision:", searchText);
+      
+      const results = await googleBooksService.searchBooks(searchText, 3);
+      if (results && results.length > 0) {
+        console.log("Libro trovato con ricerca Vision:", results[0].title);
+        
+        // Imposta come fonte il riconoscimento Vision
+        results[0].recognitionSource = 'google_vision_search';
+        
+        // Aggiungi alla cache per futuri riconoscimenti
+        if (recognitionCacheService.enabled) {
+          recognitionCacheService.addToCache(visionText, results[0], 'google_vision_search', 0.7);
+        }
+        
+        return results[0];
+      }
+    }
+    
+    console.log("Nessun libro trovato con Google Vision API");
+    return null;
+  } catch (error) {
+    console.error("Errore nel riconoscimento con Google Vision:", error);
+    return null;
   }
+}
+
+
+  
+ /**
+ * Riconosce un libro tramite OCR
+ * @param {string} imageData - Immagine in formato base64
+ * @param {string} language - Lingua per OCR
+ * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
+ * @private
+ */
+async _recognizeViaOcr(imageData, language) {
+  try {
+    console.log(`Tentativo riconoscimento tramite OCR (lingua: ${language})...`);
+    
+    // Estrai il testo con OCR
+    const ocrText = await simpleOcrService.recognizeText(imageData, language);
+    
+    if (!ocrText || ocrText.trim().length < 5) {
+      console.log("OCR: nessun testo rilevante trovato");
+      return null;
+    }
+    
+    console.log("Testo rilevato dalla copertina:", ocrText);
+    
+    // Analizza il testo per estrarre titolo e autore
+    const textAnalysis = simpleOcrService.analyzeText(ocrText);
+    
+    // Cerca il libro in base al testo riconosciuto
+    let book = null;
+    
+    // 1. Cerca nella cache
+    if (recognitionCacheService.enabled) {
+      book = await recognitionCacheService.findByOcrText(ocrText);
+      if (book) {
+        console.log("Libro trovato nella cache:", book.title);
+        return book;
+      }
+    }
+    
+    // 2. Cerca su Google Books con titolo+autore
+    if (textAnalysis.title && textAnalysis.author) {
+      const searchQuery = `${textAnalysis.title} ${textAnalysis.author}`;
+      console.log("Esecuzione ricerca con query:", searchQuery);
+      
+      const results = await googleBooksService.searchBooks(searchQuery, 3);
+      if (results && results.length > 0) {
+        console.log("Libro trovato con ricerca titolo+autore:", results[0].title);
+        
+        // Aggiungi alla cache per futuri riconoscimenti
+        if (recognitionCacheService.enabled) {
+          recognitionCacheService.addToCache(ocrText, results[0], 'ocr', textAnalysis.confidence);
+        }
+        
+        return results[0];
+      }
+    }
+    
+    // 3. Cerca con le parti più rilevanti del testo
+    const searchText = this._extractSearchText(ocrText);
+    if (searchText) {
+      console.log("Esecuzione ricerca con query:", searchText);
+      
+      const results = await googleBooksService.searchBooks(searchText, 3);
+      if (results && results.length > 0) {
+        console.log("Libro trovato con ricerca fallback:", results[0].title);
+        
+        // Aggiungi alla cache per futuri riconoscimenti
+        if (recognitionCacheService.enabled) {
+          recognitionCacheService.addToCache(ocrText, results[0], 'ocr_fallback', 0.7);
+        }
+        
+        return results[0];
+      }
+    }
+    
+    console.log("Nessun libro trovato con il testo OCR");
+    return null;
+  } catch (error) {
+    console.error("Errore nel riconoscimento OCR:", error);
+    return null;
+  }
+}
+
+/**
+ * Estrae un testo di ricerca dal testo OCR
+ * @param {string} ocrText - Testo OCR completo
+ * @returns {string} - Testo di ricerca estratto
+ * @private
+ */
+_extractSearchText(ocrText) {
+  if (!ocrText) return '';
+  
+  // Dividi in righe e filtra quelle vuote
+  const lines = ocrText.split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 3);
+  
+  if (lines.length === 0) return '';
+  
+  // Prendi fino a 3 righe più lunghe
+  const sortedLines = [...lines].sort((a, b) => b.length - a.length);
+  
+  return sortedLines.slice(0, 3).join(' ');
+}
 
   _extractKeywords(text) {
     // Rimuovi caratteri speciali e dividi in parole

@@ -15,149 +15,210 @@ class SmartScannerService {
       failedScans: 0,
       recognitionMethods: {}
     };
+    this.progressCallback = null;
     this.failedAttempts = {}; // Traccia tentativi falliti per immagine
   }
   
-  
-  /**
-   * Scansiona un'immagine e identifica i libri in modo intelligente
-   * @param {string} imageData - Immagine in formato base64
-   * @param {string} preferredMode - Modalità preferita dall'utente ('auto', 'cover', 'spine', 'multi')
-   * @param {string} language - Lingua per OCR
-   * @param {function} progressCallback - Callback per aggiornamenti di stato
-   * @returns {Promise<Object>} - Risultato della scansione
+   /**
+   * Notifica il progresso al callback se definito
+   * @param {number} progress - Percentuale di avanzamento (0-100)
+   * @param {string} message - Messaggio di stato
+   * @private
    */
-  async scan(imageData, preferredMode = 'auto', language = 'ita', progressCallback = null) {
-    // Genera un hash semplificato dell'immagine per tenerne traccia
-    const imageHash = this._generateSimpleHash(imageData);
-    
-    // Incrementa il contatore di tentativi falliti per questa immagine
-    if (!this.failedAttempts[imageHash]) {
-      this.failedAttempts[imageHash] = 0;
-    }
-    
-    try {
-      // Aggiorna le statistiche
-      this.scanStats.totalScans++;
-      
-      // Inizializza l'oggetto risultato
-      const scanResult = {
-        success: false,
-        image: imageData,
-        detectedMode: preferredMode,
-        confidence: 0,
-        message: '',
-        method: ''
-      };
-      
-      // Aggiorna il progresso
-      if (progressCallback) {
-        progressCallback({
-          status: 'processing',
-          message: 'Inizializzazione scansione...',
-          progress: 10
-        });
-      }
-      
-      // Se la modalità è 'auto', determina la modalità ottimale
-      if (preferredMode === 'auto') {
-        await this._determineMode(imageData, scanResult, progressCallback);
-      } else {
-        scanResult.detectedMode = preferredMode;
-        scanResult.confidence = 1.0; // Modalità scelta dall'utente
-      }
-      
-      console.log(`SmartScanner: modalità ${scanResult.detectedMode} (${this._getModeName(scanResult.detectedMode)})`);
-      
-      // Processa l'immagine in base alla modalità rilevata
-      switch (scanResult.detectedMode) {
-        case 'isbn':
-          await this._processIsbn(scanResult, progressCallback);
-          break;
-        case 'cover':
-          await this._processCover(imageData, scanResult, language, progressCallback);
-          break;
-        case 'spine':
-          // Per ora trattiamo le coste come copertine
-          await this._processCover(imageData, scanResult, language, progressCallback);
-          break;
-        case 'multi':
-          await this._processMulti(imageData, scanResult, language, progressCallback);
-          break;
-        default:
-          // Fallback alla modalità copertina
-          await this._processCover(imageData, scanResult, language, progressCallback);
-      }
-      
-      // Se raggiungiamo 3 tentativi falliti, attiva il fallback a Google Vision
-      if (!scanResult.success && this.failedAttempts[imageHash] >= 2) { // 2 + 1 = 3 tentativi totali
-        console.log(`Attivazione fallback Google Vision dopo ${this.failedAttempts[imageHash] + 1} tentativi`);
-        
-        if (progressCallback) {
-          progressCallback({
-            status: 'processing',
-            message: 'Attivazione riconoscimento avanzato (Google Vision)...',
-            progress: 50
-          });
-        }
-        
-        try {
-          // Chiama il servizio di fallback
-          const visionResult = await this._processWithGoogleVision(imageData, progressCallback);
-          
-          if (visionResult.success) {
-            // Se il fallback ha successo, resetta i tentativi falliti
-            delete this.failedAttempts[imageHash];
-            
-            // Aggiorna le statistiche
-            this.scanStats.successfulScans++;
-            this.scanStats.recognitionMethods['vision'] = (this.scanStats.recognitionMethods['vision'] || 0) + 1;
-            
-            // Salva l'ultimo scan e ritorna il risultato
-            this.lastScan = visionResult;
-            return visionResult;
-          }
-        } catch (visionError) {
-          console.error('Errore nel fallback Google Vision:', visionError);
-        }
-      }
-      
-      // Aggiorna le statistiche in base al risultato
-      if (scanResult.success) {
-        this.scanStats.successfulScans++;
-        this.scanStats.recognitionMethods[scanResult.method] = 
-          (this.scanStats.recognitionMethods[scanResult.method] || 0) + 1;
-        
-        // Salva l'ultimo scan
-        this.lastScan = scanResult;
-        return scanResult;
-      } else {
-        // Incrementa il contatore di tentativi falliti
-        this.failedAttempts[imageHash]++;
-        console.log(`Tentativo fallito ${this.failedAttempts[imageHash]} per immagine ${imageHash}`);
-        
-        // Se dopo molti tentativi ancora fallisce, pulisci per evitare overflow
-        if (this.failedAttempts[imageHash] > 5) {
-          delete this.failedAttempts[imageHash];
-        }
-        
-        // Aggiorna statistiche e ritorna il risultato fallito
-        this.scanStats.failedScans++;
-        return {
-          success: false,
-          message: scanResult.message || 'Libro non riconosciuto. Prova con un\'inquadratura migliore o un\'altra modalità.',
-          error: 'recognition_failed'
-        };
-      }
-    } catch (error) {
-      console.error('Errore durante la scansione:', error);
-      return {
-        success: false,
-        message: `Errore durante la scansione: ${error.message}`,
-        error: 'scan_error'
-      };
+   _notifyProgress(progress, message) {
+    if (typeof this.progressCallback === 'function') {
+      this.progressCallback({ progress, message });
     }
   }
+/**
+ * Esegue una scansione intelligente di un'immagine
+ * @param {string} imageData - Immagine in formato base64
+ * @param {string} mode - Modalità di scansione ('auto', 'isbn', 'cover', 'spine', 'multi')
+ * @param {string} language - Lingua per OCR
+ * @param {Function} progressCallback - Callback per aggiornamenti progresso
+ * @param {boolean} useVision - Usa Google Vision API, se disponibile
+ * @returns {Promise<Object>} - Risultato della scansione
+ */
+/**
+ * Esegue una scansione intelligente di un'immagine
+ */
+async scan(imageData, mode = 'auto', language = 'eng', progressCallback = null, useVision = false) {
+  if (!imageData) {
+    return { success: false, message: 'Nessuna immagine fornita' };
+  }
+  
+  this.totalScans++;
+  
+  try {
+    // Inizializza il callback di progresso se fornito
+    this.progressCallback = progressCallback || null;
+    
+    // Notifica progresso iniziale
+    this._notifyProgress(10, 'Inizializzazione scansione...');
+    
+    // Determina la modalità di scansione se in auto
+    let effectiveMode = mode;
+    if (mode === 'auto') {
+      this._notifyProgress(20, 'Analisi contenuto immagine...');
+      const decisionResult = await decisionEngineService.analyzeImage(imageData);
+      effectiveMode = decisionResult.type;
+      
+      console.log(`SmartScanner: modalità rilevata "${effectiveMode}" con confidenza ${decisionResult.confidence}`);
+    }
+    
+    // Notifica la modalità (usa la funzione _getModeName invece di _getModeLabel)
+    this._notifyProgress(30, `Modalità ${effectiveMode} (${this._getModeName(effectiveMode)})`);
+    
+    // Esegue il riconoscimento appropriato in base alla modalità
+    let result;
+    
+    switch (effectiveMode) {
+      case 'isbn':
+        result = await this._processIsbn(imageData, language);
+        break;
+        
+      case 'cover':
+        result = await this._processCover(imageData, language, useVision);
+        break;
+        
+      case 'spine':
+        result = await this._processSpine(imageData, language, useVision);
+        break;
+        
+      case 'multi':
+        result = await this._processMultiBook(imageData, language, useVision);
+        break;
+        
+      default:
+        // Fallback a cover
+        console.log("Modalità non riconosciuta, fallback a cover");
+        result = await this._processCover(imageData, language, useVision);
+    }
+    
+    // Aggiorna statistiche
+    if (result.success) {
+      this.successfulScans++;
+    } else {
+      this.failedScans++;
+    }
+    
+    // Aggiunge informazioni sulla modalità rilevata
+    result.detectedMode = effectiveMode;
+    result.confidence = mode === 'auto' ? decisionEngineService.getLastAnalysis().confidence : 1.0;
+    
+    // Notifica completamento
+    this._notifyProgress(100, result.success ? 'Riconoscimento completato con successo!' : 'Riconoscimento fallito');
+    
+    return result;
+    
+  } catch (error) {
+    console.error("Errore nella scansione:", error);
+    this.failedScans++;
+    return {
+      success: false,
+      message: `Errore durante la scansione: ${error.message}`,
+      error: error.message
+    };
+  } finally {
+    // Reset callback
+    this.progressCallback = null;
+  }
+}
+
+// Aggiorna anche il metodo _processCover
+async _processCover(imageData, language, useVision = false) {
+  this._notifyProgress(40, 'Riconoscimento copertina...');
+  
+  try {
+    // Riconosce la copertina con il servizio dedicato
+    const book = await coverRecognitionService.recognizeBookCover(imageData, language, useVision);
+    
+    if (book) {
+      this._notifyProgress(90, 'Libro riconosciuto!');
+      return {
+        success: true,
+        book,
+        message: book.recognitionSource === 'google_vision' 
+          ? 'Libro riconosciuto dalla copertina con Google Vision API'
+          : 'Libro riconosciuto dalla copertina'
+      };
+    } else {
+      this._notifyProgress(90, 'Nessun libro riconosciuto');
+      return {
+        success: false,
+        message: 'Impossibile riconoscere il libro dalla copertina'
+      };
+    }
+  } catch (error) {
+    console.error("Errore nel processamento copertina:", error);
+    return {
+      success: false,
+      message: `Errore nel riconoscimento copertina: ${error.message}`
+    };
+  }
+}
+
+// Fai lo stesso aggiornamento per _processSpine
+async _processSpine(imageData, language, useVision = false) {
+  this._notifyProgress(40, 'Riconoscimento costa...');
+  
+  try {
+    // Per ora, utilizziamo lo stesso servizio delle copertine
+    const book = await coverRecognitionService.recognizeBookCover(imageData, language, useVision);
+    
+    if (book) {
+      this._notifyProgress(90, 'Libro riconosciuto!');
+      return {
+        success: true,
+        book,
+        message: 'Libro riconosciuto dalla costa'
+      };
+    } else {
+      this._notifyProgress(90, 'Nessun libro riconosciuto');
+      return {
+        success: false,
+        message: 'Impossibile riconoscere il libro dalla costa'
+      };
+    }
+  } catch (error) {
+    console.error("Errore nel processamento costa:", error);
+    return {
+      success: false,
+      message: `Errore nel riconoscimento costa: ${error.message}`
+    };
+  }
+}
+
+// E anche per _processMultiBook
+async _processMultiBook(imageData, language, useVision = false) {
+  this._notifyProgress(40, 'Riconoscimento multi-libro...');
+  
+  // Per ora, implementazione di base che usa lo stesso servizio delle copertine
+  try {
+    const book = await coverRecognitionService.recognizeBookCover(imageData, language, useVision);
+    
+    if (book) {
+      this._notifyProgress(90, 'Libro riconosciuto!');
+      return {
+        success: true,
+        book,
+        message: 'Libro principale riconosciuto dallo scaffale'
+      };
+    } else {
+      this._notifyProgress(90, 'Nessun libro riconosciuto');
+      return {
+        success: false,
+        message: 'Impossibile riconoscere libri dallo scaffale'
+      };
+    }
+  } catch (error) {
+    console.error("Errore nel processamento multi-libro:", error);
+    return {
+      success: false,
+      message: `Errore nel riconoscimento multi-libro: ${error.message}`
+    };
+  }
+}
   
   _generateSimpleHash(imageData) {
     // Estrai un sottoinsieme di dati per creare un "hash" approssimativo
@@ -396,7 +457,7 @@ async _searchBookWithTerms({ title, author, fullText }) {
    * Processa una scansione ISBN
    * @private
    */
-  async _processIsbn(scanResult, progressCallback) {
+  async _processIsbn(scanResult, progressCallback, usVision = false) {
     try {
       if (!scanResult.isbn) {
         // Se non abbiamo un ISBN dal decision engine, prova a trovarlo direttamente
@@ -477,109 +538,7 @@ async _searchBookWithTerms({ title, author, fullText }) {
     }
   }
   
-  /**
-   * Processa una scansione copertina
-   * @private
-   */
-  async _processCover(imageData, scanResult, language, progressCallback) {
-    try {
-      // Aggiorna il progresso
-      if (progressCallback) {
-        progressCallback({
-          status: 'processing',
-          message: 'Riconoscimento copertina...',
-          progress: 30
-        });
-      }
-      
-      // Primo step: estrai il testo OCR
-      const ocrText = await simpleOcrService.recognizeText(imageData, language);
-      
-      // Aggiorna il progresso
-      if (progressCallback) {
-        progressCallback({
-          status: 'processing',
-          message: 'Analisi del testo estratto...',
-          progress: 50,
-          ocrText // Passa il testo OCR per mostrarlo nell'UI
-        });
-      }
-      
-      // Utilizza il nuovo servizio di cache distribuita
-      const result = await recognitionCacheService.searchWithOcr(ocrText);
-      
-      if (result.success) {
-        scanResult.success = true;
-        scanResult.book = result.book;
-        scanResult.method = result.method || 'ocr_cache';
-        scanResult.message = 'Libro riconosciuto dalla copertina';
-        
-        // Se ci sono alternative, le salviamo
-        if (result.alternatives && result.alternatives.length > 0) {
-          scanResult.book.alternatives = result.alternatives;
-        }
-        
-        // Aggiorna il progresso
-        if (progressCallback) {
-          progressCallback({
-            status: 'success',
-            message: 'Libro riconosciuto con successo!',
-            progress: 100,
-            book: result.book
-          });
-        }
-      } else {
-        // In caso di fallimento, utilizza il metodo tradizionale
-        // come fallback
-        const book = await coverRecognitionService.recognizeBookCover(imageData, language);
-        
-        if (book) {
-          scanResult.success = true;
-          scanResult.book = book;
-          scanResult.method = 'cover_fallback';
-          scanResult.message = 'Libro riconosciuto dalla copertina (fallback)';
-          
-          // Salva nella cache per usi futuri
-          recognitionCacheService.addToCache(ocrText, book);
-          
-          // Aggiorna il progresso
-          if (progressCallback) {
-            progressCallback({
-              status: 'success',
-              message: 'Libro riconosciuto con successo!',
-              progress: 100,
-              book
-            });
-          }
-        } else {
-          scanResult.success = false;
-          scanResult.message = 'Nessun libro riconosciuto dalla copertina';
-          
-          // Aggiorna il progresso
-          if (progressCallback) {
-            progressCallback({
-              status: 'error',
-              message: 'Nessun libro riconosciuto dalla copertina',
-              progress: 100
-            });
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Errore nel processamento copertina:', error);
-      scanResult.success = false;
-      scanResult.message = 'Errore nel processamento copertina: ' + error.message;
-      
-      // Aggiorna il progresso
-      if (progressCallback) {
-        progressCallback({
-          status: 'error',
-          message: 'Errore nel processamento copertina',
-          progress: 100
-        });
-      }
-    }
-  }
+
   
   /**
    * Processa una scansione multi-libro
