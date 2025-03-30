@@ -2,10 +2,12 @@
 import barcodeService from './barcode.service';
 import googleBooksService from './googleBooks.service';
 import isbnService from './isbn.service';
-import spineRecognitionService from './spineRecognition.service';
 import simpleOcrService from './simpleOcr.service';
 import googleVisionService from './googleVision.service';
 import recognitionCacheService from './recognitionCache.service';
+import llmTextService from './llmTextService';
+import geminiVisionService from './geminiVisionService';
+
 
 class CoverRecognitionService {
   constructor() {
@@ -16,6 +18,142 @@ class CoverRecognitionService {
   }
 
 
+/**
+ * Riconosce un libro tramite Gemini Vision API (multimodale)
+ * @param {string} imageData - Immagine in formato base64
+ * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
+ */
+async _recognizeViaGeminiVision(imageData) {
+  try {
+    console.log("Tentativo riconoscimento tramite Gemini Vision API multimodale...");
+    
+    if (!geminiVisionService.enabled) {
+      console.log("Gemini Vision service disabilitato");
+      return null;
+    }
+    
+    // Riconosci il libro direttamente dall'immagine
+    const visionResult = await geminiVisionService.recognizeBookFromCover(imageData);
+    
+    if (!visionResult.success || !visionResult.title) {
+      console.log("Gemini Vision: riconoscimento fallito", visionResult.error || "Nessun titolo estratto");
+      return null;
+    }
+    
+    console.log("Copertina riconosciuta da Gemini Vision:", visionResult.title, "di", visionResult.author);
+    
+    // Cerca il libro su Google Books
+    const searchQuery = `${visionResult.title} ${visionResult.author || ''}`;
+    console.log("Ricerca Google Books con dati da Gemini Vision:", searchQuery);
+    
+    const results = await googleBooksService.searchBooks(searchQuery, 3);
+    if (!results || results.length === 0) {
+      console.log("Nessun libro trovato su Google Books con i dati di Gemini Vision");
+      return null;
+    }
+    
+    // Ottieni il primo risultato
+    const book = results[0];
+    
+    // Aggiungi informazioni sul metodo di riconoscimento
+    book.recognitionSource = 'gemini_vision';
+    book.visionConfidence = visionResult.confidence;
+    
+    // Aggiungi alla cache per futuri riconoscimenti
+    if (recognitionCacheService.enabled) {
+      recognitionCacheService.addToCache(
+        `VISION_${visionResult.title}_${visionResult.author}`, 
+        book, 
+        'gemini_vision', 
+        visionResult.confidence
+      );
+    }
+    
+    console.log("Libro trovato con Gemini Vision:", book.title);
+    return book;
+  } catch (error) {
+    console.error("Errore nel riconoscimento con Gemini Vision:", error);
+    return null;
+  }
+}
+
+/**
+ * Riconosce un libro tramite OCR + LLM
+ * @param {string} imageData - Immagine in formato base64
+ * @param {string} language - Lingua per OCR
+ * @returns {Promise<Object|null>} - Dati del libro o null se non trovato
+ */
+async _recognizeViaOcrLLM(imageData, language) {
+  try {
+    console.log(`Tentativo riconoscimento tramite OCR+LLM (lingua: ${language})...`);
+    
+    // 1. Estrai il testo con OCR
+    const ocrText = await simpleOcrService.recognizeText(imageData, language);
+    
+    if (!ocrText || ocrText.trim().length < 5) {
+      console.log("OCR: nessun testo rilevante trovato");
+      return null;
+    }
+    
+    console.log("Testo OCR grezzo:", ocrText);
+    
+    // 2. Pulisci il testo con LLM
+    if (!llmTextService.enabled) {
+      console.log("Servizio LLM disabilitato");
+      return this._recognizeViaOcr(imageData, language); // Fallback a OCR standard
+    }
+    
+    const llmResult = await llmTextService.cleanOcrText(ocrText);
+    
+    if (!llmResult.success) {
+      console.log("Pulizia LLM fallita:", llmResult.error);
+      return this._recognizeViaOcr(imageData, language); // Fallback a OCR standard
+    }
+    
+    console.log("Risultato pulizia LLM:", llmResult);
+    
+    // 3. Verifica se abbiamo titolo e autore
+    if (!llmResult.title) {
+      console.log("LLM non ha estratto un titolo valido");
+      return this._recognizeViaOcr(imageData, language); // Fallback a OCR standard
+    }
+    
+    // 4. Cerca il libro con i dati puliti
+    let searchQuery = llmResult.title;
+    if (llmResult.author) {
+      searchQuery += ` ${llmResult.author}`;
+    }
+    
+    console.log("Ricerca con dati LLM:", searchQuery);
+    const searchResults = await googleBooksService.searchBooks(searchQuery, 5);
+    
+    if (!searchResults || searchResults.length === 0) {
+      console.log("Nessun risultato trovato con la ricerca LLM");
+      return null;
+    }
+    
+    // 5. Trova il miglior match
+    const bestMatch = searchResults[0]; // Per ora prendiamo il primo risultato
+    
+    console.log("Libro trovato con OCR+LLM:", bestMatch.title);
+    
+    // 6. Aggiungi alla cache per futuri riconoscimenti
+    if (recognitionCacheService.enabled) {
+      recognitionCacheService.addToCache(ocrText, bestMatch, 'ocr_llm', llmResult.confidence);
+    }
+    
+    // 7. Aggiungi informazioni sul metodo di riconoscimento
+    bestMatch.recognitionSource = 'ocr_llm';
+    bestMatch.llmConfidence = llmResult.confidence;
+    
+    return bestMatch;
+  } catch (error) {
+    console.error("Errore nel riconoscimento OCR+LLM:", error);
+    
+    // Fallback a OCR standard in caso di errore
+    return this._recognizeViaOcr(imageData, language);
+  }
+}
 
 
 /**
@@ -44,7 +182,16 @@ async recognizeBookCover(imageData, language = 'eng', useVision = false) {
     
     console.log("Riconoscimento tramite barcode fallito: Impossibile riconoscere il codice ISBN");
     
-    // 2. Se richiesto e disponibile, prova Google Vision API
+    // 2. Se Gemini Vision è abilitato, prova con approccio multimodale
+    if (geminiVisionService.enabled) {
+      const geminiVisionResult = await this._recognizeViaGeminiVision(imageData);
+      if (geminiVisionResult) {
+        console.log("Libro riconosciuto tramite Gemini Vision:", geminiVisionResult.title);
+        return geminiVisionResult;
+      }
+    }
+    
+    // 3. Se richiesto e disponibile, prova Google Vision API
     if (useVision && googleVisionService.enabled) {
       const visionResult = await this._recognizeViaGoogleVision(imageData, language);
       if (visionResult) {
@@ -53,12 +200,22 @@ async recognizeBookCover(imageData, language = 'eng', useVision = false) {
       }
     }
     
-    // 3. Tentativo con OCR standard
-    console.log(`Tentativo riconoscimento tramite OCR (lingua: ${language})...`);
+    // 4. Tentativo con OCR+LLM
+    if (llmTextService.enabled) {
+      console.log("Tentativo riconoscimento tramite OCR+LLM...");
+      const ocrLlmResult = await this._recognizeViaOcrLLM(imageData, language);
+      if (ocrLlmResult) {
+        console.log("Libro riconosciuto tramite OCR+LLM:", ocrLlmResult.title);
+        return ocrLlmResult;
+      }
+    }
+    
+    // 5. Fallback a OCR standard
+    console.log(`Tentativo riconoscimento tramite OCR standard (lingua: ${language})...`);
     const ocrResult = await this._recognizeViaOcr(imageData, language);
     
     if (ocrResult) {
-      console.log("Libro riconosciuto tramite OCR:", ocrResult.title);
+      console.log("Libro riconosciuto tramite OCR standard:", ocrResult.title);
       return ocrResult;
     }
     
