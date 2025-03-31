@@ -23,7 +23,7 @@ import { FavoritesProvider } from './contexts/FavoritesContext';
 import CacheTestPage from './pages/CacheTestPage';
 import CacheAdmin from './pages/AdminCache';
 
-import RecognitionTest from './pages/RecognitionTest';
+import RecognitionTest from './pages/RecognitionTestold';
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 

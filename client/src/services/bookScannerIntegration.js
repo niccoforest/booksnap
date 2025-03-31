@@ -1,95 +1,162 @@
-// client/src/services/bookScannerIntegration.js (aggiornamento finale)
-import smartScannerService from './smartScanner.service';
+// client/src/services/bookScannerIntegration.js
+import bookRecognitionService from './bookRecognition.service';
+import googleBooksService from './googleBooks.service';
+import geminiVisionService from './geminiVisionService';
 
 /**
- * Integra i servizi di riconoscimento libri nel componente ScannerOverlay
- * @param {string} imageSrc - Immagine catturata in formato base64
- * @param {string} scanMode - Modalità di scansione ('auto', 'cover' o 'multi')
- * @param {function} setStatusMessage - Funzione per aggiornare il messaggio di stato
- * @param {function} setIsCapturing - Funzione per aggiornare lo stato di cattura
- * @param {function} setSuccessMode - Funzione per attivare/disattivare la modalità successo
- * @param {function} setRecognizedBook - Funzione per aggiornare il libro riconosciuto
- * @param {function} onCapture - Callback da chiamare con i risultati
- * @returns {Promise<void>}
+ * Processa l'immagine scansionata e riconosce i libri
+ * @param {string} imageSrc - Immagine in formato base64
+ * @param {string} mode - Modalità di scansione ('auto', 'cover', 'multi')
+ * @param {Function} setStatusMessage - Funzione per aggiornare il messaggio di stato
+ * @param {Function} setIsCapturing - Funzione per aggiornare lo stato di cattura
+ * @param {Function} setSuccessMode - Funzione per impostare la modalità successo
+ * @param {Function} setRecognizedBook - Funzione per impostare il libro riconosciuto
+ * @param {Function} onCapture - Callback di cattura
  */
-export async function processBookScan(
+export const processBookScan = async (
   imageSrc,
-  scanMode,
+  mode,
   setStatusMessage,
   setIsCapturing,
   setSuccessMode,
   setRecognizedBook,
   onCapture
-) {
+) => {
   try {
-    // Aggiorna lo stato per mostrare che stiamo processando
-    setStatusMessage('Analisi dell\'immagine in corso...');
+    // Determina la modalità effettiva di riconoscimento
+    const recognitionMode = mode === 'auto' ? 'cover' : mode;
     
-    // Utilizza lo SmartScanner con la modalità specificata
-    const result = await smartScannerService.scan(
+    // 1. Aggiorna stato UI
+    setStatusMessage(`Riconoscimento ${recognitionMode === 'multi' ? 'scaffale' : 'copertina'} in corso...`);
+    
+    // 2. Riconoscimento tramite servizio appropriato
+    const recognitionResult = await bookRecognitionService.recognizeBooks(
       imageSrc, 
-      scanMode, 
-      'ita', // Lingua di default
-      // Callback di progresso che aggiorna i messaggi di stato
-      (progress) => {
-        if (progress.message) {
-          setStatusMessage(progress.message);
-        }
-      }
+      recognitionMode
     );
     
-    // Gestisci il risultato della scansione
-    if (result.success) {
-      if (result.books && result.books.length > 0) {
-        // Modalità multi-libro
-        setRecognizedBook({
-          title: `${result.books.length} libri riconosciuti`
-        });
+    console.log('Risultato riconoscimento:', recognitionResult);
+    
+    // 3. Gestione risultato in base alla modalità
+    if (recognitionMode === 'multi') {
+      // Modalità multi-libro (scaffale)
+      if (recognitionResult.success && recognitionResult.books && recognitionResult.books.length > 0) {
+        setStatusMessage(`Riconosciuti ${recognitionResult.books.length} libri!`);
         setSuccessMode(true);
         
-        // Aspetta un momento per mostrare l'animazione
-        setTimeout(() => {
-          if (onCapture) {
-            onCapture({
-              type: 'camera',
-              image: imageSrc,
-              mode: 'multi',
-              result: result.books,
-              method: result.method
-            });
-          } else {
-            setIsCapturing(false);
-          }
-        }, 1500);
-      } 
-      else if (result.book) {
-        // Libro singolo (copertina, costa o ISBN)
-        setRecognizedBook(result.book);
-        setSuccessMode(true);
+        // Passiamo tutti i libri riconosciuti al callback
+        if (onCapture) {
+          onCapture({
+            mode: 'multi',
+            books: recognitionResult.books,
+            count: recognitionResult.books.length,
+            image: imageSrc
+          });
+        }
+      } else {
+        // Nessun libro riconosciuto o errore
+        const errorMsg = recognitionResult.error || 'Nessun libro riconosciuto nello scaffale';
+        setStatusMessage(errorMsg);
         
-        // Aspetta un momento per mostrare l'animazione
-        setTimeout(() => {
-          if (onCapture) {
-            onCapture({
-              type: 'camera',
-              image: imageSrc,
-              mode: result.detectedMode,
-              result: result.book,
-              method: result.method
-            });
-          } else {
-            setIsCapturing(false);
-          }
-        }, 1500);
+        // Passa l'errore al callback
+        if (onCapture) {
+          onCapture({
+            mode: 'multi',
+            error: errorMsg,
+            image: imageSrc
+          });
+        }
       }
     } else {
-      // Nessun libro riconosciuto o errore
-      setStatusMessage(result.message || 'Nessun libro riconosciuto. Riprova con un\'inquadratura migliore.');
-      setIsCapturing(false);
+      // Modalità copertina singola
+      if (recognitionResult.success && recognitionResult.data) {
+        // Libro riconosciuto con successo
+        setStatusMessage('Libro riconosciuto con successo!');
+        setSuccessMode(true);
+        setRecognizedBook(recognitionResult.data);
+        
+        // Passa il libro riconosciuto al callback
+        if (onCapture) {
+          onCapture({
+            mode: 'cover',
+            book: recognitionResult.data,
+            alternatives: recognitionResult.alternatives || [],
+            confidence: recognitionResult.confidence,
+            method: recognitionResult.method,
+            image: imageSrc
+          });
+        }
+      } else {
+        // Nessun libro riconosciuto o errore
+        const errorMsg = recognitionResult.error || 'Impossibile riconoscere questo libro';
+        setStatusMessage(errorMsg);
+        
+        // Se abbiamo dati parziali riconosciuti, possiamo comunque inviarli
+        if (recognitionResult.recognizedData) {
+          if (onCapture) {
+            onCapture({
+              mode: 'cover',
+              error: errorMsg,
+              partialData: recognitionResult.recognizedData,
+              image: imageSrc
+            });
+          }
+        } else {
+          // Nessun dato parziale
+          if (onCapture) {
+            onCapture({
+              mode: 'cover',
+              error: errorMsg,
+              image: imageSrc
+            });
+          }
+        }
+      }
     }
   } catch (error) {
-    console.error('Errore nel riconoscimento', error);
-    setStatusMessage('Errore nel riconoscimento. Riprova con un\'inquadratura migliore.');
+    console.error('Errore durante la scansione:', error);
+    setStatusMessage('Si è verificato un errore durante la scansione. Riprova.');
+    
+    // Passa l'errore al callback
+    if (onCapture) {
+      onCapture({
+        error: error.message,
+        image: imageSrc
+      });
+    }
+  } finally {
+    // Termina lo stato di cattura
     setIsCapturing(false);
   }
-}
+};
+
+/**
+ * Processa un'immagine in modalità debug per test
+ * @param {string} imageSrc - Immagine in formato base64
+ * @param {string} mode - Modalità di scansione
+ * @returns {Promise<Object>} - Risultato del riconoscimento
+ */
+export const processImageForTest = async (imageSrc, mode = 'cover') => {
+  try {
+    console.log(`Test riconoscimento in modalità ${mode}...`);
+    const result = await bookRecognitionService.recognizeBooks(imageSrc, mode);
+    return result;
+  } catch (error) {
+    console.error('Errore nel test di riconoscimento:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Ottiene dati diagnostici per debug
+ */
+export const getRecognitionDebugInfo = () => {
+  return {
+    lastRecognitionInfo: bookRecognitionService.getLastRecognitionInfo(),
+    geminiEnabled: geminiVisionService.isEnabled(),
+    geminiLastResult: geminiVisionService.getLastResult()
+  };
+};

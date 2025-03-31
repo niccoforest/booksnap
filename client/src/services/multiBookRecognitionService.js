@@ -1,181 +1,193 @@
 // client/src/services/multiBookRecognitionService.js
-import coverRecognitionService from './coverRecognitionService';
-import imageSegmentationService from './imageSegmentation.service';
+import geminiVisionService from './geminiVisionService';
+import googleBooksService from './googleBooks.service';
+import recognitionCacheService from './recognitionCache.service';
 
 class MultiBookRecognitionService {
   constructor() {
-    this.lastProcessedImage = null;
     this.lastSegmentedImages = [];
-    this.lastResults = [];
+    this.lastResults = null;
   }
-  
+
   /**
-   * Riconosce multiple copertine di libri da un'immagine
+   * Riconosce multipli libri da un'immagine
    * @param {string} imageData - Immagine in formato base64
-   * @returns {Promise<Array>} - Dati dei libri riconosciuti
+   * @param {string} language - Lingua dei libri (default: 'ita')
+   * @returns {Promise<Object>} - Array di libri riconosciuti con metadati
    */
-  async recognizeMultipleBooks(imageData) {
+  async recognizeMultipleBooks(imageData, language = 'ita') {
     try {
-      console.log('Inizio riconoscimento multipli libri...');
-      this.lastProcessedImage = imageData;
+      console.log(`Avvio riconoscimento multipli libri (lingua: ${language})...`);
       
-      // 1. Segmenta l'immagine per identificare singoli libri
-      const segmentedImages = await this._segmentImage(imageData);
-      this.lastSegmentedImages = segmentedImages;
+      // Reset stato
+      this.lastSegmentedImages = [];
       
-      console.log(`Segmentazione completata: identificati ${segmentedImages.length} possibili libri`);
+      // Verifica che Gemini sia abilitato
+      const isGeminiEnabled = geminiVisionService.isEnabled();
       
-      if (segmentedImages.length === 0) {
-        console.log('Nessun libro identificato nell\'immagine');
-        return [];
-      }
-      
-      // 2. Riconosci ogni libro individualmente
-      const recognitionPromises = segmentedImages.map(async (segmentedImage, index) => {
-        try {
-          console.log(`Riconoscimento libro ${index + 1}/${segmentedImages.length}...`);
-          
-          // Usa il servizio di riconoscimento copertina singola
-          const bookData = await coverRecognitionService.recognizeBookCover(segmentedImage);
-          
-          if (bookData) {
-            console.log(`Libro ${index + 1} riconosciuto: ${bookData.title}`);
-            return {
-              index,
-              bookData,
-              success: true
-            };
-          } else {
-            console.log(`Libro ${index + 1} non riconosciuto`);
-            return {
-              index,
-              success: false
-            };
-          }
-        } catch (error) {
-          console.error(`Errore nel riconoscimento del libro ${index + 1}:`, error);
+      if (!isGeminiEnabled) {
+        // Se non è abilitato, prova a ottenere la chiave API dalle variabili d'ambiente
+        const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+        if (apiKey) {
+          geminiVisionService.setApiKey(apiKey);
+        } else {
           return {
-            index,
             success: false,
-            error: error.message
+            error: 'Gemini Vision API non configurata',
+            books: []
           };
         }
-      });
-      
-      // Aggiunta di un timeout per evitare che il riconoscimento si blocchi troppo a lungo
-      const timeout = new Promise((resolve) => {
-        setTimeout(() => {
-          resolve({ timedOut: true });
-        }, 60000); // 60 secondi di timeout
-      });
-      
-      // 3. Attendi il completamento di tutti i riconoscimenti o il timeout
-      const results = await Promise.race([
-        Promise.all(recognitionPromises),
-        timeout
-      ]);
-      
-      // Se c'è stato un timeout, ritorna i risultati parziali disponibili
-      if (results.timedOut) {
-        console.warn('Timeout nel riconoscimento multiplo, ritorno risultati parziali');
-        // Procedi con i risultati già ottenuti (potrebbero essere incompleti)
       }
       
-      // 4. Filtra i risultati di successo
-      const successfulResults = Array.isArray(results) 
-        ? results
-            .filter(result => result.success)
-            .map(result => result.bookData)
-        : [];
+      // Riconoscimento con Gemini Vision in modalità multi-libro
+      const geminiResult = await geminiVisionService.recognizeMultipleBooksFromShelf(imageData, language);
       
-      this.lastResults = successfulResults;
+      if (!geminiResult.success) {
+        return {
+          success: false,
+          error: geminiResult.error,
+          books: []
+        };
+      }
       
-      console.log(`Riconoscimento completato: ${successfulResults.length}/${segmentedImages.length} libri riconosciuti`);
+      // Enrich dei risultati con dati Google Books
+      const enrichedBooks = await this._enrichBooksWithGoogleData(geminiResult.books);
       
-      return successfulResults;
+      // Salviamo i risultati nella cache se opportuno
+      await this._cacheRecognitionResults(enrichedBooks);
+      
+      // Prepara risultato finale
+      const result = {
+        success: true,
+        books: enrichedBooks,
+        count: enrichedBooks.length,
+        message: `Identificati ${enrichedBooks.length} libri`
+      };
+      
+      this.lastResults = result;
+      return result;
+      
     } catch (error) {
       console.error('Errore nel riconoscimento multipli libri:', error);
-      return []; // In caso di errore, ritorna array vuoto invece di lanciare eccezione
-    }
-  }
-  
-  /**
-   * Segmenta l'immagine per identificare singoli libri
-   * @private
-   */
-  async _segmentImage(imageData) {
-    try {
-      // Utilizza il servizio di segmentazione avanzato
-      return await imageSegmentationService.segmentBookshelfImage(imageData);
-    } catch (error) {
-      console.error('Errore durante la segmentazione avanzata, uso fallback:', error.message);
       
-      // Fallback alla segmentazione semplice se quella avanzata fallisce
-      return this._fallbackSegmentation(imageData);
+      return {
+        success: false,
+        error: error.message,
+        books: []
+      };
     }
   }
-
-
-
-/**
-   * Segmentazione di fallback (semplificata)
-   * @private
-   */
-async _fallbackSegmentation(imageData) {
-    return new Promise((resolve) => {
-      try {
-        const img = new Image();
-        img.onload = () => {
-          const segments = [];
-          
-          // Dividi l'immagine in 3 parti verticali
-          const numSegments = 3; 
-          const segmentWidth = Math.floor(img.width / numSegments);
-          
-          for (let i = 0; i < numSegments; i++) {
-            const segmentCanvas = document.createElement('canvas');
-            const segmentCtx = segmentCanvas.getContext('2d');
-            
-            segmentCanvas.width = segmentWidth;
-            segmentCanvas.height = img.height;
-            
-            segmentCtx.drawImage(
-              img,
-              i * segmentWidth, 0, segmentWidth, img.height,
-              0, 0, segmentWidth, img.height
-            );
-            
-            const segmentDataUrl = segmentCanvas.toDataURL('image/jpeg', 0.85);
-            segments.push(segmentDataUrl);
-          }
-          
-          console.log(`Segmentazione di fallback: creati ${segments.length} segmenti`);
-          resolve(segments);
-        };
-        
-        img.onerror = () => {
-          console.error('Errore nel caricamento dell\'immagine per segmentazione');
-          resolve([]);
-        };
-        
-        img.src = imageData;
-      } catch (error) {
-        console.error('Errore nella segmentazione di fallback:', error);
-        resolve([]);
-      }
-    });
-  }
-
   
   /**
-   * Ottenere le immagini segmentate dall'ultimo riconoscimento
+   * Arricchisce i dati dei libri con informazioni da Google Books
+   * @private
+   * @param {Array} booksData - Array di dati libro base
+   * @returns {Promise<Array>} - Array di libri arricchiti
+   */
+  async _enrichBooksWithGoogleData(booksData) {
+    if (!booksData || !booksData.length) return [];
+    
+    const enrichedBooks = [];
+    
+    // Impostiamo un limite ai libri da processare per evitare troppe chiamate API
+    const booksToProcess = booksData.slice(0, 10);
+    
+    for (const bookData of booksToProcess) {
+      try {
+        if (!bookData.title || !bookData.author) {
+          console.log('Libro senza titolo o autore, skip:', bookData);
+          continue;
+        }
+        
+        // Cerca su Google Books
+        const query = `intitle:${bookData.title} inauthor:${bookData.author}`;
+        const searchResults = await googleBooksService.searchBooks(query, 2);
+        
+        if (searchResults && searchResults.length > 0) {
+          // Libro trovato, aggiungi tutti i metadati
+          const enrichedBook = {
+            ...searchResults[0],
+            recognition: {
+              confidence: bookData.confidence || 0.5,
+              source: 'gemini_multi',
+              originalTitle: bookData.title,
+              originalAuthor: bookData.author
+            }
+          };
+          
+          enrichedBooks.push(enrichedBook);
+        } else {
+          // Nessun risultato da Google Books, usa i dati basici
+          enrichedBooks.push({
+            title: bookData.title,
+            author: bookData.author,
+            recognition: {
+              confidence: bookData.confidence || 0.3,
+              source: 'gemini_multi_raw',
+              noGoogleMatch: true
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`Errore nell'arricchimento del libro "${bookData.title}":`, error);
+        // Aggiungi comunque i dati basici
+        enrichedBooks.push({
+          title: bookData.title,
+          author: bookData.author,
+          recognition: {
+            confidence: bookData.confidence || 0.3,
+            source: 'gemini_multi_raw',
+            error: error.message
+          }
+        });
+      }
+    }
+    
+    return enrichedBooks;
+  }
+  
+  /**
+   * Salva i risultati del riconoscimento nella cache
+   * @private
+   * @param {Array} enrichedBooks - Array di libri riconosciuti
+   */
+  async _cacheRecognitionResults(enrichedBooks) {
+    if (!enrichedBooks || enrichedBooks.length === 0) return;
+    
+    // Salviamo nella cache solo i libri con matching Google Books
+    const booksToCache = enrichedBooks.filter(book => 
+      book.googleBooksId && 
+      book.recognition && 
+      book.recognition.confidence > 0.5);
+    
+    for (const book of booksToCache) {
+      try {
+        // Creiamo un testo OCR simulato da titolo e autore per la cache
+        const simulatedOcr = `${book.title}\n${book.author}`;
+        
+        await recognitionCacheService.addToCache(
+          simulatedOcr,
+          book,
+          'gemini_multi',
+          book.recognition.confidence
+        );
+      } catch (error) {
+        console.error(`Errore nel salvataggio in cache del libro "${book.title}":`, error);
+      }
+    }
+  }
+  
+  /**
+   * Ottiene le immagini segmentate dall'ultimo riconoscimento
+   * @returns {Array} - Array di immagini in base64
    */
   getLastSegmentedImages() {
     return this.lastSegmentedImages;
   }
   
   /**
-   * Ottenere i risultati dell'ultimo riconoscimento
+   * Ottiene i risultati dell'ultimo riconoscimento
+   * @returns {Object|null} - Risultati ultimo riconoscimento
    */
   getLastResults() {
     return this.lastResults;

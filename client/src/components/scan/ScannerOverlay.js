@@ -29,6 +29,7 @@ import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import Webcam from 'react-webcam';
 import barcodeService from '../../services/barcode.service';
 import { processBookScan } from '../../services/bookScannerIntegration';
+import MultiBookSelector from './MultiBookSelector';
 
 
 
@@ -43,7 +44,8 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
   const [successMode, setSuccessMode] = useState(false);
   const [recognizedBook, setRecognizedBook] = useState(null);
   const [scanMode, setScanMode] = useState('auto'); // 'cover' o 'multi'
-  
+  const [multiBookResults, setMultiBookResults] = useState(null);
+  const [showMultiSelector, setShowMultiSelector] = useState(false);
 
   // Configurazione webcam
   const videoConstraints = {
@@ -127,7 +129,7 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
           setIsCapturing,
           setSuccessMode,
           setRecognizedBook,
-          onCapture
+          handleScanResults // Nuova funzione per gestire i risultati
         );
       } catch (error) {
         console.error('Errore durante la scansione:', error);
@@ -137,6 +139,37 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
     }
   };
   
+  const handleScanResults = (results) => {
+    console.log('Risultati scansione:', results);
+    
+    // Gestisci in base alla modalità
+    if (results.mode === 'multi' && results.books && results.books.length > 0) {
+      // Modalità multi-libro
+      setMultiBookResults(results);
+      setShowMultiSelector(true);
+    } else if (results.book) {
+      // Libro singolo riconosciuto con successo
+      onCapture(results);
+    } else if (results.error) {
+      // Errore di riconoscimento
+      setStatusMessage(`Errore: ${results.error}`);
+      setShowStatus(true);
+      setTimeout(() => {
+        setShowStatus(false);
+      }, 3000);
+    }
+  };
+  
+  // Aggiungi questa funzione per selezionare un libro dallo scaffale
+  const handleSelectBookFromShelf = (book) => {
+    onCapture({
+      book,
+      mode: 'cover',
+      method: 'multi_selection',
+      image: multiBookResults?.image
+    });
+  };
+
   // Cambia modalità di scansione
   const _toggleScanMode  = () => {
     setScanMode(prevMode => prevMode === 'cover' ? 'multi' : 'cover');
@@ -232,6 +265,29 @@ const ScannerOverlay = ({ open, onClose, onCapture }) => {
               </Typography>
             </Box>
           )}
+
+            {/* Aggiungi il selettore multi-libro */}
+        {showMultiSelector && multiBookResults && (
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            bgcolor: 'rgba(0,0,0,0.85)',
+            zIndex: 30,
+            display: 'flex',
+            flexDirection: 'column',
+            p: 2,
+            overflow: 'auto'
+          }}>
+            <MultiBookSelector 
+              books={multiBookResults.books}
+              onSelectBook={handleSelectBookFromShelf}
+              onClose={() => setShowMultiSelector(false)}
+            />
+          </Box>
+        )}
           
           {/* Webcam component */}
           <Webcam
