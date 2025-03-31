@@ -321,7 +321,7 @@ const AddBook = () => {
   };
   
   // Funzione per aggiungere libro alla libreria
-  const handleAddToLibrary = async (book, fromResults = false) => {
+   const handleAddToLibrary = async (book, fromResults = false) => {
     try {
       // Mostra stato di caricamento
       setLoading(true);
@@ -373,33 +373,52 @@ const AddBook = () => {
         delete dataToSave.rating;
       }
       
-      // Chiamata al servizio per salvare il libro e aggiungerlo alla libreria
-      const result = await bookService.addBookToLibrary(
-        bookToAdd, 
-        dataToSave,
-        null, // libraryId (opzionale) 
-        TEMP_USER_ID
-      );
-      
-      console.log('Risultato aggiunta libro:', result);
-      
-      // Aggiorna lo stato dei libri nella libreria
-      if (bookToAdd.googleBooksId) {
-        updateBookInLibraryStatus(bookToAdd.googleBooksId, true);
+      // *** Modifica qui: Prima salva il libro, poi aggiungilo alla libreria ***
+      let savedBook;
+      try {
+        // Prima cerca o crea il libro nel database usando saveBook
+        savedBook = await bookService.saveBook(bookToAdd);
+      } catch (saveError) {
+        console.error('Errore nel salvataggio libro:', saveError);
+        // Se l'errore contiene una risposta con dati, potrebbe essere il libro già esistente
+        if (saveError.response?.data?.success && saveError.response?.data?.data) {
+          savedBook = saveError.response.data.data;
+        } else {
+          throw saveError; // Rilancia l'errore se non è un caso gestibile
+        }
       }
       
-      // Mostra notifica di successo
-      setSnackbar({
-        open: true,
-        message: 'Libro aggiunto alla libreria con successo!',
-        severity: 'success'
-      });
-      
-      // Se non siamo nei risultati, torna ai risultati
-      if (!fromResults) {
-        handleBackToResults();
+      // Se abbiamo un libro salvato con ID MongoDB valido, procedi
+      if (savedBook && savedBook._id) {
+        // Chiamata al servizio per aggiungere il libro alla libreria
+        const result = await bookService.addBookToLibrary(
+          savedBook, // Usa il libro con ID MongoDB valido
+          dataToSave,
+          null, // libraryId (opzionale) 
+          TEMP_USER_ID
+        );
+        
+        console.log('Risultato aggiunta libro:', result);
+        
+        // Aggiorna lo stato dei libri nella libreria
+        if (bookToAdd.googleBooksId) {
+          updateBookInLibraryStatus(bookToAdd.googleBooksId, true);
+        }
+        
+        // Mostra notifica di successo
+        setSnackbar({
+          open: true,
+          message: 'Libro aggiunto alla libreria con successo!',
+          severity: 'success'
+        });
+        
+        // Se non siamo nei risultati, torna ai risultati
+        if (!fromResults) {
+          handleBackToResults();
+        }
+      } else {
+        throw new Error('Errore durante il salvataggio del libro: ID non valido');
       }
-      
     } catch (error) {
       console.error('Errore durante l\'aggiunta del libro:', error);
       
@@ -467,6 +486,13 @@ const AddBook = () => {
   
   // Funzione per aprire lo scanner
   const handleOpenScanner = () => {
+    // Resetta i dati personalizzati
+    setUserBookData({
+      rating: 0,
+      readStatus: 'to-read',
+      notes: ''
+    });
+    
     setScannerOpen(true);
   };
   
@@ -500,20 +526,84 @@ const AddBook = () => {
         // Mostriamo stato di caricamento
         setLoading(true);
         
-        // Verifica che bookData abbia almeno i campi essenziali
+        // Normalizza i dati del libro riconosciuto
         const bookData = {
           ...recognitionResult.bookData,
-          // Assicurati che ci siano ID validi
-          _id: recognitionResult.bookData._id || recognitionResult.bookData.googleBooksId || `temp_${Date.now()}`,
           googleBooksId: recognitionResult.bookData.googleBooksId || `temp_${Date.now()}`,
-          // Campi richiesti - usa default se mancanti
           title: recognitionResult.bookData.title || 'Titolo sconosciuto',
           author: recognitionResult.bookData.author || 'Autore sconosciuto'
         };
         
         console.log(`Libro riconosciuto: "${bookData.title}" di ${bookData.author}`);
         
-        // Passiamo alla modalità manuale e mostriamo il libro
+        // Se è richiesta un'aggiunta diretta
+        if (recognitionResult.action === 'add-direct') {
+          try {
+            // Prima verifica se il libro esiste nel database tramite googleBooksId
+            if (bookData.googleBooksId) {
+              const isInLibrary = await bookService.checkBookInUserLibrary(bookData.googleBooksId, TEMP_USER_ID);
+              
+              if (isInLibrary) {
+                // Il libro è già nella libreria
+                setSnackbar({
+                  open: true,
+                  message: 'Questo libro è già presente nella tua libreria',
+                  severity: 'info'
+                });
+                setLoading(false);
+                return;
+              }
+            }
+            
+            // Prima cerca o crea il libro nel database usando saveBook
+            let savedBook;
+            try {
+              savedBook = await bookService.saveBook(bookData);
+            } catch (saveError) {
+              console.error('Errore nel salvataggio libro:', saveError);
+              // Se l'errore contiene una risposta con dati, potrebbe essere il libro già esistente
+              if (saveError.response?.data?.success && saveError.response?.data?.data) {
+                savedBook = saveError.response.data.data;
+              } else {
+                throw saveError; // Rilancia l'errore se non è un caso gestibile
+              }
+            }
+            
+            // Se abbiamo un libro salvato con ID MongoDB valido, procedi
+            if (savedBook && savedBook._id) {
+              // Aggiungi il libro alla libreria dell'utente
+              await bookService.addBookToLibrary(
+                savedBook,
+                {
+                  readStatus: 'to-read',
+                  notes: ''
+                },
+                null, // libraryId (opzionale)
+                TEMP_USER_ID
+              );
+              
+              setSnackbar({
+                open: true,
+                message: 'Libro aggiunto alla libreria con successo!',
+                severity: 'success'
+              });
+            } else {
+              throw new Error('Errore durante il salvataggio del libro: ID non valido');
+            }
+          } catch (err) {
+            console.error('Errore durante l\'aggiunta diretta del libro:', err);
+            setSnackbar({
+              open: true,
+              message: 'Errore durante l\'aggiunta del libro alla libreria',
+              severity: 'error'
+            });
+          }
+          
+          setLoading(false);
+          return; // Terminiamo qui l'esecuzione
+        }
+        
+        // Comportamento normale per la visualizzazione dettagli
         setIsManualMode(true);
         setSelectedBook(bookData);
         

@@ -23,7 +23,9 @@ import {
   LibraryBooks as MultiBookIcon,
   MenuBook as CoverIcon,
   Check as CheckIcon,
-  AutoFixHigh as AutoFixHighIcon
+  AutoFixHigh as AutoFixHighIcon,
+  FileUpload as UploadIcon,
+  BugReport as DebugIcon
 } from '@mui/icons-material';
 import Webcam from 'react-webcam';
 import coverRecognitionService from '../../services/coverRecognitionService';
@@ -43,7 +45,7 @@ const defaultVideoConstraints = {
 const CONFIDENCE_THRESHOLD_HIDE_ALTERNATIVES = 0.8; // 80%
 
 const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaultVideoConstraints }) => {
-  const theme = useTheme();
+    const theme = useTheme();
   const webcamRef = useRef(null);
 
   // Utilizza il hook del contesto
@@ -56,13 +58,20 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
   const [statusMessage, setStatusMessage] = useState('');
   const [showStatus, setShowStatus] = useState(false);
   const [successMode, setSuccessMode] = useState(false);
-  const [scanMode, setScanMode] = useState('auto');
+  const [scanMode, setScanMode] = useState('single');  // Modalità di scansione (single, multi, cover, auto)
   const [selectedBook, setSelectedBook] = useState(null);
+  const [addedBooks, setAddedBooks] = useState({});
+
 
   // Stati Dati
   const [capturedImage, setCapturedImage] = useState(null);
   const [recognitionResult, setRecognitionResult] = useState(null);
   const [showResultsView, setShowResultsView] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugInfo, setDebugInfo] = useState({});
+
+  const fileInputRef = useRef(null);
+
 
   // --- EFFETTI ---
   useEffect(() => {
@@ -129,60 +138,86 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
     }
   }, [flashActive, isCameraReady]);
 
-  const handleUserMedia = useCallback(() => { 
-    setIsCameraReady(true); 
-  }, []);
-  
-  const handleCameraError = useCallback((error) => { 
-    console.error('Errore camera:', error); 
-    showSnackbar('Errore accesso fotocamera.', 'error'); 
-    setIsCameraReady(false); 
-  }, []);
+ // Funzione per gestire il caricamento delle immagini di test
+ const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageData = e.target.result;
+      setCapturedImage(imageData);
+      showSnackbar('Immagine di test caricata');
+      
+      // Avvia l'analisi automaticamente
+      setIsProcessing(true);
+      processImage(imageData);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
-  const handleTakePhoto = useCallback(async () => {
-    if (!webcamRef.current || !isCameraReady) { 
-      showSnackbar('Camera non pronta.'); 
-      return; 
-    }
-    const imageSrc = webcamRef.current.getScreenshot(); 
-    if (!imageSrc) { 
-      showSnackbar('Impossibile catturare.'); 
-      return; 
-    }
-    setCapturedImage(imageSrc); 
-    setIsProcessing(true); 
-    showSnackbar('Analisi...'); 
-    setRecognitionResult(null); 
+  const processImage = async (imageData) => {
+    setIsProcessing(true);
+    showSnackbar('Analisi...');
+    setRecognitionResult(null);
     setShowResultsView(false);
-
+    
+    // Aggiornamento info debug
+    updateDebugInfo({
+      startTime: new Date().toLocaleTimeString(),
+      scanMode: scanMode,
+      processingStarted: true
+    });
+  
     let rawResult;
     try {
-      if (scanMode === 'multi') {
-        rawResult = await multiBookRecognitionService.recognizeMultipleBooks(imageSrc);
-      } else {
-        rawResult = await coverRecognitionService.recognizeBookCover(imageSrc);
-      }
-      console.log(`Risultato raw ${scanMode}:`, rawResult); // DEBUG
+        if (scanMode === 'multi') {
+            rawResult = await multiBookRecognitionService.recognizeMultipleBooks(imageData);
+          } else { // 'single' è l'unica altra opzione
+            rawResult = await coverRecognitionService.recognizeBookCover(imageData);
+          }
+      console.log(`Risultato raw ${scanMode}:`, rawResult);
+      
+      // Aggiorna info debug
+      updateDebugInfo({
+        rawResultReceived: true,
+        method: rawResult?.method || 'unknown',
+        confidence: rawResult?.confidence || 0,
+        processingCompleted: true
+      });
     } catch (error) {
-      console.error(`Errore riconoscimento ${scanMode}:`, error); 
-      showSnackbar(`Errore analisi. Riprova.`, 'error'); 
-      setIsProcessing(false); 
+      console.error(`Errore riconoscimento ${scanMode}:`, error);
+      showSnackbar(`Errore analisi. Riprova.`, 'error');
+      setIsProcessing(false);
+      
+      // Aggiorna info debug
+      updateDebugInfo({
+        error: true,
+        errorMessage: error.message || 'Unknown error',
+        processingCompleted: true
+      });
+      
       return;
     }
-
+  
     let normalizedData = null;
     let normalizedAlternatives = [];
     let normalizedBooks = [];
     let success = false;
     let confidence = 0;
     let method = scanMode;
-
+  
     if (rawResult && rawResult.success) {
       success = true;
       // La confidenza principale viene dal risultato generale (cover) o la calcoliamo per multi
       confidence = rawResult.confidence || 0; // Inizia con la confidenza generale se c'è
       method = rawResult.method || (scanMode === 'multi' ? 'gemini_multi' : 'gemini_cover');
-
+  
       if (scanMode === 'multi') {
         normalizedBooks = Array.isArray(rawResult.books)
           ? rawResult.books.map(book => normalizeBookData(book)).filter(Boolean) // Normalizza ogni libro in multi
@@ -226,7 +261,7 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
           : [];
         // La confidenza generale è già in rawResult.confidence per cover/auto
         confidence = rawResult.confidence || 0;
-
+  
         // Verifica se il libro è già nella libreria
         if (normalizedData) {
           const bookId = normalizedData.googleBooksId || normalizedData._id;
@@ -264,7 +299,7 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
             }
           }
         }
-
+  
         if (!normalizedData && normalizedAlternatives.length === 0) { 
           success = false; 
           showSnackbar('Nessun libro riconosciuto.'); 
@@ -280,7 +315,17 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
       showSnackbar(rawResult?.error || 'Nessun libro riconosciuto.'); 
       success = false;
     }
-
+  
+    // Aggiorna info debug con risultati
+    updateDebugInfo({
+      booksFound: {
+        main: !!normalizedData,
+        alternatives: normalizedAlternatives.length,
+        multi: normalizedBooks.length
+      },
+      success: success
+    });
+  
     setRecognitionResult({
       data: normalizedData,
       alternatives: normalizedAlternatives,
@@ -290,19 +335,91 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
       method: method,
     });
     setIsProcessing(false);
-
+  
     if (success && (normalizedData || normalizedAlternatives.length > 0 || normalizedBooks.length > 0)) {
       setShowResultsView(true);
     } else {
       setShowResultsView(false);
     }
-  }, [isCameraReady, scanMode, normalizeBookData, checkBookInLibrary, checkBooksInLibrary]);
+  };
+  
 
-  const handleSelectBook = useCallback((selectedBook) => {
+   // Funzione per aggiornare le info di debug
+   const updateDebugInfo = useCallback((newInfo) => {
+    setDebugInfo(prev => ({
+      ...prev,
+      ...newInfo,
+      lastUpdated: new Date().toLocaleTimeString()
+    }));
+  }, []);
+
+  const handleUserMedia = useCallback(() => { 
+    setIsCameraReady(true); 
+  }, []);
+  
+  const handleCameraError = useCallback((error) => { 
+    console.error('Errore camera:', error); 
+    showSnackbar('Errore accesso fotocamera.', 'error'); 
+    setIsCameraReady(false); 
+  }, []);
+
+  const handleTakePhoto = useCallback(async () => {
+    if (!webcamRef.current || !isCameraReady) { 
+      showSnackbar('Camera non pronta.'); 
+      return; 
+    }
+    const imageSrc = webcamRef.current.getScreenshot(); 
+    if (!imageSrc) { 
+      showSnackbar('Impossibile catturare.'); 
+      return; 
+    }
+    setCapturedImage(imageSrc);
+    processImage(imageSrc);
+  }, [isCameraReady]);
+
+  
+  const handleSelectBook = useCallback((selectedBook, action = 'view-details') => {
     const bookToSend = normalizeBookData(selectedBook); 
     if (!bookToSend) return;
     
-    console.log('Libro selezionato:', bookToSend); 
+    console.log('Libro selezionato:', bookToSend, 'Azione:', action);
+    
+    // Se l'azione è "add-direct", aggiorna lo stato locale e poi procedi
+    if (action === 'add-direct') {
+      const bookId = bookToSend.googleBooksId || bookToSend._id;
+      
+      // Aggiorna lo stato dei libri aggiunti
+      setAddedBooks(prev => ({
+        ...prev,
+        [bookId]: true
+      }));
+      
+      setSelectedBook(bookToSend);
+      setSuccessMode(true);
+      
+      setTimeout(() => { 
+        if (onCapture) { 
+          onCapture({ 
+            bookData: bookToSend, 
+            confidence: bookToSend.confidence || recognitionResult?.confidence || 0, 
+            method: recognitionResult?.method || 'selection',
+            action: 'add-direct'
+          }); 
+        } 
+        
+        // IMPORTANTE: Non chiudere lo scanner per la modalità multi-libro
+        if (onClose && scanMode !== 'multi') {
+          onClose(); 
+        } else {
+          // Per la modalità multi, torna alla visualizzazione dei risultati
+          setSuccessMode(false);
+        }
+      }, 1200);
+      
+      return;
+    }
+    
+    // Per altre azioni (view-details)
     setSelectedBook(bookToSend);
     setSuccessMode(true);
     
@@ -311,12 +428,14 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
         onCapture({ 
           bookData: bookToSend, 
           confidence: bookToSend.confidence || recognitionResult?.confidence || 0, 
-          method: recognitionResult?.method || 'selection' 
+          method: recognitionResult?.method || 'selection',
+          action: action
         }); 
       } 
       if (onClose) onClose(); 
     }, 1200);
-  }, [onCapture, onClose, recognitionResult, normalizeBookData]);
+  }, [onCapture, onClose, recognitionResult, normalizeBookData, scanMode]);
+  
 
   const handleRestartScanning = useCallback(() => {
     setCapturedImage(null); 
@@ -371,18 +490,75 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
             <CloseIcon />
           </IconButton>
           <Typography variant="h6">Scanner</Typography>
-          <IconButton 
-            color="inherit" 
-            onClick={toggleFlash} 
-            disabled={!isCameraReady} 
-            aria-label="Flash" 
-            sx={{ 
-              bgcolor: flashActive ? alpha(theme.palette.primary.main, 0.3) : 'transparent', 
-              '&:hover': { bgcolor: alpha(theme.palette.common.white, 0.1) } 
-            }}
-          >
-            {flashActive ? <FlashIcon /> : <FlashOffIcon />}
-          </IconButton>
+          <Box sx={{
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  p: 1.5,
+  color: 'white',
+  bgcolor: 'rgba(0,0,0,0.3)',
+  zIndex: 50
+}}>
+  <IconButton color="inherit" onClick={onClose} edge="start" aria-label="Chiudi">
+    <CloseIcon />
+  </IconButton>
+  <Typography variant="h6">Scanner</Typography>
+  <Box>
+    {/* Pulsanti di utilità */}
+    {/* Pulsante upload solo in development */}
+    {process.env.NODE_ENV === 'development' && (
+      <>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleFileUpload}
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          id="test-image-upload"
+        />
+        <IconButton 
+          color="inherit" 
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Upload test image" 
+          sx={{ mr: 1 }}
+        >
+          <UploadIcon />
+        </IconButton>
+        
+        {/* Toggle debug mode */}
+        <IconButton 
+          color="inherit" 
+          onClick={() => setDebugMode(!debugMode)}
+          aria-label="Debug" 
+          sx={{ 
+            mr: 1, 
+            bgcolor: debugMode ? alpha(theme.palette.error.main, 0.3) : 'transparent', 
+            '&:hover': { 
+              bgcolor: debugMode ? alpha(theme.palette.error.main, 0.4) : alpha(theme.palette.common.white, 0.1) 
+            } 
+          }}
+        >
+          <DebugIcon />
+        </IconButton>
+      </>
+    )}
+    
+    <IconButton 
+      color="inherit" 
+      onClick={toggleFlash} 
+      disabled={!isCameraReady} 
+      aria-label="Flash" 
+      sx={{ 
+        bgcolor: flashActive ? alpha(theme.palette.primary.main, 0.3) : 'transparent', 
+        '&:hover': { bgcolor: alpha(theme.palette.common.white, 0.1) } 
+      }}
+    >
+      {flashActive ? <FlashIcon /> : <FlashOffIcon />}
+    </IconButton>
+  </Box>
+</Box>
+
+          
         </Box>
 
         {/* ===== Area Contenuto ===== */}
@@ -761,37 +937,63 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
 
               {/* Risultato Principale (cover/auto) */}
               {scanMode !== 'multi' && resultData && (
-                <Box sx={{ mb: showAlternatives ? 3 : 1 }}>
-                  <BookCard
-                    book={resultData}
-                    variant="scan-result"
-                    confidence={recognitionResult.confidence}
-                    onBookClick={() => handleSelectBook(resultData)}
-                    onAddBook={() => {
-                      handleSelectBook(resultData);
-                    }}
-                    isInLibrary={resultData.isInLibrary || false}
-                    highlightResult={true}
-                  />
-                </Box>
-              )}
+  <Box sx={{ mb: showAlternatives ? 3 : 1 }}>
+    <Typography 
+  variant="overline" 
+  color="primary.light" 
+  display="block" 
+  align="center" 
+  sx={{ 
+    fontSize: '0.7rem', 
+    mb: 1.5,
+    fontWeight: 'medium'
+  }}
+>
+  Libro riconosciuto
+  {recognitionResult.confidence > 0 && (
+    <Chip 
+      label={`${Math.round(recognitionResult.confidence * 100)}%`}
+      size="small"
+      color={
+        recognitionResult.confidence >= 0.8 ? "success" :
+        recognitionResult.confidence >= 0.5 ? "info" : "warning"
+      }
+      sx={{ 
+        height: 22, 
+        fontSize: '0.7rem',
+        fontWeight: 'bold',
+        ml: 1
+      }}
+    />
+  )}
+</Typography>
+    
+    <BookCard
+      book={resultData}
+      variant="search" // Usa la variante search esistente
+      onBookClick={() => handleSelectBook(resultData, 'view-details')} 
+      onAddBook={() => handleSelectBook(resultData, 'add-direct')}
+      isInLibrary={resultData.isInLibrary || false}
+    />
+  </Box>
+)}
 
               {/* Risultati Multipli (multi) o Alternative */}
               {(scanMode === 'multi' && multiBooks.length > 0) || showAlternatives ? (
-                <Box sx={{ mb: 2 }}>
-                  <Typography 
-                    variant="overline" 
-                    color="rgba(255,255,255,0.7)" 
-                    display="block" 
-                    align="center" 
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      mb: 1.5,
-                      fontWeight: 'medium'
-                    }}
-                  >
-                    {scanMode === 'multi' ? 'Seleziona un libro dallo scaffale:' : 'Alternative Possibili:'}
-                  </Typography>
+  <Box sx={{ mb: 2 }}>
+    <Typography 
+      variant="overline" 
+      color="rgba(255,255,255,0.7)" 
+      display="block" 
+      align="center" 
+      sx={{ 
+        fontSize: '0.7rem', 
+        mb: 1.5,
+        fontWeight: 'medium'
+      }}
+    >
+      {scanMode === 'multi' ? 'Libri riconosciuti:' : 'Alternative possibili:'}
+    </Typography>
                   
                   <Box 
                     sx={{ 
@@ -816,32 +1018,40 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
                     }}
                   >
                     {scanMode === 'multi' 
-                      ? multiBooks.map((book, index) => (
-                          <BookCard
-                            key={book._id || `multi-book-${index}`}
-                            book={book}
-                            variant="scan-result"
-                            confidence={book.confidence || 0}
-                            onBookClick={() => handleSelectBook(book)}
-                            onAddBook={() => handleSelectBook(book)}
-                            isInLibrary={book.isInLibrary || false}
-                          />
-                        ))
-                      : alternativeBooks.map((book, index) => (
-                          <BookCard
-                            key={book._id || `alt-book-${index}`}
-                            book={book}
-                            variant="scan-result"
-                            confidence={book.confidence || 0}
-                            onBookClick={() => handleSelectBook(book)}
-                            onAddBook={() => handleSelectBook(book)}
-                            isInLibrary={book.isInLibrary || false}
-                          />
-                        ))
-                    }
-                    </Box>
-                  </Box>
-                ) : null}
+  ? multiBooks.map((book, index) => {
+      const bookId = book.googleBooksId || book._id;
+      const isAdded = book.isInLibrary || addedBooks[bookId];
+      
+      return (
+        <BookCard
+          key={bookId || `multi-book-${index}`}
+          book={book}
+          variant="search"
+          onBookClick={() => handleSelectBook(book, 'view-details')}
+          onAddBook={() => handleSelectBook(book, 'add-direct')}
+          isInLibrary={isAdded}
+        />
+      );
+    })
+  : alternativeBooks.map((book, index) => {
+      const bookId = book.googleBooksId || book._id;
+      const isAdded = book.isInLibrary || addedBooks[bookId];
+      
+      return (
+        <BookCard
+          key={bookId || `alt-book-${index}`}
+          book={book}
+          variant="search"
+          onBookClick={() => handleSelectBook(book, 'view-details')}
+          onAddBook={() => handleSelectBook(book, 'add-direct')}
+          isInLibrary={isAdded}
+        />
+      );
+    })
+}
+    </Box>
+  </Box>
+) : null}
   
                 {/* Messaggio Nessun Risultato Valido */}
                 {recognitionResult?.success && !resultData && !showAlternatives && scanMode !== 'multi' && (
@@ -931,41 +1141,38 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
             <Box sx={{ p: { xs: 1, sm: 1.5 }, backgroundColor: '#111', borderTop: '1px solid rgba(255,255,255,0.1)', zIndex: 50 }}>
               {/* Toggle Modalità */}
               <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 1, sm: 1.5 } }}>
-                <ToggleButtonGroup 
-                  value={scanMode} 
-                  exclusive 
-                  onChange={handleScanModeChange} 
-                  aria-label="Modalità" 
-                  size="small" 
-                  sx={{ 
-                    bgcolor: 'rgba(255,255,255,0.1)', 
-                    borderRadius: 8, 
-                    '& .MuiToggleButtonGroup-grouped': { 
-                      border: 0, 
-                      color: 'white', 
-                      px: { xs: 1, sm: 1.5 }, 
-                      '&.Mui-selected': { 
-                        bgcolor: theme.palette.primary.main, 
-                        '&:hover': { 
-                          bgcolor: theme.palette.primary.dark, 
-                        } 
-                      }, 
-                      '&:not(.Mui-selected):hover': { 
-                        bgcolor: 'rgba(255,255,255,0.2)', 
-                      } 
-                    } 
-                  }}
-                >
-                  <ToggleButton value="auto" aria-label="Auto" sx={{ borderRadius: '32px 0 0 32px !important' }}>
-                    <AutoFixHighIcon fontSize="small" sx={{ mr: 0.5 }} /> Auto
-                  </ToggleButton>
-                  <ToggleButton value="cover" aria-label="Copertina">
-                    <CoverIcon fontSize="small" sx={{ mr: 0.5 }}/> Copertina
-                  </ToggleButton>
-                  <ToggleButton value="multi" aria-label="Scaffale" sx={{ borderRadius: '0 32px 32px 0 !important' }}>
-                    <MultiBookIcon fontSize="small" sx={{ mr: 0.5 }}/> Scaffale
-                  </ToggleButton>
-                </ToggleButtonGroup>
+              <ToggleButtonGroup 
+  value={scanMode} 
+  exclusive 
+  onChange={handleScanModeChange} 
+  aria-label="Modalità" 
+  size="small" 
+  sx={{ 
+    bgcolor: 'rgba(255,255,255,0.1)', 
+    borderRadius: 8, 
+    '& .MuiToggleButtonGroup-grouped': { 
+      border: 0, 
+      color: 'white', 
+      px: { xs: 1, sm: 1.5 }, 
+      '&.Mui-selected': { 
+        bgcolor: theme.palette.primary.main, 
+        '&:hover': { 
+          bgcolor: theme.palette.primary.dark, 
+        } 
+      }, 
+      '&:not(.Mui-selected):hover': { 
+        bgcolor: 'rgba(255,255,255,0.2)', 
+      } 
+    } 
+  }}
+>
+  <ToggleButton value="single" aria-label="Libro singolo" sx={{ borderRadius: '32px 0 0 32px !important' }}>
+    <CoverIcon fontSize="small" sx={{ mr: 0.5 }}/> Libro singolo
+  </ToggleButton>
+  <ToggleButton value="multi" aria-label="Scaffale" sx={{ borderRadius: '0 32px 32px 0 !important' }}>
+    <MultiBookIcon fontSize="small" sx={{ mr: 0.5 }}/> Scaffale
+  </ToggleButton>
+</ToggleButtonGroup>
               </Box>
               
               {/* Pulsante Scatto / Azioni */}
@@ -1020,6 +1227,127 @@ const LlmScannerOverlay = ({ open, onClose, onCapture, videoConstraints = defaul
                     : ''
                 }
               </Typography>
+
+{/* Pannello Debug - visibile solo in modalità debug e solo in development */}
+{process.env.NODE_ENV === 'development' && debugMode && (
+  <Box
+    sx={{
+      position: 'absolute',
+      top: 70,
+      right: 10,
+      zIndex: 1400,
+      width: 280,
+      maxHeight: '80vh',
+      overflow: 'auto',
+      backgroundColor: alpha(theme.palette.background.paper, 0.9),
+      borderRadius: '8px',
+      border: `1px solid ${alpha(theme.palette.error.main, 0.5)}`,
+      p: 1.5,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      '&::-webkit-scrollbar': {
+        width: '6px',
+      },
+      '&::-webkit-scrollbar-track': {
+        backgroundColor: 'rgba(0,0,0,0.05)',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: 'rgba(0,0,0,0.2)',
+        borderRadius: '10px',
+      }
+    }}
+  >
+    <Typography variant="subtitle2" color="error" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+      <DebugIcon fontSize="small" sx={{ mr: 0.5 }} /> Debug Info
+    </Typography>
+    
+    <Box sx={{ fontSize: '0.75rem', mt: 1 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+        Scanning:
+      </Typography>
+      <Box sx={{ ml: 1, mb: 1 }}>
+        <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Mode:</span> <code>{scanMode}</code>
+        </Typography>
+        <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Method:</span> <code>{debugInfo.method || 'N/A'}</code>
+        </Typography>
+        <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Confidence:</span> <code>{debugInfo.confidence ? `${(debugInfo.confidence * 100).toFixed(1)}%` : 'N/A'}</code>
+        </Typography>
+        <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Status:</span> 
+          <code>
+            {isProcessing ? 'Processing' : 
+             showResultsView ? 'Results' : 
+             successMode ? 'Success' : 
+             capturedImage ? 'Captured' : 'Ready'}
+          </code>
+        </Typography>
+      </Box>
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+        Results:
+      </Typography>
+      <Box sx={{ ml: 1, mb: 1 }}>
+        {debugInfo.booksFound ? (
+          <>
+            <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Main Result:</span> <code>{debugInfo.booksFound.main ? 'Found' : 'None'}</code>
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Alternatives:</span> <code>{debugInfo.booksFound.alternatives || 0}</code>
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Multi Books:</span> <code>{debugInfo.booksFound.multi || 0}</code>
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="caption">No results yet</Typography>
+        )}
+      </Box>
+
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+        <span>Last Update:</span> <code>{debugInfo.lastUpdated || 'N/A'}</code>
+      </Typography>
+      
+      {/* Aggiungi dettagli sui libri trovati */}
+      {resultData && (
+        <Box sx={{ mt: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontWeight: 'bold' }}>
+            Main Book:
+          </Typography>
+          <Box sx={{ ml: 1, mb: 1, backgroundColor: alpha(theme.palette.background.paper, 0.7), p: 0.5, borderRadius: '4px' }}>
+            <Typography variant="caption" component="div" sx={{ fontSize: '0.65rem' }}>
+              <code>Title: {resultData.title}</code>
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ fontSize: '0.65rem' }}>
+              <code>Author: {resultData.author}</code>
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ fontSize: '0.65rem' }}>
+              <code>ID: {resultData.googleBooksId || resultData._id || 'N/A'}</code>
+            </Typography>
+            <Typography variant="caption" component="div" sx={{ fontSize: '0.65rem' }}>
+              <code>In Library: {resultData.isInLibrary ? 'Yes' : 'No'}</code>
+            </Typography>
+          </Box>
+        </Box>
+      )}
+    </Box>
+
+    {/* Aggiunta di un button per nascondere il pannello */}
+    <Button 
+      size="small" 
+      fullWidth 
+      variant="outlined" 
+      color="error" 
+      onClick={() => setDebugMode(false)}
+      sx={{ mt: 1, fontSize: '0.75rem' }}
+    >
+      Nascondi Debug
+    </Button>
+  </Box>
+)}
+
             </Box>
           )} {/* Fine Footer */}
   
