@@ -3,7 +3,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Box, CircularProgress, Typography } from '@mui/material';
 
-const BookScanner = ({ onCaptureImage, isActive }) => {
+const BookScanner = ({ id, onCaptureImage, isActive }) => {
   const webcamRef = useRef(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -15,7 +15,7 @@ const BookScanner = ({ onCaptureImage, isActive }) => {
     facingMode: "environment", // Usa la fotocamera posteriore
   };
 
-  // Cattura l'immagine dalla webcam
+  // Funzione per catturare l'immagine
   const captureImage = useCallback(() => {
     if (webcamRef.current && isCameraReady) {
       const imageSrc = webcamRef.current.getScreenshot();
@@ -27,24 +27,12 @@ const BookScanner = ({ onCaptureImage, isActive }) => {
     return null;
   }, [webcamRef, isCameraReady, onCaptureImage]);
 
-  // Inizia la scansione automatica quando il componente è attivo
+  // Esponi la funzione di cattura tramite un metodo pubblico
   useEffect(() => {
-    let scanTimer;
-    
-    if (isActive && isCameraReady) {
-      // Avvia la scansione ogni 2 secondi
-      scanTimer = setInterval(() => {
-        captureImage();
-      }, 2000);
+    if (webcamRef.current) {
+      webcamRef.current.getScreenshot = captureImage;
     }
-    
-    // Pulisci il timer quando il componente viene disattivato
-    return () => {
-      if (scanTimer) {
-        clearInterval(scanTimer);
-      }
-    };
-  }, [isActive, isCameraReady, captureImage]);
+  }, [captureImage]);
 
   // Gestisce errori di accesso alla fotocamera
   const handleCameraError = (error) => {
@@ -105,6 +93,7 @@ const BookScanner = ({ onCaptureImage, isActive }) => {
       <Webcam
         audio={false}
         ref={webcamRef}
+        id={id} // ID per poter ottenere un riferimento diretto
         videoConstraints={videoConstraints}
         screenshotFormat="image/jpeg"
         screenshotQuality={0.92}

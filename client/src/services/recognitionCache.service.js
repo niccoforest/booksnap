@@ -20,11 +20,11 @@ class RecognitionCacheService {
       console.log("Cache: ricerca non eseguita - cache disabilitata o testo OCR non valido");
       return null;
     }
-
+  
     try {
       console.log("Cache: ricerca libro per testo OCR...");
       
-      // Normalizza il testo OCR - prima definizione di normalizedText
+      // Normalizza il testo OCR
       const normalizedText = this._normalizeText(ocrText);
       
       // 1. Prima controlla nella cache locale
@@ -39,10 +39,11 @@ class RecognitionCacheService {
       // 2. Se non in cache locale, chiedi al server
       const response = await apiService.post('/recognition-cache/find-by-ocr', {
         ocrText,
-        normalizedText // Ora normalizedText è definito
+        normalizedText
       });
       
-      if (response.success) {
+      // Verifica che la risposta abbia il formato corretto
+      if (response && response.success && response.data) {
         console.log("Cache: hit da server!");
         this.hits++;
         
@@ -177,14 +178,14 @@ class RecognitionCacheService {
    * @param {string} source - Fonte dell'associazione
    * @param {number} confidence - Livello di confidenza
    */
-  async addToCache(ocrText, bookData, source = 'user', confidence = 0.7) {
-    if (!this.enabled || !ocrText || !bookData || ocrText.length < 5) {
+   async addToCache(ocrText, bookData, source = 'user', confidence = 0.7) {
+    if (!this.enabled || !ocrText || !bookData) {
       console.log("Cache: impossibile aggiungere alla cache - parametri non validi");
       return;
     }
     
     try {
-      console.log(`Cache: aggiunta di "${bookData.title}" alla cache remota`);
+      console.log(`Cache: aggiunta di "${bookData.title}" alla cache locale`);
       
       // Normalizza il testo OCR
       const normalizedText = this._normalizeText(ocrText);
@@ -193,17 +194,42 @@ class RecognitionCacheService {
       const localKey = this._generateLocalCacheKey(normalizedText);
       this.localCache[localKey] = bookData;
       
-      // Aggiungi alla cache remota
-      await apiService.post('/recognition-cache/add', {
-        ocrText,
-        bookData,
-        source,
-        confidence
-      });
+      // Verifica che bookData abbia un ID valido
+      if (!bookData.googleBooksId && !bookData._id) {
+        console.warn('Cache: impossibile salvare nella cache remota - manca ID libro');
+        return; // Non tentare di salvare sul server
+      }
       
-      console.log(`Cache: libro "${bookData.title}" aggiunto con successo`);
+      // Tenta di aggiungere alla cache remota, ma non bloccare in caso di errore
+      try {
+        console.log(`Cache: tentativo di aggiunta di "${bookData.title}" alla cache remota`);
+        
+        // Crea una copia sicura di bookData con solo i campi essenziali
+        const safeBookData = {
+          googleBooksId: bookData.googleBooksId || `temp_${Date.now()}`,
+          title: bookData.title || 'Titolo sconosciuto',
+          author: bookData.author || 'Autore sconosciuto',
+          publisher: bookData.publisher || '',
+          publishedYear: bookData.publishedYear || null,
+          coverImage: bookData.coverImage || '',
+          isbn: bookData.isbn || ''
+        };
+        
+        await apiService.post('/recognition-cache/add', {
+          ocrText,
+          bookData: safeBookData,
+          source,
+          confidence
+        });
+        
+        console.log(`Cache: libro "${bookData.title}" aggiunto con successo alla cache remota`);
+      } catch (serverError) {
+        console.warn('Cache: Impossibile aggiungere alla cache remota - continuo con la cache locale', serverError);
+        // Continua con la cache locale anche se il server fallisce
+      }
     } catch (error) {
       console.error('Errore nell\'aggiunta alla cache:', error);
+      // Non propagare l'errore per evitare di interrompere il flusso dell'app
     }
   }
   

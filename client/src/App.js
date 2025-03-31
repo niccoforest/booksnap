@@ -19,17 +19,18 @@ import NotFound from './pages/NotFound';
 import ApiTest from './components/ApiTest';
 import ISBNDebug from './pages/ISBNDebug';
 import ScanTest from './pages/ScanTest';
+import { LibraryProvider } from './contexts/LibraryContext'; 
 import { FavoritesProvider } from './contexts/FavoritesContext';
-import CacheTestPage from './pages/CacheTestPage';
-import CacheAdmin from './pages/AdminCache';
 
-import RecognitionTest from './pages/RecognitionTestold';
+
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
+            <LibraryProvider>
+
       <CssBaseline />
       <FavoritesProvider userId={TEMP_USER_ID}>
       <Router>
@@ -47,13 +48,11 @@ function App() {
             <Route path="/test-api" element={<ApiTest />} />
             <Route path="/isbn-debug" element={<ISBNDebug />} />
             <Route path="/scan-test" element={<ScanTest />} />
-            <Route path="/recognition-test" element={<RecognitionTest />} />
-            <Route path="/cache-test" element={<CacheTestPage />} />
-            <Route path="/admin/cache" element={<CacheAdmin />} />
           </Route>
         </Routes>
       </Router>
       </FavoritesProvider>
+      </LibraryProvider>
     </ThemeProvider>
   );
 }

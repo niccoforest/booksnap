@@ -2,7 +2,7 @@
 
 class GeminiVisionService {
     constructor() {
-      this.apiKey = 'AIzaSyDQfqO8AdXNeUOYe9NYIalus6HUcA_ftyM';
+      this.apiKey = '';
       this.enabled = false;
       this.lastResult = null;
       this.model = 'gemini-2.0-flash-lite'; // Usiamo il modello più recente per risultati migliori
@@ -11,16 +11,26 @@ class GeminiVisionService {
   
 
   /**
-   * Inizializza il servizio con la chiave API dall'ambiente
-   */
-  initFromEnvironment() {
-    const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-    if (apiKey) {
-      this.setApiKey(apiKey);
-      console.log('GeminiVisionService inizializzato con chiave API da variabile d\'ambiente');
+ * Inizializza il servizio con la chiave API dall'ambiente
+ */
+initFromEnvironment() {
+  // Accedi alla variabile d'ambiente correttamente
+  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  
+  if (apiKey) {
+    this.setApiKey(apiKey);
+    console.log('GeminiVisionService inizializzato con chiave API da variabile d\'ambiente');
+  } else {
+    console.warn('REACT_APP_GEMINI_API_KEY non trovata nelle variabili d\'ambiente');
+    
+    // Per development, usa la chiave di test solo se in ambiente di sviluppo
+    if (process.env.NODE_ENV === 'development') {
+      const testApiKey = 'AIzaSyDQfqO8AdXNeUOYe9NYIalus6HUcA_ftyM'; // Solo per sviluppo
+      this.setApiKey(testApiKey);
+      console.warn('Usando chiave API di test per ambiente di sviluppo');
     }
   }
-
+}
     /**
      * Imposta l'API key per Gemini
      * @param {string} apiKey - API key per Gemini
@@ -293,6 +303,17 @@ class GeminiVisionService {
         return this.lastResult;
       }
     }
+
+    /**
+ * Alias per recognizeBookFromCover per compatibilità con interfaccia attesa
+ * @param {string} imageData - Immagine in formato base64
+ * @param {string} language - Lingua del libro (default: 'ita')
+ * @returns {Promise<Object>} - Informazioni sul libro riconosciuto
+ */
+async recognizeBookCover(imageData, language = 'ita') {
+  console.log('Chiamato recognizeBookCover (alias per recognizeBookFromCover)');
+  return this.recognizeBookFromCover(imageData, language);
+}
   
     /**
      * Restituisce l'ultimo risultato di riconoscimento

@@ -16,158 +16,153 @@ class CoverRecognitionService {
    * @param {string} language - Lingua del libro (default: 'ita')
    * @returns {Promise<Object>} - Informazioni sul libro riconosciuto
    */
-  async recognizeBookCover(imageData, language = 'ita') {
-    try {
-      // Inizializza lo stato di riconoscimento
-      this.lastStatus = {
-        startTime: Date.now(),
-        state: 'started',
-        steps: ['Inizializzazione del riconoscimento']
-      };
-      
-      this.lastImage = imageData;
-      
-      // Step 1: Verifica se Gemini è abilitato
-      const isGeminiEnabled = geminiVisionService.isEnabled();
-      
-      if (!isGeminiEnabled) {
-        // Se non è abilitato, prova a ottenere la chiave API dalle variabili d'ambiente
-        const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-        if (apiKey) {
-          geminiVisionService.setApiKey(apiKey);
-        } else {
-          this._updateStatus('error', 'Gemini Vision API non configurata');
-          return {
-            success: false,
-            error: 'Gemini Vision API non configurata'
-          };
-        }
-      }
-      
-      // Step 2: Riconoscimento con Gemini Vision
-      this._updateStatus('processing', 'Analisi dell\'immagine con AI');
-      const geminiResult = await geminiVisionService.recognizeBookFromCover(imageData, language);
-      
-      if (!geminiResult.success) {
-        this._updateStatus('error', `Errore nel riconoscimento: ${geminiResult.error}`);
-        return geminiResult;
-      }
-      
-      const { title, author, publisher, confidence } = geminiResult;
-      
-      // Step 3: Ricerca nelle cache o in Google Books
-      this._updateStatus('searching', 'Ricerca del libro nel database');
-      
-      // Ordiniamo le strategie di ricerca in base alla probabilità di successo
-      const searchStrategies = [
-        // Strategia 1: Cerca titolo + autore precisi
-        async () => {
-          if (title && author) {
-            const query = `intitle:${title} inauthor:${author}`;
-            const results = await googleBooksService.searchBooks(query, 3);
-            if (results && results.length > 0) {
-              return {
-                success: true,
-                data: results[0],
-                alternatives: results.slice(1),
-                method: 'gemini_title_author',
-                confidence: confidence
-              };
-            }
-          }
-          return null;
-        },
-        
-        // Strategia 2: Ricerca più ampia con titolo e autore
-        async () => {
-          if (title && author) {
-            const query = `${title} ${author}`;
-            const results = await googleBooksService.searchBooks(query, 3);
-            if (results && results.length > 0) {
-              return {
-                success: true,
-                data: results[0],
-                alternatives: results.slice(1),
-                method: 'gemini_search',
-                confidence: confidence * 0.9 // Confidenza leggermente ridotta
-              };
-            }
-          }
-          return null;
-        },
-        
-        // Strategia 3: Solo titolo, se sufficientemente distintivo
-        async () => {
-          if (title && title.length > 6) {
-            const query = `intitle:${title}`;
-            const results = await googleBooksService.searchBooks(query, 3);
-            if (results && results.length > 0) {
-              return {
-                success: true,
-                data: results[0],
-                alternatives: results.slice(1),
-                method: 'gemini_title_only',
-                confidence: confidence * 0.7 // Confidenza più ridotta
-              };
-            }
-          }
-          return null;
-        }
-      ];
-      
-      // Tentiamo ogni strategia in ordine
-      for (const strategy of searchStrategies) {
-        try {
-          const result = await strategy();
-          if (result) {
-            // Abbiamo trovato un risultato, aggiorniamo lo stato
-            this._updateStatus('completed', 'Libro identificato con successo');
-            
-            // Salviamo nella cache se la confidenza è alta
-            if (result.confidence > 0.5 && result.data) {
-              // Creiamo un testo OCR simulato da titolo e autore per la cache
-              const simulatedOcr = `${title}\n${author}\n${publisher || ''}`;
-              await recognitionCacheService.addToCache(
-                simulatedOcr, 
-                result.data, 
-                'gemini', 
-                result.confidence
-              );
-            }
-            
-            this.lastResult = result;
-            return result;
-          }
-        } catch (strategyError) {
-          console.error('Errore in strategia di ricerca:', strategyError);
-          // Continua con la strategia successiva
-        }
-      }
-      
-      // Se arriviamo qui, non abbiamo trovato risultati con nessuna strategia
-      this._updateStatus('not_found', 'Nessun libro trovato per i dati riconosciuti');
-      
+async recognizeBookCover(imageData, language = 'ita') {
+  try {
+    this._updateStatus('init', 'Inizializzazione riconoscimento');
+    
+    // Riconoscimento tramite Gemini
+    this._updateStatus('gemini', 'Riconoscimento con Gemini Vision API');
+    
+    const geminiResult = await geminiVisionService.recognizeBookCover(imageData, language);
+    console.log('Risultato Gemini:', geminiResult);
+    
+    if (!geminiResult || !geminiResult.success) {
+      this._updateStatus('error', 'Errore nel riconoscimento Gemini');
       return {
         success: false,
-        error: 'Nessun libro trovato per i dati riconosciuti',
-        recognizedData: {
-          title,
-          author,
-          publisher,
-          confidence
-        }
-      };
-      
-    } catch (error) {
-      console.error('Errore nel servizio di riconoscimento copertina:', error);
-      this._updateStatus('error', `Errore generico: ${error.message}`);
-      
-      return {
-        success: false,
-        error: error.message
+        error: geminiResult?.error || 'Errore nel riconoscimento della copertina'
       };
     }
+    
+    // Verifica che ci siano dati minimi (titolo e/o autore)
+    if (!geminiResult.title && !geminiResult.author) {
+      this._updateStatus('error', 'Dati insufficienti dal riconoscimento');
+      return {
+        success: false,
+        error: 'Impossibile identificare titolo o autore del libro'
+      };
+    }
+    
+    // Cerca il libro su Google Books
+    this._updateStatus('searching', 'Ricerca del libro nel database');
+    
+    let query = '';
+    if (geminiResult.title && geminiResult.author) {
+      query = `intitle:${geminiResult.title} inauthor:${geminiResult.author}`;
+    } else if (geminiResult.title) {
+      query = `intitle:${geminiResult.title}`;
+    } else {
+      query = `inauthor:${geminiResult.author}`;
+    }
+    
+    const searchResults = await googleBooksService.searchBooks(query, 3);
+    
+    // Se non troviamo risultati, prova una ricerca più generica
+    if (!searchResults || searchResults.length === 0) {
+      this._updateStatus('fallback', 'Ricerca alternativa');
+      
+      // Ricerca più permissiva
+      const fallbackQuery = (geminiResult.title || '') + ' ' + (geminiResult.author || '');
+      const fallbackResults = await googleBooksService.searchBooks(fallbackQuery, 3);
+      
+      if (!fallbackResults || fallbackResults.length === 0) {
+        // Come ultima risorsa, crea un libro "virtuale" dai dati Gemini
+        this._updateStatus('completed', 'Nessun risultato trovato nel database, utilizzo dati Gemini');
+        
+        const syntheticBook = {
+          title: geminiResult.title || 'Titolo sconosciuto',
+          author: geminiResult.author || 'Autore sconosciuto',
+          publisher: geminiResult.publisher || '',
+          googleBooksId: `temp_${Date.now()}`,
+          coverImage: '', // Non abbiamo una copertina
+          confidence: geminiResult.confidence === 'alta' ? 0.9 : geminiResult.confidence === 'media' ? 0.6 : 0.3
+        };
+        
+        return {
+          success: true,
+          data: syntheticBook,
+          alternatives: [],
+          method: 'gemini_direct',
+          confidence: syntheticBook.confidence
+        };
+      }
+      
+      // Usa i risultati del fallback
+      this._updateStatus('completed', 'Libro identificato dai risultati alternativi');
+      
+      // Assicurati che tutti i libri abbiano i campi necessari
+      const validatedResults = fallbackResults.map(book => ({
+        ...book,
+        title: book.title || 'Titolo sconosciuto',
+        author: book.author || 'Autore sconosciuto'
+      }));
+      
+      try {
+        // Salva nella cache per uso futuro
+        if (validatedResults[0]) {
+          await recognitionCacheService.addToCache(
+            JSON.stringify(geminiResult), 
+            validatedResults[0],
+            'gemini_fallback',
+            0.6
+          );
+        }
+      } catch (cacheError) {
+        console.warn('Errore salvando nella cache:', cacheError);
+      }
+      
+      return {
+        success: true,
+        data: validatedResults[0],
+        alternatives: validatedResults.slice(1),
+        method: 'gemini_fallback',
+        confidence: 0.6
+      };
+    }
+    
+    // Libro trovato
+    this._updateStatus('completed', 'Libro identificato con successo');
+    
+    // Verifica ulteriormente i risultati prima di restituirli
+    const validatedResults = searchResults.map(book => ({
+      ...book,
+      title: book.title || 'Titolo sconosciuto',
+      author: book.author || 'Autore sconosciuto',
+      googleBooksId: book.googleBooksId || `temp_${Date.now()}`
+    }));
+    
+    try {
+      // Salva nella cache per uso futuro
+      if (validatedResults[0]) {
+        await recognitionCacheService.addToCache(
+          JSON.stringify(geminiResult), 
+          validatedResults[0],
+          'gemini_title_author',
+          0.9
+        );
+      }
+    } catch (cacheError) {
+      console.warn('Errore salvando nella cache:', cacheError);
+    }
+    
+    return {
+      success: true,
+      data: validatedResults[0],
+      alternatives: validatedResults.slice(1),
+      method: 'gemini_title_author',
+      confidence: 0.9
+    };
+    
+  } catch (error) {
+    console.error('Errore nel riconoscimento copertina:', error);
+    this._updateStatus('error', 'Errore inaspettato durante il riconoscimento');
+    
+    return {
+      success: false,
+      error: 'Errore nel riconoscimento della copertina: ' + error.message
+    };
   }
+}
   
   /**
    * Aggiorna lo stato del processo di riconoscimento

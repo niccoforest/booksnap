@@ -206,12 +206,26 @@ exports.addToCache = async (req, res) => {
   try {
     const { ocrText, bookData, source = 'user', confidence = 0.7 } = req.body;
     
-    if (!ocrText || !bookData || !bookData.googleBooksId) {
+    if (!ocrText || !bookData) {
       return res.status(400).json({ 
         success: false, 
         message: 'Dati insufficienti per aggiungere alla cache' 
       });
     }
+    
+    // Verifica che ci siano almeno titolo e autore
+    if (!bookData.title || !bookData.author) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Titolo e autore sono campi obbligatori per il bookData' 
+      });
+    }
+    
+    // Verifica che googleBooksId sia presente o genera un ID temporaneo
+    const enhancedBookData = {
+      ...bookData,
+      googleBooksId: bookData.googleBooksId || `temp_${Date.now()}`
+    };
     
     // Normalizza il testo OCR
     const normalizedText = ocrText.toLowerCase().replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -221,7 +235,7 @@ exports.addToCache = async (req, res) => {
     
     // Cerca se esiste già una entry con lo stesso googleBooksId e testo simile
     const existingEntry = await RecognitionCache.findOne({
-      'bookData.googleBooksId': bookData.googleBooksId,
+      'bookData.googleBooksId': enhancedBookData.googleBooksId,
       normalizedText
     });
     
@@ -243,7 +257,7 @@ exports.addToCache = async (req, res) => {
     const newCacheEntry = new RecognitionCache({
       normalizedText,
       keywords,
-      bookData,
+      bookData: enhancedBookData,
       source,
       confidence,
       usageCount: 1

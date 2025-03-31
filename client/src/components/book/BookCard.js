@@ -8,6 +8,8 @@ import ListVariant from './variants/ListVariant';
 import DetailVariant from './variants/DetailVariant';
 import SearchVariant from './variants/SearchVariant';
 import PreviewVariant from './variants/PreviewVariant';
+import ScanResultsVariant from './variants/ScanResultsVariant';
+
 
 // Importiamo il contesto dei preferiti
 import { useFavorites } from '../../contexts/FavoritesContext';
@@ -153,6 +155,8 @@ const BookCard = (props) => {
       return <SearchVariant {...commonProps} />;
     case 'preview':
       return <PreviewVariant {...commonProps} />;
+      case 'scan-result':
+    return <ScanResultsVariant {...commonProps} />;
     default:
       return <GridVariant {...commonProps} />;
   }
@@ -165,7 +169,7 @@ BookCard.propTypes = {
   userBook: PropTypes.object,
   
   // Opzioni visualizzazione
-  variant: PropTypes.oneOf(['grid', 'list', 'detail', 'search', 'preview']),
+  variant: PropTypes.oneOf(['grid', 'list', 'detail', 'search', 'preview','scan-result']),
   showFavoriteButton: PropTypes.bool,
   showMenuIcon: PropTypes.bool,
   showShareButton: PropTypes.bool,

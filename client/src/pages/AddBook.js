@@ -29,11 +29,12 @@ import {
   AddCircleOutline as AddNewIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import ScannerOverlay from '../components/scan/ScannerOverlay';
 import googleBooksService from '../services/googleBooks.service';
 import bookService from '../services/book.service';
 import BookCard from '../components/book/BookCard';
 import BookForm from '../components/book/BookForm';
+import LlmScannerOverlay from '../components/scan/LlmScannerOverlay';
+
 
 // ID utente temporaneo (da sostituire con autenticazione)
 const TEMP_USER_ID = '655e9e1b07910b7d21dea350';
@@ -490,54 +491,85 @@ const AddBook = () => {
   };
   
   // Funzione per gestire la cattura dall'overlay scanner
-  const handleCapture = async (captureData) => {
-    console.log('Dati catturati:', captureData);
+  const handleCapture = async (recognitionResult) => {
+    console.log('Risultato riconoscimento:', recognitionResult);
     setScannerOpen(false);
     
-    // Verifica se abbiamo un ISBN nei dati catturati
-    if (captureData && captureData.isbn) {
+    if (recognitionResult && recognitionResult.bookData) {
       try {
         // Mostriamo stato di caricamento
         setLoading(true);
         
-        console.log(`Ricerca libro con ISBN: ${captureData.isbn}`);
-        const bookData = await bookService.findBookByIsbn(captureData.isbn);
+        // Verifica che bookData abbia almeno i campi essenziali
+        const bookData = {
+          ...recognitionResult.bookData,
+          // Assicurati che ci siano ID validi
+          _id: recognitionResult.bookData._id || recognitionResult.bookData.googleBooksId || `temp_${Date.now()}`,
+          googleBooksId: recognitionResult.bookData.googleBooksId || `temp_${Date.now()}`,
+          // Campi richiesti - usa default se mancanti
+          title: recognitionResult.bookData.title || 'Titolo sconosciuto',
+          author: recognitionResult.bookData.author || 'Autore sconosciuto'
+        };
         
-        if (bookData) {
-          // Libro trovato, passiamo alla modalità manuale e mostriamo il libro
-          setIsManualMode(true);
-          setSelectedBook(bookData);
-          setSnackbar({
-            open: true,
-            message: 'Libro riconosciuto con successo!',
-            severity: 'success'
-          });
-        } else {
-          // Libro non trovato
-          setIsManualMode(true);
-          setSnackbar({
-            open: true,
-            message: 'Nessun libro trovato con questo ISBN.',
-            severity: 'warning'
-          });
+        console.log(`Libro riconosciuto: "${bookData.title}" di ${bookData.author}`);
+        
+        // Passiamo alla modalità manuale e mostriamo il libro
+        setIsManualMode(true);
+        setSelectedBook(bookData);
+        
+        // Verifica se il libro è già nella libreria
+        if (bookData.googleBooksId) {
+          try {
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [bookData.googleBooksId]: 'checking'
+            }));
+            
+            const isInLibrary = await bookService.checkBookInUserLibrary(bookData.googleBooksId, TEMP_USER_ID);
+            
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [bookData.googleBooksId]: isInLibrary
+            }));
+          } catch (checkErr) {
+            console.error('Errore nella verifica libro in libreria:', checkErr);
+            setBooksInLibrary(prev => ({
+              ...prev,
+              [bookData.googleBooksId]: false
+            }));
+          }
         }
+        
+        // Mostra notifica di successo con indicazione del livello di confidenza
+        let confidenceText = '';
+        if (recognitionResult.confidence) {
+          if (recognitionResult.confidence >= 0.8) confidenceText = ' con alta confidenza';
+          else if (recognitionResult.confidence >= 0.5) confidenceText = ' con media confidenza';
+          else confidenceText = ' con bassa confidenza';
+        }
+        
+        setSnackbar({
+          open: true,
+          message: `Libro riconosciuto${confidenceText}!`,
+          severity: recognitionResult.confidence < 0.5 ? 'warning' : 'success'
+        });
       } catch (error) {
-        console.error('Errore durante la ricerca del libro:', error);
+        console.error('Errore durante l\'elaborazione del libro riconosciuto:', error);
         setIsManualMode(true);
         setSnackbar({
           open: true,
-          message: 'Errore durante la ricerca del libro.',
+          message: 'Errore durante l\'elaborazione del libro riconosciuto.',
           severity: 'error'
         });
       } finally {
         setLoading(false);
       }
     } else {
-      // Nessun ISBN nei dati catturati
+      // Nessun libro riconosciuto o errore
       setIsManualMode(true);
       setSnackbar({
         open: true,
-        message: 'Non siamo riusciti a identificare un ISBN. Prova ad inserirlo manualmente.',
+        message: 'Non siamo riusciti a identificare un libro. Prova ad inserirlo manualmente.',
         severity: 'warning'
       });
     }
@@ -915,12 +947,12 @@ const AddBook = () => {
         </Box>
       )}
       
-      {/* Scanner overlay semplificato */}
-      <ScannerOverlay 
-        open={scannerOpen}
-        onClose={handleCloseScanner}
-        onCapture={handleCapture}
-      />
+      {/* Scanner overlay */}
+<LlmScannerOverlay 
+  open={scannerOpen}
+  onClose={handleCloseScanner}
+  onCapture={handleCapture}
+/>
       
       {/* Notifiche */}
       <Snackbar 
