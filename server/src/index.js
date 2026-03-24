@@ -11,25 +11,27 @@ const connectDB = require('./config/db');
 const app = express();
 
 const mongoose = require('mongoose');
-// Gestione dinamica CORS per Vercel
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:5000'];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Permetti richieste senza origin (come cURL, app mobile) in sviluppo
-    // Oppure se origin è negli allowedOrigins (es: l'url del frontend react deployato su Vercel)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // Se ci servono i cookie / token in futuro
-};
 
 // Middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000'];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Permetti richieste senza origin (come quelle da server o app mobili)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Non consentito da CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 app.use(cors(corsOptions));
 app.use(helmet());
 app.use(morgan('dev'));
