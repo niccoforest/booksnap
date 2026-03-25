@@ -171,7 +171,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+  background: #f0f2f5;
+  color: #c0c0c0;
   font-size: 1.75rem;
 }
 
@@ -210,6 +211,7 @@
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   line-height: 1.3;
 }
@@ -217,6 +219,7 @@
 .listView .bookTitle {
   font-size: 0.9375rem;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .bookAuthor {

@@ -105,7 +105,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-card);
+  background: #f0f2f5;
+  color: #c0c0c0;
   border-radius: 6px;
   font-size: 1.25rem;
   flex-shrink: 0;

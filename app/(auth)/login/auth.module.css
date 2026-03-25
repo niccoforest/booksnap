@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-lg);
-  background: radial-gradient(ellipse at top, rgba(255, 107, 53, 0.08) 0%, transparent 60%), var(--bg-primary);
+  background: radial-gradient(ellipse at top, rgba(155, 39, 176, 0.05) 0%, transparent 60%), var(--bg-primary);
 }
 
 .card {
@@ -23,7 +23,7 @@
 .logo {
   font-size: 3.5rem;
   margin-bottom: var(--spacing-sm);
-  filter: drop-shadow(0 4px 12px rgba(255, 107, 53, 0.4));
+  filter: drop-shadow(0 4px 12px rgba(155, 39, 176, 0.2));
 }
 
 .title {
