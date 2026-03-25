@@ -1,11 +1,10 @@
 const mongoose = require('mongoose');
 
 const bookSchema = new mongoose.Schema({
-const BookSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true, // Ogni libro è associato a un utente
+    // required: true, // Commentato per ora (singolo utente temporaneo o opzionale)
   },
   title: {
     type: String,
@@ -14,11 +13,17 @@ const BookSchema = new mongoose.Schema({
   authors: [{
     type: String
   }],
+  author: {
+    type: String,
+  },
   isbn: {
     type: String,
     sparse: true,
   },
   coverUrl: {
+    type: String, // Può essere l'URL o la stringa in Base64
+  },
+  coverImage: {
     type: String,
   },
   description: {
@@ -33,33 +38,12 @@ const BookSchema = new mongoose.Schema({
   categories: [{
     type: String
   }],
-  // Associazione a un utente (predisposizione multi-utente)
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    // required: true, // Commentato per ora (singolo utente temporaneo)
+  metadata: {
+    type: Object, // Salveremo qui le risposte grezze di Google Books / OpenRouter
   },
   dateAdded: {
     type: Date,
     default: Date.now,
-  }
-});
-
-module.exports = mongoose.model('Book', bookSchema);
-  author: {
-    type: String,
-  },
-  isbn: {
-    type: String,
-  },
-  coverImage: {
-    type: String, // Può essere l'URL o la stringa in Base64
-  },
-  description: {
-    type: String,
-  },
-  metadata: {
-    type: Object, // Salveremo qui le risposte grezze di Google Books / OpenRouter
   },
   addedAt: {
     type: Date,
@@ -67,4 +51,4 @@ module.exports = mongoose.model('Book', bookSchema);
   },
 });
 
-module.exports = mongoose.models.Book || mongoose.model('Book', BookSchema);
+module.exports = mongoose.models.Book || mongoose.model('Book', bookSchema);
