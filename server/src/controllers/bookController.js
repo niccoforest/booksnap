@@ -1,6 +1,7 @@
 const Book = require('../models/Book');
 const llmService = require('../services/llmService');
 const googleBooksService = require('../services/googleBooksService');
+const connectDB = require('../config/db');
 
 /**
  * Endpoint POST /api/scan
@@ -32,6 +33,9 @@ const scanLibrary = async (req, res) => {
     const enrichedBooks = [];
     const savedBooks = [];
 
+    // Ensure database connection
+    await connectDB();
+
     for (const bookData of recognizedBooks) {
       const { title, author } = bookData;
       if (!title) continue; // Salta se non c'è il titolo
@@ -46,18 +50,26 @@ const scanLibrary = async (req, res) => {
           enrichedBooks.push(metadata);
 
           // Controlla se il libro esiste già (es. tramite ISBN) per evitare duplicati
-          let existingBook = null;
+          let query = {};
           if (metadata.isbn) {
-            existingBook = await Book.findOne({ isbn: metadata.isbn });
+            query.isbn = metadata.isbn;
           } else {
             // Se non c'è isbn controlla per titolo (case insensitive) - safe per caratteri speciali
             const safeTitle = metadata.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            existingBook = await Book.findOne({ title: new RegExp(`^${safeTitle}$`, 'i') });
+            query.title = new RegExp(`^${safeTitle}$`, 'i');
           }
+
+          if (req.user && req.user.id) {
+             query.user = req.user.id;
+          }
+
+          let existingBook = await Book.findOne(query);
 
           if (!existingBook) {
             // Salva nel DB
-            const newBook = new Book(metadata);
+            const bookPayload = { ...metadata };
+            if (req.user && req.user.id) bookPayload.user = req.user.id;
+            const newBook = new Book(bookPayload);
             await newBook.save();
             savedBooks.push(newBook);
             console.log(`Salvato nuovo libro: "${metadata.title}"`);
@@ -71,12 +83,19 @@ const scanLibrary = async (req, res) => {
           console.warn(`Metadati non trovati per "${title}". Salvo solo titolo/autore.`);
 
           const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const existingBookTitle = await Book.findOne({ title: new RegExp(`^${safeTitle}$`, 'i') });
+          let query = { title: new RegExp(`^${safeTitle}$`, 'i') };
+          if (req.user && req.user.id) {
+             query.user = req.user.id;
+          }
+
+          const existingBookTitle = await Book.findOne(query);
+
           if (!existingBookTitle) {
             const baseBook = {
               title: title,
               authors: author ? [author] : [],
             };
+            if (req.user && req.user.id) baseBook.user = req.user.id;
             const newBook = new Book(baseBook);
             await newBook.save();
             savedBooks.push(newBook);
@@ -114,61 +133,64 @@ const scanLibrary = async (req, res) => {
  */
 const getBooks = async (req, res) => {
   try {
+    await connectDB();
+
+    // Supporta query con utente autenticato se presente
+    const query = {};
+    if (req.user && req.user.id) {
+        query.user = req.user.id;
+    }
+
     // Ordina per data aggiunta decrescente
-    const books = await Book.find().sort({ dateAdded: -1 });
-    return res.status(200).json({
-      count: books.length,
-      books: books
-    });
+    // Supporta sia dateAdded che addedAt
+    const books = await Book.find(query).sort({ dateAdded: -1, addedAt: -1 });
+
+    // Support array return like in one branch or object return in the other
+    // We'll return the object with count for more details, but frontend might expect array.
+    // However the branch that added auth expects `res.json(books)`. I will stick to returning the array
+    // if req.user exists otherwise return object. Wait, better to always return JSON that frontend expects.
+    // Let's return the object format but handle both?
+    // Wait, the branch that added auth expects `res.json(books)`:
+    return res.json(books);
+
   } catch (error) {
     console.error('Errore nel recupero dei libri:', error);
-    return res.status(500).json({ error: 'Errore nel recupero dei libri.' });
+    return res.status(500).json({ error: 'Errore Server', message: error.message });
   }
 };
 
-module.exports = {
-  scanLibrary,
-  getBooks
-};
-const connectDB = require('../config/db');
-
-// @desc    Ottieni tutti i libri di un utente
-// @route   GET /api/books
-// @access  Private
-exports.getBooks = async (req, res) => {
-  try {
-    await connectDB();
-    // req.user.id viene passato dal middleware auth
-    const books = await Book.find({ user: req.user.id }).sort({ addedAt: -1 });
-    res.json(books);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Errore Server');
-  }
-};
-
-// @desc    Aggiungi un nuovo libro scansionato
-// @route   POST /api/books
-// @access  Private
-exports.addBook = async (req, res) => {
+/**
+ * Endpoint POST /api/books
+ * Aggiungi un nuovo libro (manuale / scansionato senza scanLibrary)
+ */
+const addBook = async (req, res) => {
   try {
     await connectDB();
 
-    // Per ora non facciamo validazioni complesse (si faranno nel middleware frontend/backend)
-    const newBook = new Book({
-      user: req.user.id,
+    const bookData = {
       title: req.body.title,
       author: req.body.author,
       isbn: req.body.isbn,
       coverImage: req.body.coverImage,
       description: req.body.description,
       metadata: req.body.metadata,
-    });
+    };
 
+    if (req.user && req.user.id) {
+       bookData.user = req.user.id;
+    }
+
+    const newBook = new Book(bookData);
     const book = await newBook.save();
     res.json(book);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Errore Server');
   }
+};
+
+module.exports = {
+  scanLibrary,
+  getBooks,
+  addBook
 };
