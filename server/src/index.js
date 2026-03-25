@@ -51,13 +51,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Rotte API
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante e architettura aggiornata!' });
-});
-
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/books', require('./routes/bookRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
+
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'BookSnap API funzionante e architettura aggiornata!' });
+});
 
 // Gestione errori di base
 app.use((err, req, res, next) => {
