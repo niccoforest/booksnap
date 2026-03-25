@@ -39,6 +39,9 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .modeBtn.active {
@@ -82,7 +85,14 @@
 }
 
 .uploadIcon {
-  font-size: 3rem;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b0b8c1;
 }
 
 /* Corner guides */

@@ -6,12 +6,12 @@ import styles from './page.module.css'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
-const STATUS_CONFIG: Record<ReadingStatus, { label: string; emoji: string; className: string }> = {
-  to_read: { label: 'Da leggere', emoji: '📌', className: 'status-to-read' },
-  reading: { label: 'In lettura', emoji: '📖', className: 'status-reading' },
-  completed: { label: 'Completato', emoji: '✅', className: 'status-completed' },
-  abandoned: { label: 'Abbandonato', emoji: '🚫', className: 'status-abandoned' },
-  lent: { label: 'Prestato', emoji: '🤝', className: 'status-lent' },
+const STATUS_CONFIG: Record<ReadingStatus, { label: string; dot: string; className: string }> = {
+  to_read: { label: 'Da leggere', dot: '#f59e0b', className: 'status-to-read' },
+  reading: { label: 'In lettura', dot: '#3b82f6', className: 'status-reading' },
+  completed: { label: 'Completato', dot: '#22c55e', className: 'status-completed' },
+  abandoned: { label: 'Abbandonato', dot: '#ef4444', className: 'status-abandoned' },
+  lent: { label: 'Prestato', dot: '#a855f7', className: 'status-lent' },
 }
 
 interface BookEntry {
@@ -111,7 +111,7 @@ export default function LibraryPage() {
               className={`${styles.libTab} ${selectedLib === lib._id ? styles.active : ''}`}
               onClick={() => setSelectedLib(lib._id)}
             >
-              <span>{lib.emoji}</span> {lib.name}
+              {lib.name}
             </button>
           ))}
         </div>
@@ -149,14 +149,21 @@ export default function LibraryPage() {
                 {entry.bookId.coverUrl ? (
                   <img src={entry.bookId.coverUrl} alt={entry.bookId.title} className={styles.cover} />
                 ) : (
-                  <div className={styles.coverPlaceholder}>📚</div>
+                  <div className={styles.coverPlaceholder}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                    </svg>
+                  </div>
                 )}
-                <span className={`status-badge ${STATUS_CONFIG[entry.status].className} ${styles.statusOverlay}`}>
-                  {STATUS_CONFIG[entry.status].emoji}
-                </span>
+                <span
+                  className={styles.statusOverlay}
+                  style={{ background: STATUS_CONFIG[entry.status].dot }}
+                  title={STATUS_CONFIG[entry.status].label}
+                />
                 {entry.rating && (
                   <div className={styles.ratingOverlay}>
-                    {'⭐'.repeat(entry.rating)}
+                    {'★'.repeat(entry.rating)}
                   </div>
                 )}
               </div>
@@ -169,7 +176,12 @@ export default function LibraryPage() {
         </div>
       ) : (
         <div className={styles.empty}>
-          <span className={styles.emptyIcon}>📖</span>
+          <div className={styles.emptyIcon}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </div>
           <h3>Nessun libro qui</h3>
           <p className={styles.emptyText}>
             {statusFilter === 'all'
@@ -178,7 +190,7 @@ export default function LibraryPage() {
           </p>
           {statusFilter === 'all' && (
             <Link href="/scan" className="btn btn-primary">
-              📷 Scansiona un libro
+              Scansiona un libro
             </Link>
           )}
         </div>

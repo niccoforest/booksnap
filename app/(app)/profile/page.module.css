@@ -137,6 +137,14 @@
   width: 100%;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.menuItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
 }
 
 .menuItem:hover { background: var(--bg-card-hover); }
