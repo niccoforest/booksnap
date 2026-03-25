@@ -65,11 +65,24 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Errore interno del server' });
 });
 
-// In produzione, servi i file statici del frontend
+// Nota: Il blocco sottostante per servire file statici è necessario solo se non si usa Vercel o
+// un proxy per servire i file frontend. Con l'attuale configurazione di vercel.json,
+// Vercel redirige internamente alla route '/client/build/index.html'. Tuttavia, questa
+// configurazione di fallback server-side permette all'app Node di servire l'SPA se
+// ospitata in modi tradizionali (es. su Heroku, VPS etc). È importante però gestire l'app.get('*')
+// con attenzione: siccome stiamo servendo un'API, in genere l'API restituirebbe 404 per
+// rotte non trovate in un'architettura microservizi. Ma con una build monolitica va bene,
+// a patto che questo venga DOPO le `/api/*` (ed è così).
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../../client/build')));
   
   app.get('*', (req, res) => {
+    // Escludiamo eventuali hit all'API non trovate, inviando 404 invece di servire index.html
+    // per rotte API inesistenti, che era probabilmente il motivo per cui alcune chiamate API
+    // non valide potevano fallire "silenziosamente" (restituendo l'HTML al posto del JSON).
+    if (req.originalUrl.startsWith('/api/')) {
+       return res.status(404).json({ error: 'Endpoint API non trovato' });
+    }
     res.sendFile(path.join(__dirname, '../../client/build', 'index.html'));
   });
 }
@@ -78,6 +91,11 @@ if (process.env.NODE_ENV === 'production') {
 const PORT = process.env.PORT || 5000;
 
 // Avvia il server
-app.listen(PORT, () => {
-  console.log(`Server in esecuzione sulla porta ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+   app.listen(PORT, () => {
+     console.log(`Server in esecuzione sulla porta ${PORT}`);
+   });
+}
+
+// Esporta l'app per Vercel
+module.exports = app;
