@@ -7,12 +7,12 @@ import styles from './page.module.css'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
-const STATUS_CONFIG: Record<ReadingStatus, { label: string; emoji: string; next: ReadingStatus }> = {
-  to_read: { label: 'Da leggere', emoji: '📌', next: 'reading' },
-  reading: { label: 'In lettura', emoji: '📖', next: 'completed' },
-  completed: { label: 'Completato', emoji: '✅', next: 'to_read' },
-  abandoned: { label: 'Abbandonato', emoji: '🚫', next: 'to_read' },
-  lent: { label: 'Prestato', emoji: '🤝', next: 'to_read' },
+const STATUS_CONFIG: Record<ReadingStatus, { label: string; color: string }> = {
+  to_read: { label: 'Da leggere', color: '#f59e0b' },
+  reading: { label: 'In lettura', color: '#3b82f6' },
+  completed: { label: 'Completato', color: '#22c55e' },
+  abandoned: { label: 'Abbandonato', color: '#ef4444' },
+  lent: { label: 'Prestato', color: '#a855f7' },
 }
 
 const STATUS_OPTIONS: ReadingStatus[] = ['to_read', 'reading', 'completed', 'abandoned', 'lent']
@@ -67,7 +67,10 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
       const libData = await libRes.json()
 
       for (const lib of libData.libraries || []) {
-        const found = lib.books?.find((b: any) => b.bookId?._id === id || b.bookId === id)
+        const found = lib.books?.find((b: any) => {
+          const bId = b.bookId?._id?.toString() || b.bookId?.toString()
+          return bId === id
+        })
         if (found) {
           setEntry({ libraryId: lib._id, bookId: id, ...found })
           setReview(found.review || '')
@@ -125,7 +128,12 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
         {book.coverUrl ? (
           <img src={book.coverUrl} alt={book.title} className={styles.cover} />
         ) : (
-          <div className={styles.coverPlaceholder}>📚</div>
+          <div className={styles.coverPlaceholder}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </div>
         )}
         <div className={styles.heroGlow} />
       </div>
@@ -162,8 +170,15 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
                   className={`${styles.statusOption} ${entry.status === s ? styles.active : ''}`}
                   onClick={() => updateEntry({ status: s })}
                   disabled={saving}
+                  style={entry.status === s ? { borderColor: STATUS_CONFIG[s].color, color: STATUS_CONFIG[s].color } : undefined}
                 >
-                  {STATUS_CONFIG[s].emoji} {STATUS_CONFIG[s].label}
+                  <span
+                    style={{
+                      display: 'inline-block', width: 8, height: 8,
+                      borderRadius: '50%', background: STATUS_CONFIG[s].color, flexShrink: 0
+                    }}
+                  />
+                  {STATUS_CONFIG[s].label}
                 </button>
               ))}
             </div>

@@ -5,9 +5,6 @@ export const metadata: Metadata = {
   title: 'BookSnap',
   description: 'Scansiona, cataloga e organizza la tua biblioteca personale',
   manifest: '/manifest.json',
-  icons: {
-    apple: '/icon-192.png',
-  },
 }
 
 export const viewport: Viewport = {
@@ -15,7 +12,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#0a0a0f',
+  themeColor: '#f8f9fa',
 }
 
 export default function RootLayout({
@@ -24,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="it">
+    <html lang="it" data-scroll-behavior="smooth">
       <body>{children}</body>
     </html>
   )

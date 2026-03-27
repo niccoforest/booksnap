@@ -1,0 +1,16 @@
+{
+  "name": "BookSnap",
+  "short_name": "BookSnap",
+  "description": "La tua biblioteca intelligente",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#9b27b0",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
