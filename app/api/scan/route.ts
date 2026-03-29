@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth'
 import { callLLM, SCAN_PROMPT } from '@/lib/llm'
 import { connectDB } from '@/lib/mongodb'
 import { Book } from '@/models/Book'
+import { ScanHistory } from '@/models/ScanHistory'
 import { fetchBookMetadata } from '@/lib/bookMetadata'
 
 interface RecognizedBook {
@@ -38,18 +39,12 @@ export async function POST(request: NextRequest) {
 
     let scanResult: ScanResult
     try {
-      // Clean LLM output: strip markdown fences, extract JSON
       let clean = llmResult.content
         .replace(/```json\s*/gi, '')
         .replace(/```\s*/g, '')
         .trim()
-      
-      // Try to extract JSON object from surrounding text
       const jsonMatch = clean.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        clean = jsonMatch[0]
-      }
-      
+      if (jsonMatch) clean = jsonMatch[0]
       scanResult = JSON.parse(clean)
       console.log('[scan] Parsed result:', JSON.stringify(scanResult).substring(0, 500))
     } catch (parseErr) {
@@ -61,28 +56,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ type: 'unknown', books: [] })
     }
 
-    // Filter out books the LLM is not confident about
     const confident = scanResult.books.filter((b) => b.confidence >= 0.3)
     if (confident.length === 0) {
       return NextResponse.json({ type: 'unknown', books: [] })
     }
     scanResult.books = confident
 
-    // Fetch metadata for recognized books (Google Books → Open Library → minimal)
     await connectDB()
     const enrichedBooks = await Promise.all(
       scanResult.books.map(async (recognized) => {
         const metadata = await fetchBookMetadata(recognized)
 
-        // Find or create book in DB
         let book = metadata.isbn ? await Book.findOne({ isbn: metadata.isbn }) : null
-
         if (!book) {
           book = await Book.findOne({
-            title: { $regex: new RegExp(metadata.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+            title: { $regex: new RegExp(metadata.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
           })
         }
-
         if (!book) {
           book = await Book.create(metadata)
         }
@@ -95,10 +85,27 @@ export async function POST(request: NextRequest) {
       })
     )
 
-    return NextResponse.json({
-      type: scanResult.type,
-      books: enrichedBooks,
-    })
+    // Save scan to history — fire-and-forget, doesn't block the response
+    const scanType = (['cover', 'spine', 'multiple', 'unknown'].includes(scanResult.type)
+      ? scanResult.type
+      : 'cover') as 'cover' | 'spine' | 'multiple' | 'unknown'
+
+    ScanHistory.create({
+      userId: user.userId,
+      scanType,
+      books: enrichedBooks.map((b) => ({
+        bookId: b._id,
+        title: b.title,
+        authors: b.authors,
+        coverUrl: b.coverUrl,
+        confidence: b.confidence,
+        addedToLibrary: false,
+      })),
+      imageThumbnail: imageBase64,
+      scannedAt: new Date(),
+    }).catch((err: unknown) => console.error('[scan] Failed to save history:', err))
+
+    return NextResponse.json({ type: scanResult.type, books: enrichedBooks })
   } catch (error) {
     console.error('[scan]', error)
     return NextResponse.json({ error: 'Errore durante la scansione' }, { status: 500 })

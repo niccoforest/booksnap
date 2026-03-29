@@ -2,7 +2,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import styles from './page.module.css'
 
 interface ScannedBook {
@@ -21,7 +20,25 @@ interface ScanResult {
   books: ScannedBook[]
 }
 
+interface HistoryEntry {
+  _id: string
+  scanType: string
+  books: {
+    bookId: string
+    title: string
+    authors: string[]
+    coverUrl?: string
+    confidence: number
+    addedToLibrary: boolean
+  }[]
+  imageThumbnail?: string
+  scannedAt: string
+}
+
+type Tab = 'scan' | 'history'
+
 export default function ScanPage() {
+  const [tab, setTab] = useState<Tab>('scan')
   const [mode, setMode] = useState<'camera' | 'upload'>('camera')
   const [scanning, setScanning] = useState(false)
   const [result, setResult] = useState<ScanResult | null>(null)
@@ -29,19 +46,41 @@ export default function ScanPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [addingBook, setAddingBook] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [libraryBookIds, setLibraryBookIds] = useState<Set<string>>(new Set())
+
+  // Fetch library on mount to check which books are already added
+  useEffect(() => {
+    const fetchLib = async () => {
+      try {
+        const res = await fetch('/api/libraries')
+        if (!res.ok) return
+        const data = await res.json()
+        const def = data.libraries?.find((l: any) => l.isDefault) || data.libraries?.[0]
+        if (def) {
+          setLibraryBookIds(new Set(def.books.map((b: any) => b.bookId._id || b.bookId)))
+        }
+      } catch (e) {}
+    }
+    fetchLib()
+  }, [])
+
+  // History
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [clearingHistory, setClearingHistory] = useState(false)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const router = useRouter()
 
+  // ── Camera ──────────────────────────────────────────────
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream
     } catch {
       setError('Camera non disponibile. Usa il caricamento immagine.')
       setMode('upload')
@@ -54,24 +93,21 @@ export default function ScanPage() {
   }, [])
 
   useEffect(() => {
-    if (mode === 'camera') {
+    if (tab === 'scan' && mode === 'camera') {
       startCamera()
     } else {
       stopCamera()
     }
     return () => stopCamera()
-  }, [mode, startCamera, stopCamera])
+  }, [tab, mode, startCamera, stopCamera])
 
-  // Resize image to max dimension while keeping quality high for spine text
+  // ── Image helpers ────────────────────────────────────────
   const resizeImage = useCallback((dataUrl: string, maxDim = 1920): Promise<string> => {
     return new Promise((resolve) => {
       const img = new window.Image()
       img.onload = () => {
         const { width, height } = img
-        if (width <= maxDim && height <= maxDim) {
-          resolve(dataUrl)
-          return
-        }
+        if (width <= maxDim && height <= maxDim) { resolve(dataUrl); return }
         const scale = maxDim / Math.max(width, height)
         const canvas = document.createElement('canvas')
         canvas.width = Math.round(width * scale)
@@ -94,7 +130,7 @@ export default function ScanPage() {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
     setPreview(dataUrl)
     performScan(dataUrl)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -102,67 +138,35 @@ export default function ScanPage() {
     const reader = new FileReader()
     reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string
-      // Resize large images to avoid sending huge payloads while keeping text readable
       const resized = await resizeImage(dataUrl, 1920)
       setPreview(resized)
       performScan(resized)
     }
     reader.readAsDataURL(file)
-  }, [resizeImage])
+  }, [resizeImage]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Scan ─────────────────────────────────────────────────
   const performScan = async (imageBase64: string) => {
     setScanning(true)
     setResult(null)
     setError(null)
-
     try {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64 }),
       })
-
       if (!res.ok) {
         if (res.status === 401) { router.push('/login'); return }
         const err = await res.json()
         throw new Error(err.error || 'Errore durante la scansione')
       }
-
       const data = await res.json()
       setResult(data)
     } catch (err: any) {
       setError(err.message)
     } finally {
       setScanning(false)
-    }
-  }
-
-  const addToLibrary = async (bookId: string, title: string) => {
-    setAddingBook(bookId)
-    try {
-      // Get default library first
-      const libRes = await fetch('/api/libraries')
-      const libData = await libRes.json()
-      const defaultLib = libData.libraries?.find((l: any) => l.isDefault) || libData.libraries?.[0]
-      if (!defaultLib) throw new Error('Nessuna libreria trovata')
-
-      const res = await fetch(`/api/libraries/${defaultLib._id}/books`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId, status: 'to_read' }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Errore')
-      }
-
-      setSuccessMsg(`"${title}" aggiunto alla libreria!`)
-      setTimeout(() => setSuccessMsg(null), 3000)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setAddingBook(null)
     }
   }
 
@@ -173,131 +177,327 @@ export default function ScanPage() {
     if (mode === 'camera') startCamera()
   }
 
+  // ── Add to library ───────────────────────────────────────
+  const addToLibrary = async (bookId: string, title: string) => {
+    setAddingBook(bookId)
+    try {
+      const libRes = await fetch('/api/libraries')
+      const libData = await libRes.json()
+      const defaultLib = libData.libraries?.find((l: any) => l.isDefault) || libData.libraries?.[0]
+      if (!defaultLib) throw new Error('Nessuna libreria trovata')
+
+      const res = await fetch(`/api/libraries/${defaultLib._id}/books`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId, status: 'to_read' }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Errore')
+      }
+      setSuccessMsg(`"${title}" aggiunto alla libreria!`)
+      setLibraryBookIds(prev => new Set(prev).add(bookId))
+      setTimeout(() => setSuccessMsg(null), 3000)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setAddingBook(null)
+    }
+  }
+
+  // ── History ───────────────────────────────────────────────
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch('/api/scan/history')
+      if (!res.ok) { if (res.status === 401) { router.push('/login'); return } throw new Error() }
+      const data = await res.json()
+      setHistory(data.history || [])
+    } catch {
+      setError('Errore nel caricamento della cronologia')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [router])
+
+  useEffect(() => {
+    if (tab === 'history') loadHistory()
+  }, [tab, loadHistory])
+
+  const clearHistory = async () => {
+    if (!confirm('Cancellare tutta la cronologia delle scansioni?')) return
+    setClearingHistory(true)
+    try {
+      await fetch('/api/scan/history', { method: 'DELETE' })
+      setHistory([])
+    } catch {
+      setError('Errore nella cancellazione')
+    } finally {
+      setClearingHistory(false)
+    }
+  }
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const scanTypeLabel = (type: string) => {
+    const map: Record<string, string> = { cover: 'Copertina', spine: 'Costa', multiple: 'Multiplo', unknown: 'Sconosciuto' }
+    return map[type] || type
+  }
+
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Scansiona</h1>
-        <div className={styles.modeToggle}>
-          <button
-            className={`${styles.modeBtn} ${mode === 'camera' ? styles.active : ''}`}
-            onClick={() => { setMode('camera'); resetScan() }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            Camera
-          </button>
-          <button
-            className={`${styles.modeBtn} ${mode === 'upload' ? styles.active : ''}`}
-            onClick={() => { setMode('upload'); resetScan() }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
-            </svg>
-            Galleria
-          </button>
-        </div>
-      </div>
-
-      {/* Camera / Preview area */}
-      <div className={styles.viewfinder}>
-        {preview ? (
-          <img src={preview} alt="Preview" className={styles.previewImg} />
-        ) : mode === 'camera' ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className={styles.video}
-          />
-        ) : (
-          <div className={styles.uploadArea}>
-            <div className={styles.uploadIcon}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+        {tab === 'scan' && (
+          <div className={styles.modeToggle}>
+            <button
+              className={`${styles.modeBtn} ${mode === 'camera' ? styles.active : ''}`}
+              onClick={() => { setMode('camera'); resetScan() }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              Camera
+            </button>
+            <button
+              className={`${styles.modeBtn} ${mode === 'upload' ? styles.active : ''}`}
+              onClick={() => { setMode('upload'); resetScan() }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
-            </div>
-            <p>Seleziona un&apos;immagine dalla galleria</p>
-            <label className="btn btn-secondary btn-sm">
-              Scegli immagine
-              <input type="file" accept="image/*" onChange={handleFileUpload} hidden />
-            </label>
-          </div>
-        )}
-
-        {/* Scanning overlay */}
-        {scanning && (
-          <div className={styles.scanningOverlay}>
-            <div className={styles.scanLine} />
-            <p className={styles.scanningText}>Analisi in corso...</p>
-          </div>
-        )}
-
-        {/* Corner guides */}
-        {!preview && mode === 'camera' && (
-          <div className={styles.corners}>
-            <div className={`${styles.corner} ${styles.tl}`} />
-            <div className={`${styles.corner} ${styles.tr}`} />
-            <div className={`${styles.corner} ${styles.bl}`} />
-            <div className={`${styles.corner} ${styles.br}`} />
+              Galleria
+            </button>
           </div>
         )}
       </div>
 
-      {/* Capture button */}
-      {!preview && mode === 'camera' && !scanning && (
-        <div className={styles.captureArea}>
-          <p className={styles.hint}>Inquadra la copertina, la costa o il codice ISBN</p>
-          <button className={styles.captureBtn} onClick={captureFromCamera} aria-label="Scatta foto" />
-        </div>
-      )}
+      {/* Tab switcher */}
+      <div className={styles.tabBar}>
+        <button
+          className={`${styles.tabBtn} ${tab === 'scan' ? styles.tabActive : ''}`}
+          onClick={() => setTab('scan')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Scansiona
+        </button>
+        <button
+          className={`${styles.tabBtn} ${tab === 'history' ? styles.tabActive : ''}`}
+          onClick={() => setTab('history')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Cronologia
+          {history.length > 0 && tab !== 'history' && (
+            <span className={styles.tabBadge}>{history.length}</span>
+          )}
+        </button>
+      </div>
 
-      {/* Results */}
-      {result && (
-        <div className={styles.results}>
-          <div className={styles.resultsHeader}>
-            <h2>{result.books.length > 0 ? `${result.books.length} ${result.books.length === 1 ? 'libro trovato' : 'libri trovati'}` : 'Nessun libro riconosciuto'}</h2>
-            <button className="btn btn-ghost btn-sm" onClick={resetScan}>Riscannerizza</button>
+      {/* ── TAB SCAN ── */}
+      {tab === 'scan' && (
+        <>
+          <div className={styles.viewfinder}>
+            {preview ? (
+              <img src={preview} alt="Preview" className={styles.previewImg} />
+            ) : mode === 'camera' ? (
+              <video ref={videoRef} autoPlay playsInline muted className={styles.video} />
+            ) : (
+              <div className={styles.uploadArea}>
+                <div className={styles.uploadIcon}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                </div>
+                <p>Seleziona un&apos;immagine dalla galleria</p>
+                <label className="btn btn-secondary btn-sm">
+                  Scegli immagine
+                  <input type="file" accept="image/*" onChange={handleFileUpload} hidden />
+                </label>
+              </div>
+            )}
+            {scanning && (
+              <div className={styles.scanningOverlay}>
+                <div className={styles.scanLine} />
+                <p className={styles.scanningText}>Analisi in corso...</p>
+              </div>
+            )}
+            {!preview && mode === 'camera' && (
+              <div className={styles.corners}>
+                <div className={`${styles.corner} ${styles.tl}`} />
+                <div className={`${styles.corner} ${styles.tr}`} />
+                <div className={`${styles.corner} ${styles.bl}`} />
+                <div className={`${styles.corner} ${styles.br}`} />
+              </div>
+            )}
           </div>
 
-          {result.books.map((book) => (
-            <div key={book._id} className={styles.bookResult}>
-              <div className={styles.bookCoverWrap}>
-                {book.coverUrl ? (
-                  <img src={book.coverUrl} alt={book.title} className={styles.bookCover} />
-                ) : (
-                  <div className={styles.coverPlaceholder}>📖</div>
-                )}
+          {!preview && mode === 'camera' && !scanning && (
+            <div className={styles.captureArea}>
+              <p className={styles.hint}>Inquadra la copertina, la costa o il codice ISBN</p>
+              <button className={styles.captureBtn} onClick={captureFromCamera} aria-label="Scatta foto" />
+            </div>
+          )}
+
+          {result && (
+            <div className={styles.results}>
+              <div className={styles.resultsHeader}>
+                <h2>{result.books.length > 0
+                  ? `${result.books.length} ${result.books.length === 1 ? 'libro trovato' : 'libri trovati'}`
+                  : 'Nessun libro riconosciuto'}
+                </h2>
+                <button className="btn btn-ghost btn-sm" onClick={resetScan}>Riscannerizza</button>
               </div>
-              <div className={styles.bookInfo}>
-                <p className={styles.bookTitle}>{book.title}</p>
-                <p className={styles.bookAuthor}>{book.authors.join(', ')}</p>
-                {book.isbn && <p className={styles.bookIsbn}>ISBN: {book.isbn}</p>}
-                <div className={styles.confidence}>
-                  <div className={styles.confidenceBar} style={{ width: `${Math.round(book.confidence * 100)}%` }} />
-                  <span>{Math.round(book.confidence * 100)}% sicuro</span>
+
+              {result.books.map((book) => (
+                <div key={book._id} className={styles.bookResult}>
+                  <div className={styles.bookCoverWrap}>
+                    {book.coverUrl ? (
+                      <img src={book.coverUrl} alt={book.title} className={styles.bookCover} />
+                    ) : (
+                      <div className={styles.coverPlaceholder}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.bookInfo}>
+                    <p className={styles.bookTitle}>{book.title}</p>
+                    <p className={styles.bookAuthor}>{book.authors.join(', ')}</p>
+                    {book.isbn && <p className={styles.bookIsbn}>ISBN: {book.isbn}</p>}
+                    <div className={styles.confidence}>
+                      <div className={styles.confidenceBar} style={{ width: `${Math.round(book.confidence * 100)}%` }} />
+                      <span>{Math.round(book.confidence * 100)}% sicuro</span>
+                    </div>
+                  </div>
+                  <button
+                    className={`btn btn-primary btn-sm ${styles.addBtn} ${libraryBookIds.has(book._id) ? styles.addedBtn : ''}`}
+                    onClick={() => {
+                      if (!libraryBookIds.has(book._id)) addToLibrary(book._id, book.title)
+                    }}
+                    disabled={addingBook === book._id || libraryBookIds.has(book._id)}
+                    aria-label={`Aggiungi ${book.title} alla libreria`}
+                  >
+                    {addingBook === book._id ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" className={styles.spinning}>
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                      </svg>
+                    ) : libraryBookIds.has(book._id) ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="14" height="14">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    ) : '+'}
+                  </button>
                 </div>
-              </div>
+              ))}
+
+              {result.books.length === 0 && (
+                <div className={styles.noResult}>
+                  <p>Prova con un&apos;altra angolazione o carica un&apos;immagine più nitida.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── TAB HISTORY ── */}
+      {tab === 'history' && (
+        <div className={styles.historyTab}>
+          <div className={styles.historyHeader}>
+            <span className={styles.historyCount}>
+              {history.length === 0 ? 'Nessuna scansione' : `${history.length} scansion${history.length === 1 ? 'e' : 'i'}`}
+            </span>
+            {history.length > 0 && (
               <button
-                className={`btn btn-primary btn-sm ${styles.addBtn}`}
-                onClick={() => addToLibrary(book._id, book.title)}
-                disabled={addingBook === book._id}
+                className={`btn btn-ghost btn-sm ${styles.clearBtn}`}
+                onClick={clearHistory}
+                disabled={clearingHistory}
               >
-                {addingBook === book._id ? '...' : '+'}
+                {clearingHistory ? 'Cancellazione…' : 'Cancella tutto'}
+              </button>
+            )}
+          </div>
+
+          {historyLoading ? (
+            <div className={styles.historyLoading}>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className={`${styles.historySkeleton} skeleton`} />
+              ))}
+            </div>
+          ) : history.length === 0 ? (
+            <div className={styles.historyEmpty}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <p>Nessuna scansione effettuata</p>
+              <button className="btn btn-primary btn-sm" onClick={() => setTab('scan')}>
+                Inizia a scansionare
               </button>
             </div>
-          ))}
+          ) : (
+            <div className={styles.historyList}>
+              {history.map((entry) => (
+                <div key={entry._id} className={styles.historyEntry}>
+                  {/* Thumbnail */}
+                  <div className={styles.historyThumb}>
+                    {entry.imageThumbnail ? (
+                      <img src={entry.imageThumbnail} alt="Scansione" className={styles.historyThumbImg} />
+                    ) : (
+                      <div className={styles.historyThumbPlaceholder}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                          <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
 
-          {result.books.length === 0 && (
-            <div className={styles.noResult}>
-              <p>Prova con un&apos;altra angolazione o carica un&apos;immagine più nitida.</p>
+                  {/* Info */}
+                  <div className={styles.historyInfo}>
+                    <div className={styles.historyMeta}>
+                      <span className={styles.historyType}>{scanTypeLabel(entry.scanType)}</span>
+                      <span className={styles.historyDate}>{formatDate(entry.scannedAt)}</span>
+                    </div>
+                    <div className={styles.historyBooks}>
+                      {entry.books.slice(0, 3).map((b, i) => (
+                        <div key={i} className={styles.historyBookRow}>
+                          {b.coverUrl && (
+                            <img src={b.coverUrl} alt={b.title} className={styles.historyBookCover} />
+                          )}
+                          <div className={styles.historyBookInfo}>
+                            <span className={styles.historyBookTitle}>{b.title}</span>
+                            {b.authors.length > 0 && (
+                              <span className={styles.historyBookAuthor}>{b.authors[0]}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {entry.books.length > 3 && (
+                        <p className={styles.historyMore}>+{entry.books.length - 3} altri</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

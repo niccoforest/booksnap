@@ -314,6 +314,17 @@
   padding: 0;
   font-size: 1.25rem;
   border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.addBtn.addedBtn {
+  background: var(--status-completed) !important;
+  color: white !important;
+  opacity: 1 !important;
+  cursor: default !important;
 }
 
 .noResult {
@@ -335,3 +346,237 @@
   justify-content: space-between;
   align-items: center;
 }
+
+/* ── Tab bar ─────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 4px;
+  margin: 0 var(--spacing-md) var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 4px;
+}
+
+.tabBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tabBtn.tabActive {
+  background: var(--accent);
+  color: white;
+}
+
+.tabBadge {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 1px 5px;
+  line-height: 1.4;
+}
+
+/* ── History tab ─────────────────────────────── */
+.historyTab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-md) var(--spacing-sm);
+}
+
+.historyCount {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.clearBtn {
+  color: #f87171;
+  font-size: 0.8125rem;
+}
+
+.historyLoading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md);
+}
+
+.historySkeleton {
+  height: 100px;
+  border-radius: var(--radius-lg);
+}
+
+.historyEmpty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  color: var(--text-muted);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: 0 var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+}
+
+.historyEntry {
+  display: flex;
+  gap: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  animation: slideInUp 0.25s ease;
+}
+
+.historyThumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.historyThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.historyThumbPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.historyInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.historyMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  justify-content: space-between;
+}
+
+.historyType {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb, 124 58 237) / 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.historyDate {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.historyBooks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historyBookRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.historyBookCover {
+  width: 20px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.historyBookInfo {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.historyBookTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyBookAuthor {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.historyMore {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: 26px;
+}
+
+/* Spinner for add button */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+

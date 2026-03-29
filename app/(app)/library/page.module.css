@@ -119,6 +119,12 @@
   padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
 }
 
+@media (min-width: 600px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  }
+}
+
 .listView {
   grid-template-columns: 1fr;
   gap: var(--spacing-sm);

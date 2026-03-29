@@ -38,9 +38,25 @@ export default function AssistantPage() {
   const [loading, setLoading] = useState(false)
   const [addingBook, setAddingBook] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [libraryBookIds, setLibraryBookIds] = useState<Set<string>>(new Set())
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    const fetchLib = async () => {
+      try {
+        const res = await fetch('/api/libraries')
+        if (!res.ok) return
+        const data = await res.json()
+        const def = data.libraries?.find((l: any) => l.isDefault) || data.libraries?.[0]
+        if (def) {
+          setLibraryBookIds(new Set(def.books.map((b: any) => b.bookId._id || b.bookId)))
+        }
+      } catch (e) {}
+    }
+    fetchLib()
+  }, [])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -111,6 +127,7 @@ export default function AssistantPage() {
         const err = await res.json()
         throw new Error(err.error || 'Errore')
       }
+      setLibraryBookIds(prev => new Set(prev).add(book._id))
       showToast(`"${book.title}" aggiunto alla libreria`)
     } catch (err: any) {
       showToast(err.message, 'error')
@@ -197,12 +214,21 @@ export default function AssistantPage() {
                       </div>
                       <p className={styles.bookDesc}>{book.description}</p>
                       <button
-                        className={styles.addBtn}
-                        onClick={() => addToLibrary(book)}
-                        disabled={addingBook === book._id}
+                        className={`${styles.addBtn} ${libraryBookIds.has(book._id) ? styles.addedBtn : ''}`}
+                        onClick={() => {
+                          if (!libraryBookIds.has(book._id)) addToLibrary(book)
+                        }}
+                        disabled={addingBook === book._id || libraryBookIds.has(book._id)}
                       >
                         {addingBook === book._id ? (
                           <span className={styles.addBtnLoading} />
+                        ) : libraryBookIds.has(book._id) ? (
+                          <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="14" height="14">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Già in libreria
+                          </>
                         ) : (
                           <>
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
