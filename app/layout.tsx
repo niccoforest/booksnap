@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="it" data-scroll-behavior="smooth">
+    <html lang="it" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('booksnap-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}` }} />
