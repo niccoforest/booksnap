@@ -74,7 +74,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
           return bId === id
         })
         if (found) {
-          setEntry({ libraryId: lib._id, bookId: id, ...found })
+          setEntry({ ...found, libraryId: lib._id, bookId: id })
           setReview(found.review || '')
           break
         }
