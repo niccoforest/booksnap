@@ -10,6 +10,7 @@ interface User {
   username: string
   avatar?: string
   bio?: string
+  preferences?: { theme: 'dark' | 'light' }
 }
 
 interface Stats {
@@ -22,6 +23,7 @@ interface Stats {
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null)
   const [stats, setStats] = useState<Stats>({ total: 0, completed: 0, reading: 0, to_read: 0 })
+  const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -35,9 +37,22 @@ export default function ProfilePage() {
       if (res.status === 401) { router.push('/login'); return }
       const data = await res.json()
       setUser(data.user)
+      setTheme(data.user?.preferences?.theme || 'light')
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleTheme = async () => {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    setTheme(next)
+    document.documentElement.setAttribute('data-theme', next)
+    localStorage.setItem('booksnap-theme', next)
+    await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme: next }),
+    })
   }
 
   const fetchStats = async () => {
@@ -138,6 +153,19 @@ export default function ProfilePage() {
 
         <div className={styles.section}>
           <p className={styles.sectionTitle}>Account</p>
+          <button className={styles.menuItem} onClick={toggleTheme}>
+            <span className={styles.menuItemLeft}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width="18" height="18">
+                {theme === 'dark' ? (
+                  <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"/>
+                ) : (
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                )}
+              </svg>
+              {theme === 'dark' ? 'Modalità chiara' : 'Modalità scura'}
+            </span>
+            <span style={{ fontSize: '1.1rem' }}>{theme === 'dark' ? '☀️' : '🌙'}</span>
+          </button>
           <button className={`${styles.menuItem} ${styles.danger}`} onClick={handleLogout}>
             <span className={styles.menuItemLeft}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width="18" height="18">

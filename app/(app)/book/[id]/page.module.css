@@ -245,3 +245,43 @@
   color: var(--text-muted);
   font-size: 0.8rem;
 }
+
+/* Remove section */
+.removeSection {
+  display: flex;
+  justify-content: center;
+}
+
+.removeBtn {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.removeBtn:hover {
+  color: #ef4444;
+}
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.confirmText {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.btnDanger {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.btnDanger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}

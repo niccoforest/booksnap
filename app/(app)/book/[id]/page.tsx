@@ -46,6 +46,8 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [saving, setSaving] = useState(false)
   const [showReview, setShowReview] = useState(false)
   const [review, setReview] = useState('')
+  const [removing, setRemoving] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -100,6 +102,22 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const saveReview = () => {
     updateEntry({ review })
     setShowReview(false)
+  }
+
+  const removeFromLibrary = async () => {
+    if (!entry) return
+    setRemoving(true)
+    try {
+      const res = await fetch(`/api/libraries/${entry.libraryId}/books/${entry.bookId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        router.push('/library')
+      }
+    } finally {
+      setRemoving(false)
+      setConfirmRemove(false)
+    }
   }
 
   if (loading) {
@@ -227,6 +245,43 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             ) : entry.review ? (
               <p className={styles.reviewText}>{entry.review}</p>
             ) : null}
+          </div>
+        )}
+
+        {/* Remove from library */}
+        {entry && (
+          <div className={styles.removeSection}>
+            {confirmRemove ? (
+              <div className={styles.confirmRow}>
+                <span className={styles.confirmText}>Rimuovere dalla libreria?</span>
+                <button
+                  className={`btn btn-ghost btn-sm`}
+                  onClick={() => setConfirmRemove(false)}
+                >
+                  Annulla
+                </button>
+                <button
+                  className={`btn btn-sm ${styles.btnDanger}`}
+                  onClick={removeFromLibrary}
+                  disabled={removing}
+                >
+                  {removing ? '...' : 'Rimuovi'}
+                </button>
+              </div>
+            ) : (
+              <button
+                className={`btn btn-ghost btn-sm ${styles.removeBtn}`}
+                onClick={() => setConfirmRemove(true)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
+                Rimuovi dalla libreria
+              </button>
+            )}
           </div>
         )}
 

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#9b27b0"/>
+  <!-- Book shape -->
+  <g transform="translate(256,256)" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Open book left page -->
+    <path d="M-20,-110 C-20,-110 -110,-100 -130,-80 L-130,120 C-110,100 -20,110 -20,110 Z" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="10"/>
+    <!-- Open book right page -->
+    <path d="M20,-110 C20,-110 110,-100 130,-80 L130,120 C110,100 20,110 20,110 Z" fill="rgba(255,255,255,0.15)" stroke="white" stroke-width="10"/>
+    <!-- Spine -->
+    <line x1="0" y1="-110" x2="0" y2="110" stroke="white" stroke-width="10"/>
+    <!-- Lines on left page -->
+    <line x1="-100" y1="-40" x2="-30" y2="-46" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="-100" y1="-10" x2="-30" y2="-16" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="-100" y1="20" x2="-30" y2="14" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="-100" y1="50" x2="-50" y2="46" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <!-- Lines on right page -->
+    <line x1="30" y1="-46" x2="100" y2="-40" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="30" y1="-16" x2="100" y2="-10" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="30" y1="14" x2="100" y2="20" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+    <line x1="50" y1="46" x2="100" y2="50" stroke="white" stroke-width="7" stroke-opacity="0.7"/>
+  </g>
+</svg>

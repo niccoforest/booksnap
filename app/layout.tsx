@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
   title: 'BookSnap',
@@ -22,7 +23,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" data-scroll-behavior="smooth">
-      <body>{children}</body>
+      <head>
+        {/* Prevent FOUC: apply saved theme before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('booksnap-theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}` }} />
+      </head>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }
