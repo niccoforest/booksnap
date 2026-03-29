@@ -463,6 +463,20 @@
   border-radius: var(--radius-lg);
   padding: var(--spacing-md);
   animation: slideInUp 0.25s ease;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.historyEntry:hover {
+  background: var(--bg-secondary);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.historyEntry:active {
+  transform: translateY(0);
 }
 
 .historyThumb {

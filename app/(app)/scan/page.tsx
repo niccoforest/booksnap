@@ -224,6 +224,29 @@ export default function ScanPage() {
     if (tab === 'history') loadHistory()
   }, [tab, loadHistory])
 
+  const loadFromHistory = (entry: HistoryEntry) => {
+    // Map history book data back to the active scan result format
+    setResult({
+      type: entry.scanType,
+      books: entry.books.map((b) => ({
+        _id: b.bookId,
+        title: b.title,
+        authors: b.authors,
+        coverUrl: b.coverUrl,
+        confidence: b.confidence,
+      })) as ScannedBook[],
+    })
+    
+    // Switch to upload mode if we have a preview, to avoid camera turning on
+    if (entry.imageThumbnail) {
+      setPreview(entry.imageThumbnail)
+      setMode('upload')
+    }
+    
+    setTab('scan')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const clearHistory = async () => {
     if (!confirm('Cancellare tutta la cronologia delle scansioni?')) return
     setClearingHistory(true)
@@ -253,7 +276,7 @@ export default function ScanPage() {
       {/* Header */}
       <div className={styles.header}>
         <h1 className={styles.title}>Scansiona</h1>
-        {tab === 'scan' && (
+        {tab === 'scan' && !result && (
           <div className={styles.modeToggle}>
             <button
               className={`${styles.modeBtn} ${mode === 'camera' ? styles.active : ''}`}
@@ -280,32 +303,34 @@ export default function ScanPage() {
         )}
       </div>
 
-      {/* Tab switcher */}
-      <div className={styles.tabBar}>
-        <button
-          className={`${styles.tabBtn} ${tab === 'scan' ? styles.tabActive : ''}`}
-          onClick={() => setTab('scan')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-          Scansiona
-        </button>
-        <button
-          className={`${styles.tabBtn} ${tab === 'history' ? styles.tabActive : ''}`}
-          onClick={() => setTab('history')}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          Cronologia
-          {history.length > 0 && tab !== 'history' && (
-            <span className={styles.tabBadge}>{history.length}</span>
-          )}
-        </button>
-      </div>
+      {/* Tab switcher - hidden when result is active */}
+      {!result && (
+        <div className={styles.tabBar}>
+          <button
+            className={`${styles.tabBtn} ${tab === 'scan' ? styles.tabActive : ''}`}
+            onClick={() => setTab('scan')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Scansiona
+          </button>
+          <button
+            className={`${styles.tabBtn} ${tab === 'history' ? styles.tabActive : ''}`}
+            onClick={() => setTab('history')}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Cronologia
+            {history.length > 0 && tab !== 'history' && (
+              <span className={styles.tabBadge}>{history.length}</span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* ── TAB SCAN ── */}
       {tab === 'scan' && (
@@ -361,7 +386,7 @@ export default function ScanPage() {
                   ? `${result.books.length} ${result.books.length === 1 ? 'libro trovato' : 'libri trovati'}`
                   : 'Nessun libro riconosciuto'}
                 </h2>
-                <button className="btn btn-ghost btn-sm" onClick={resetScan}>Riscannerizza</button>
+                <button className="btn btn-ghost btn-sm" onClick={resetScan}>Chiudi</button>
               </div>
 
               {result.books.map((book) => (
@@ -423,7 +448,7 @@ export default function ScanPage() {
         <div className={styles.historyTab}>
           <div className={styles.historyHeader}>
             <span className={styles.historyCount}>
-              {history.length === 0 ? 'Nessuna scansione' : `${history.length} scansion${history.length === 1 ? 'e' : 'i'}`}
+              {history.length === 0 ? 'Nessuna scansione' : `${history.length} ${history.length === 1 ? 'scansione' : 'scansioni'}`}
             </span>
             {history.length > 0 && (
               <button
@@ -456,7 +481,14 @@ export default function ScanPage() {
           ) : (
             <div className={styles.historyList}>
               {history.map((entry) => (
-                <div key={entry._id} className={styles.historyEntry}>
+                <div 
+                  key={entry._id} 
+                  className={styles.historyEntry} 
+                  onClick={() => loadFromHistory(entry)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && loadFromHistory(entry)}
+                >
                   {/* Thumbnail */}
                   <div className={styles.historyThumb}>
                     {entry.imageThumbnail ? (
