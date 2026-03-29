@@ -32,19 +32,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Call LLM for recognition
+    console.log('[scan] Calling LLM for book recognition...')
     const llmResult = await callLLM(SCAN_PROMPT, imageBase64)
+    console.log('[scan] LLM raw response:', llmResult.content.substring(0, 800))
 
     let scanResult: ScanResult
     try {
-      const clean = llmResult.content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      // Clean LLM output: strip markdown fences, extract JSON
+      let clean = llmResult.content
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .trim()
+      
+      // Try to extract JSON object from surrounding text
+      const jsonMatch = clean.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        clean = jsonMatch[0]
+      }
+      
       scanResult = JSON.parse(clean)
-    } catch {
+      console.log('[scan] Parsed result:', JSON.stringify(scanResult).substring(0, 500))
+    } catch (parseErr) {
+      console.error('[scan] JSON parse error:', parseErr, 'Raw:', llmResult.content)
       return NextResponse.json({ error: 'LLM ha restituito un formato non valido', raw: llmResult.content }, { status: 422 })
     }
 
     if (!scanResult.books || scanResult.books.length === 0) {
       return NextResponse.json({ type: 'unknown', books: [] })
     }
+
+    // Filter out books the LLM is not confident about
+    const confident = scanResult.books.filter((b) => b.confidence >= 0.3)
+    if (confident.length === 0) {
+      return NextResponse.json({ type: 'unknown', books: [] })
+    }
+    scanResult.books = confident
 
     // Fetch metadata for recognized books (Google Books → Open Library → minimal)
     await connectDB()

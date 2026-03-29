@@ -9,32 +9,46 @@ interface LLMResponse {
 
 async function callOllama(prompt: string, imageBase64?: string): Promise<LLMResponse> {
   const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
-  const model = process.env.OLLAMA_MODEL || 'llava'
+  const model = process.env.OLLAMA_MODEL || 'gemma3:4b-it-qat'
 
-  const body: any = {
-    model,
-    prompt,
-    stream: false,
+  // Use /api/chat endpoint — required for vision models like Gemma 3
+  const message: any = {
+    role: 'user',
+    content: prompt,
   }
 
   if (imageBase64) {
     // Strip data URL prefix if present
     const base64 = imageBase64.replace(/^data:image\/\w+;base64,/, '')
-    body.images = [base64]
+    message.images = [base64]
   }
 
-  const response = await fetch(`${baseUrl}/api/generate`, {
+  console.log(`[LLM] Calling Ollama model=${model} hasImage=${!!imageBase64} promptLength=${prompt.length}`)
+
+  const response = await fetch(`${baseUrl}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model,
+      messages: [message],
+      stream: false,
+      options: {
+        temperature: 0.1,
+        num_predict: 1024,
+      },
+    }),
   })
 
   if (!response.ok) {
-    throw new Error(`Ollama error: ${response.status} ${await response.text()}`)
+    const errText = await response.text()
+    console.error(`[LLM] Ollama error: ${response.status}`, errText)
+    throw new Error(`Ollama error: ${response.status} ${errText}`)
   }
 
   const data = await response.json()
-  return { content: data.response }
+  const content = data.message?.content || ''
+  console.log(`[LLM] Ollama response (first 500 chars):`, content.substring(0, 500))
+  return { content }
 }
 
 async function callOpenRouter(prompt: string, imageBase64?: string): Promise<LLMResponse> {
@@ -69,7 +83,7 @@ async function callOpenRouter(prompt: string, imageBase64?: string): Promise<LLM
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
       'X-Title': 'BookSnap',
     },
-    body: JSON.stringify({ model, messages }),
+    body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.1 }),
   })
 
   if (!response.ok) {
@@ -87,24 +101,17 @@ export async function callLLM(prompt: string, imageBase64?: string): Promise<LLM
     : callOllama(prompt, imageBase64)
 }
 
-export const SCAN_PROMPT = `You are a book recognition assistant. Analyze this image and identify the book(s) visible.
+export const SCAN_PROMPT = `Analyze this image of books. Identify EVERY book visible — front covers, spines, or stacked.
 
-Return a JSON object with this exact structure:
-{
-  "type": "cover" | "spine" | "isbn" | "multiple" | "unknown",
-  "books": [
-    {
-      "title": "...",
-      "author": "...",
-      "isbn": "..." or null,
-      "confidence": 0.0-1.0
-    }
-  ]
-}
+For spines: read the vertical text carefully, character by character. Spines typically show TITLE and AUTHOR. Count all spines visible and report each one.
 
-Rules:
-- Be precise with titles and authors
-- If multiple books are visible, list all of them
-- confidence is how sure you are (0.0 = not sure, 1.0 = certain)
-- Return ONLY valid JSON, no markdown, no explanation
-- If you cannot identify any book, return {"type":"unknown","books":[]}`
+CRITICAL: The TITLE is the LARGEST, most prominent text — NOT small logos, series names, or publisher badges.
+
+Respond with ONLY valid JSON, no other text:
+{"type":"spine","books":[{"title":"Title","author":"Author","isbn":null,"confidence":0.9}]}
+
+type: "cover" (single front), "spine" (spines visible), "multiple" (mixed views), "unknown" (no books)
+- Include ALL books, even if text is partially visible
+- confidence: 0.9 clear, 0.7 partial, 0.5 hard to read
+- If author not visible, use ""
+- If no books: {"type":"unknown","books":[]}`

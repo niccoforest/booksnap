@@ -62,28 +62,53 @@ export default function ScanPage() {
     return () => stopCamera()
   }, [mode, startCamera, stopCamera])
 
+  // Resize image to max dimension while keeping quality high for spine text
+  const resizeImage = useCallback((dataUrl: string, maxDim = 1920): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const { width, height } = img
+        if (width <= maxDim && height <= maxDim) {
+          resolve(dataUrl)
+          return
+        }
+        const scale = maxDim / Math.max(width, height)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(width * scale)
+        canvas.height = Math.round(height * scale)
+        const ctx = canvas.getContext('2d')!
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/jpeg', 0.92))
+      }
+      img.src = dataUrl
+    })
+  }, [])
+
   const captureFromCamera = useCallback(() => {
     if (!videoRef.current) return
     const canvas = document.createElement('canvas')
     canvas.width = videoRef.current.videoWidth
     canvas.height = videoRef.current.videoHeight
     canvas.getContext('2d')!.drawImage(videoRef.current, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
     setPreview(dataUrl)
     performScan(dataUrl)
   }, [])
 
-  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       const dataUrl = ev.target?.result as string
-      setPreview(dataUrl)
-      performScan(dataUrl)
+      // Resize large images to avoid sending huge payloads while keeping text readable
+      const resized = await resizeImage(dataUrl, 1920)
+      setPreview(resized)
+      performScan(resized)
     }
     reader.readAsDataURL(file)
-  }, [])
+  }, [resizeImage])
 
   const performScan = async (imageBase64: string) => {
     setScanning(true)
@@ -238,7 +263,7 @@ export default function ScanPage() {
       {result && (
         <div className={styles.results}>
           <div className={styles.resultsHeader}>
-            <h2>{result.books.length > 0 ? `${result.books.length} libro${result.books.length > 1 ? ' trovati' : ' trovato'}` : 'Nessun libro riconosciuto'}</h2>
+            <h2>{result.books.length > 0 ? `${result.books.length} ${result.books.length === 1 ? 'libro trovato' : 'libri trovati'}` : 'Nessun libro riconosciuto'}</h2>
             <button className="btn btn-ghost btn-sm" onClick={resetScan}>Riscannerizza</button>
           </div>
 

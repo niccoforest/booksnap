@@ -35,72 +35,78 @@ function withTimeout(ms: number): AbortSignal {
 
 // ─── Google Books ─────────────────────────────────────────
 
-async function searchGoogleBooks(recognized: RecognizedBook): Promise<BookMetadata | null> {
+function parseGoogleBooksItem(item: any, recognized: RecognizedBook): BookMetadata {
+  const v = item.volumeInfo
+  const identifiers = v.industryIdentifiers || []
+  const isbn13 = identifiers.find((id: any) => id.type === 'ISBN_13')?.identifier
+  const isbn10 = identifiers.find((id: any) => id.type === 'ISBN_10')?.identifier
+  const isbn = isbn13 || isbn10 || recognized.isbn || undefined
+
+  const coverUrl = v.imageLinks?.extraLarge
+    || v.imageLinks?.large
+    || v.imageLinks?.medium
+    || v.imageLinks?.thumbnail
+    || v.imageLinks?.smallThumbnail
+    || undefined
+
+  const cleanCoverUrl = coverUrl
+    ?.replace('http://', 'https://')
+    ?.replace('&edge=curl', '')
+
+  return {
+    isbn,
+    title: v.title || recognized.title,
+    authors: v.authors || (recognized.author ? [recognized.author] : []),
+    publisher: v.publisher,
+    publishedYear: v.publishedDate ? parseInt(v.publishedDate) : undefined,
+    genres: v.categories || [],
+    coverUrl: cleanCoverUrl,
+    description: v.description,
+    pageCount: v.pageCount,
+    language: v.language,
+    googleBooksId: item.id,
+  }
+}
+
+async function queryGoogleBooks(q: string, apiKey?: string): Promise<any | null> {
   try {
-    const params = new URLSearchParams({ maxResults: '1' })
-
-    // Build query: ISBN is most precise, otherwise title+author
-    if (recognized.isbn) {
-      params.set('q', `isbn:${recognized.isbn}`)
-    } else {
-      const parts: string[] = []
-      if (recognized.title) parts.push(`intitle:${recognized.title}`)
-      if (recognized.author) parts.push(`inauthor:${recognized.author}`)
-      params.set('q', parts.join('+'))
-    }
-
-    // API key is optional — increases daily quota from 100 to 1000+
-    const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+    const params = new URLSearchParams({ q, maxResults: '1' })
     if (apiKey) params.set('key', apiKey)
-
-    const res = await fetch(`${GOOGLE_BOOKS_API}?${params}`, {
-      signal: withTimeout(TIMEOUT_MS),
-    })
-
+    const res = await fetch(`${GOOGLE_BOOKS_API}?${params}`, { signal: withTimeout(TIMEOUT_MS) })
     if (!res.ok) return null
-
     const data = await res.json()
-    const item = data.items?.[0]
-    if (!item) return null
-
-    const v = item.volumeInfo
-
-    // Extract best ISBN (prefer ISBN_13)
-    const identifiers = v.industryIdentifiers || []
-    const isbn13 = identifiers.find((id: any) => id.type === 'ISBN_13')?.identifier
-    const isbn10 = identifiers.find((id: any) => id.type === 'ISBN_10')?.identifier
-    const isbn = isbn13 || isbn10 || recognized.isbn || undefined
-
-    // Best available cover (prefer larger)
-    const coverUrl = v.imageLinks?.extraLarge
-      || v.imageLinks?.large
-      || v.imageLinks?.medium
-      || v.imageLinks?.thumbnail
-      || v.imageLinks?.smallThumbnail
-      || undefined
-
-    // Clean up cover URL: Google returns http, switch to https and remove edge=curl
-    const cleanCoverUrl = coverUrl
-      ?.replace('http://', 'https://')
-      ?.replace('&edge=curl', '')
-
-    return {
-      isbn,
-      title: v.title || recognized.title,
-      authors: v.authors || [recognized.author],
-      publisher: v.publisher,
-      publishedYear: v.publishedDate ? parseInt(v.publishedDate) : undefined,
-      genres: v.categories || [],
-      coverUrl: cleanCoverUrl,
-      description: v.description,
-      pageCount: v.pageCount,
-      language: v.language,
-      googleBooksId: item.id,
-    }
-  } catch (err) {
-    console.error('[searchGoogleBooks]', err instanceof Error ? err.message : err)
+    return data.items?.[0] ?? null
+  } catch {
     return null
   }
+}
+
+async function searchGoogleBooks(recognized: RecognizedBook): Promise<BookMetadata | null> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+
+  // Strategy cascade: most precise → least precise
+  const queries: string[] = []
+
+  if (recognized.isbn) {
+    queries.push(`isbn:${recognized.isbn}`)
+  }
+  if (recognized.title && recognized.author) {
+    queries.push(`intitle:${recognized.title}+inauthor:${recognized.author}`)
+  }
+  if (recognized.title) {
+    queries.push(`intitle:${recognized.title}`)
+    // Plain text search as last resort (handles typos better)
+    const shortTitle = recognized.title.split(' ').slice(0, 4).join(' ')
+    if (shortTitle !== recognized.title) queries.push(shortTitle)
+    else queries.push(recognized.title)
+  }
+
+  for (const q of queries) {
+    const item = await queryGoogleBooks(q, apiKey)
+    if (item) return parseGoogleBooksItem(item, recognized)
+  }
+
+  return null
 }
 
 // ─── Open Library (fallback) ──────────────────────────────
