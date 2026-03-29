@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { connectDB } from '@/lib/mongodb'
 import { Library } from '@/models/Library'
+import '@/models/Book'
 import mongoose from 'mongoose'
 
 // GET /api/libraries - Get all libraries for the authenticated user
