@@ -22,6 +22,13 @@ interface Message {
   books?: BookRec[]
   query?: string
   loading?: boolean
+  createdAt?: string
+}
+
+interface ConversationItem {
+  _id: string
+  title: string
+  updatedAt: string
 }
 
 const SUGGESTIONS = [
@@ -39,11 +46,20 @@ export default function AssistantPage() {
   const [addingBook, setAddingBook] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [libraryBookIds, setLibraryBookIds] = useState<Set<string>>(new Set())
+  
+  // Persistence & Archive
+  const [conversations, setConversations] = useState<ConversationItem[]>([])
+  const [currentConvId, setCurrentConvId] = useState<string | null>(null)
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [fetchingArchive, setFetchingArchive] = useState(false)
+  const [toDeleteId, setToDeleteId] = useState<string | null>(null)
+
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   useEffect(() => {
+    fetchConversations()
     const fetchLib = async () => {
       try {
         const res = await fetch('/api/libraries')
@@ -67,11 +83,75 @@ export default function AssistantPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch('/api/assistant/conversations')
+      if (res.ok) {
+        const data = await res.json()
+        setConversations(data.conversations || [])
+      }
+    } catch (e) {}
+  }
+
+  const loadConversation = async (id: string) => {
+    setLoading(true)
+    setArchiveOpen(false)
+    try {
+      const res = await fetch(`/api/assistant/conversations/${id}`)
+      const data = await res.json()
+      if (res.ok) {
+        setMessages(data.messages || [])
+        setCurrentConvId(id)
+      } else {
+        showToast(data.error || 'Errore', 'error')
+      }
+    } catch (e) {
+      showToast('Errore di caricamento', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteConversation = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch(`/api/assistant/conversations/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setConversations(prev => prev.filter(c => c._id !== id))
+        if (currentConvId === id) startNewChat()
+        showToast('Chat eliminata')
+        setToDeleteId(null)
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Errore' }))
+        showToast(err.error || 'Impossibile eliminare la chat', 'error')
+      }
+    } catch (err: any) {
+      showToast('Errore di connessione', 'error')
+    }
+  }
+
+  const startNewChat = () => {
+    setMessages([])
+    setCurrentConvId(null)
+    setArchiveOpen(false)
+    setInput('')
+  }
+
   const sendMessage = async (text?: string) => {
     const query = (text || input).trim()
     if (!query || loading) return
     setInput('')
     setLoading(true)
+
+    // Build conversation history for the API (FIX 3: memoria conversazionale)
+    const historyForApi = messages
+      .filter((m) => !m.loading)
+      .map((m) => {
+        if (m.role === 'user') return { role: 'user', content: m.content || '' }
+        if (m.books?.length) return { role: 'assistant', content: `Ho consigliato: ${m.books.map((b) => b.title).join(', ')}` }
+        return { role: 'assistant', content: m.content || '' }
+      })
+      .slice(-10) // ultimi 10 messaggi
 
     setMessages((prev) => [
       ...prev,
@@ -83,11 +163,20 @@ export default function AssistantPage() {
       const res = await fetch('/api/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ 
+          query, 
+          history: historyForApi,
+          conversationId: currentConvId 
+        }),
       })
 
       if (res.status === 401) { router.push('/login'); return }
       const data = await res.json()
+
+      if (data.conversationId && !currentConvId) {
+        setCurrentConvId(data.conversationId)
+        fetchConversations()
+      }
 
       setMessages((prev) => {
         const updated = [...prev]
@@ -144,14 +233,40 @@ export default function AssistantPage() {
           <div className={styles.aiDot} />
           <div>
             <h1 className={styles.title}>Bibliotecario AI</h1>
-            <p className={styles.subtitle}>Chiedi un consiglio, trovo il libro giusto per te</p>
+            <p className={styles.subtitle}>Consigli personalizzati</p>
           </div>
+        </div>
+        
+        <div className={styles.headerRight}>
+          <button 
+            className={styles.headerIconBtn} 
+            onClick={() => setArchiveOpen(true)}
+            aria-label="Cronologia chat"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
+              <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </button>
+          
+          <button 
+            className={styles.newChatBtn} 
+            onClick={startNewChat}
+            aria-label="Nuova chat"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            <span>Nuova</span>
+          </button>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className={styles.messages}>
-        {messages.length === 0 && (
+      <div className={styles.contentArea}>
+        {/* Main Chat Area */}
+        <div className={styles.chatArea}>
+          {/* Messages */}
+          <div className={styles.messages}>
+            {messages.length === 0 && (
           <div className={styles.empty}>
             <div className={styles.emptyIcon}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="32" height="32">
@@ -186,7 +301,7 @@ export default function AssistantPage() {
               <div className={styles.booksResponse}>
                 <p className={styles.responseLabel}>
                   {msg.books.length > 0
-                    ? `Ho trovato ${msg.books.length} consiglio${msg.books.length > 1 ? 'i' : ''} per te`
+                    ? `Ho trovato ${msg.books.length} ${msg.books.length === 1 ? 'consiglio' : 'consigli'} per te`
                     : 'Non ho trovato libri per questa ricerca. Prova a riformulare.'}
                 </p>
                 {msg.books.map((book) => (
@@ -277,6 +392,66 @@ export default function AssistantPage() {
             </svg>
           </button>
         </div>
+      </div>
+      </div>
+
+        {/* Archive drawer (Side-by-side) */}
+        {archiveOpen && (
+          <div className={`${styles.archiveDrawer} ${archiveOpen ? styles.open : ''}`}>
+            <div className={styles.archiveHeader}>
+              <h3>Le tue chat</h3>
+              <button 
+                className={styles.closeArchiveBtn} 
+                onClick={() => setArchiveOpen(false)}
+                aria-label="Chiudi archivio"
+              >✕</button>
+            </div>
+            
+            <div className={styles.archiveList}>
+              {conversations.length === 0 ? (
+                <p className={styles.noArchive}>Nessuna chat salvata</p>
+              ) : (
+                conversations.map(c => (
+                  <div 
+                    key={c._id} 
+                    className={`${styles.archiveItem} ${currentConvId === c._id ? styles.activeConv : ''}`}
+                    onClick={() => loadConversation(c._id)}
+                  >
+                    <div className={styles.archiveInfo}>
+                      <span className={styles.archiveTitle}>{c.title}</span>
+                      <span className={styles.archiveDate}>
+                        {new Date(c.updatedAt).toLocaleDateString('it-IT')}
+                      </span>
+                    </div>
+                    {toDeleteId === c._id ? (
+                      <div className={styles.deleteConfirm}>
+                        <button 
+                          className={styles.deleteCancelBtn} 
+                          onClick={(e) => { e.stopPropagation(); setToDeleteId(null) }}
+                        >✕</button>
+                        <button 
+                          className={styles.deleteConfirmBtn} 
+                          onClick={(e) => deleteConversation(e, c._id)}
+                        >Elimina</button>
+                      </div>
+                    ) : (
+                      <button 
+                        className={styles.deleteConv} 
+                        onClick={(e) => { e.stopPropagation(); setToDeleteId(c._id); }}
+                        aria-label="Elimina chat"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Toast */}
