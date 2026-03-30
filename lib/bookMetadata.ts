@@ -36,7 +36,7 @@ function withTimeout(ms: number): AbortSignal {
 // ─── Google Books ─────────────────────────────────────────
 
 function parseGoogleBooksItem(item: any, recognized: RecognizedBook): BookMetadata {
-  const v = item.volumeInfo
+  const v = item.volumeInfo || {}
   const identifiers = v.industryIdentifiers || []
   const isbn13 = identifiers.find((id: any) => id.type === 'ISBN_13')?.identifier
   const isbn10 = identifiers.find((id: any) => id.type === 'ISBN_10')?.identifier
@@ -55,11 +55,11 @@ function parseGoogleBooksItem(item: any, recognized: RecognizedBook): BookMetada
 
   return {
     isbn,
-    title: v.title || recognized.title,
-    authors: v.authors || (recognized.author ? [recognized.author] : []),
+    title: v.title || recognized.title || 'Titolo Sconosciuto',
+    authors: v.authors && Array.isArray(v.authors) ? v.authors : (recognized.author ? [recognized.author] : []),
     publisher: v.publisher,
     publishedYear: v.publishedDate ? parseInt(v.publishedDate) : undefined,
-    genres: v.categories || [],
+    genres: v.categories && Array.isArray(v.categories) ? v.categories : [],
     coverUrl: cleanCoverUrl,
     description: v.description,
     pageCount: v.pageCount,
@@ -120,7 +120,10 @@ export async function searchExternalBooks(q: string, limit = 10): Promise<BookMe
     const res = await fetch(`${GOOGLE_BOOKS_API}?${params}`, { signal: withTimeout(TIMEOUT_MS) })
     if (!res.ok) return []
     const data = await res.json()
-    if (!data.items) return []
+    if (!data.items) {
+      console.log(`[google-books] No items found for: ${q}`, data)
+      return []
+    }
 
     return data.items.map((item: any) => parseGoogleBooksItem(item, { title: '', author: '' }))
   } catch (err) {

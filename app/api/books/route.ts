@@ -61,20 +61,23 @@ export async function GET(request: NextRequest) {
 
     // 🏆 Fallback to External Search if sparse results
     if (q && books.length < 3) {
+      console.log(`[search API] Trying external search for: "${q}"`)
       const external = await searchExternalBooks(q, 10)
+      console.log(`[search API] Got ${external.length} external results`)
       
       const externalUpserted = []
       for (const eb of external) {
-        // Skip if we already have it in current results (basic check)
+        // Skip if already in results
         if (books.some(b => b.isbn === eb.isbn || (b.title === eb.title && b.authors[0] === eb.authors[0]))) continue
 
-        // Upsert to internal Book collection so detail page works
-        const existingInternal = await Book.findOne({ 
-           $or: [
-             { isbn: eb.isbn },
-             { title: eb.title, authors: eb.authors?.[0] }
-           ]
-        })
+        const orFilters = []
+        if (eb.isbn) orFilters.push({ isbn: eb.isbn })
+        if (eb.title && eb.authors?.[0]) orFilters.push({ title: eb.title, authors: eb.authors[0] })
+
+        let existingInternal = null
+        if (orFilters.length > 0) {
+          existingInternal = await Book.findOne({ $or: orFilters })
+        }
 
         if (existingInternal) {
           externalUpserted.push(existingInternal)
@@ -85,7 +88,9 @@ export async function GET(request: NextRequest) {
               authors: eb.authors || []
             })
             externalUpserted.push(newBook)
-          } catch {}
+          } catch (e: any) {
+             console.error(`[search API] Failed to upsert ${eb.title}:`, e.message)
+          }
         }
       }
       

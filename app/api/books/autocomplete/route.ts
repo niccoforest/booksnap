@@ -30,16 +30,23 @@ export async function GET(request: NextRequest) {
 
     // 🏆 Fallback to External Search for global autocomplete
     if (suggestions.length < 3) {
+       console.log(`[autocomplete API] Searching Google Books for: "${q}"`)
        const external = await searchExternalBooks(q, 5)
+       console.log(`[autocomplete API] Got ${external.length} external results`)
+
        const externalUpserted = []
        for (const eb of external) {
          // Skip if we already have it in current suggestions
          if (suggestions.some(s => s.title === eb.title && s.authors[0] === eb.authors?.[0])) continue
 
-         // Upsert to Book model
-         const existing = await Book.findOne({ 
-            $or: [{ isbn: eb.isbn }, { title: eb.title, authors: eb.authors?.[0] }]
-         })
+         const orFilters = []
+         if (eb.isbn) orFilters.push({ isbn: eb.isbn })
+         if (eb.title && eb.authors?.[0]) orFilters.push({ title: eb.title, authors: eb.authors[0] })
+
+         let existing = null
+         if (orFilters.length > 0) {
+           existing = await Book.findOne({ $or: orFilters })
+         }
 
          if (existing) {
            externalUpserted.push(existing)
