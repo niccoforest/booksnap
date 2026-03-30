@@ -170,9 +170,6 @@
 }
 
 /* ─── Add to Library ─────────────── */
-.addSection {
-  /* no extra styles needed */
-}
 
 .addBtn {
   width: 100%;
@@ -435,4 +432,175 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--text-primary);
+}
+
+/* AI Tools */
+.aiTools {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.aiSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+.aiBadge {
+  background: var(--accent);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aiActionRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.aiButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1.5px dashed var(--accent-dim);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aiButton:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.aiButton:active {
+  transform: translateY(0);
+}
+
+.aiLoading {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+/* AI Summary Card */
+.summaryCard {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+}
+
+.summaryBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.summaryText {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.summaryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.metaItem {
+  display: flex;
+  gap: 4px;
+  font-size: 0.75rem;
+}
+
+.metaLabel {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.perfectFor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.perfectTag {
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* AI Prompts Card */
+.promptsCard {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border);
+  border-left: 4px solid #3b82f6; /* Book Club theme color */
+}
+
+.promptsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.promptItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.promptItem:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.promptTheme {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+}
+
+.promptQuestion {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  font-weight: 500;
 }

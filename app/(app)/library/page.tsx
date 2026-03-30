@@ -57,6 +57,8 @@ export default function LibraryPage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('addedAt')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [isAiSearching, setIsAiSearching] = useState(false)
+  const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -90,7 +92,34 @@ export default function LibraryPage() {
 
   const currentLib = libraries.find((l) => l._id === selectedLib)
 
-  const filteredBooks = (currentLib?.books || [])
+  const handleAiSearch = async () => {
+    if (!searchQuery.trim()) return
+    setIsAiSearching(true)
+    try {
+      const res = await fetch('/api/ai/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery }),
+      })
+      const data = await res.json()
+      if (data.books) {
+        setAiSearchResults(data.books)
+      }
+    } catch {
+      console.error('AI Search failed')
+    } finally {
+      setIsAiSearching(false)
+    }
+  }
+
+  const clearSearch = () => {
+    setSearchQuery('')
+    setAiSearchResults(null)
+  }
+
+  const filteredBooks = aiSearchResults ? 
+    aiSearchResults : 
+    (currentLib?.books || [])
     .filter((b) => {
       const matchesStatus = statusFilter === 'all' || b.status === statusFilter
       const q = searchQuery.trim()
@@ -139,6 +168,13 @@ export default function LibraryPage() {
             </p>
           )}
         </div>
+        
+        {aiSearchResults && !searchOpen && (
+          <div className={styles.aiSearchIndicator}>
+            <span>Risultati Smart Search per "{searchQuery}"</span>
+            <button className={styles.clearAiBtn} onClick={clearSearch}>X</button>
+          </div>
+        )}
 
         <div className={`${styles.searchExpand} ${searchOpen ? styles.searchOpen : ''}`}>
           {searchOpen ? (
@@ -153,17 +189,27 @@ export default function LibraryPage() {
                   className={styles.searchInput}
                   placeholder="Cerca titolo o autore..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setAiSearchResults(null); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAiSearch()}
                 />
                 {searchQuery && (
-                  <button className={styles.searchClear} onClick={() => setSearchQuery('')} aria-label="Cancella">
+                  <button className={styles.searchClear} onClick={clearSearch} aria-label="Cancella">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
                       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                     </svg>
                   </button>
                 )}
               </div>
+              <button 
+                className={`${styles.aiSearchBtn} ${isAiSearching ? styles.spinning : ''}`} 
+                onClick={handleAiSearch}
+                disabled={isAiSearching || !searchQuery.trim()}
+                title="Smart Search AI"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </button>
               <button className={styles.searchCloseBtn} onClick={() => setSearchOpen(false)}>
                 Chiudi
               </button>
@@ -300,8 +346,8 @@ export default function LibraryPage() {
                     </div>
                   )}
                   <span
-                    className={`${styles.statusOverlay} ${STATUS_CONFIG[entry.status].className}`}
-                    title={STATUS_CONFIG[entry.status].label}
+                    className={`${styles.statusOverlay} ${STATUS_CONFIG[entry.status as ReadingStatus].className}`}
+                    title={STATUS_CONFIG[entry.status as ReadingStatus].label}
                   />
                   {entry.status === 'reading' && (
                     <div className={styles.readingBar}>
@@ -347,7 +393,7 @@ export default function LibraryPage() {
                     </p>
                   )}
                 </div>
-                <span className={`${styles.listStatus} ${STATUS_CONFIG[entry.status].className}`} />
+                <span className={`${styles.listStatus} ${STATUS_CONFIG[entry.status as ReadingStatus].className}`} />
               </Link>
             ))}
           </div>

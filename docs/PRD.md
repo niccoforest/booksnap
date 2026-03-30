@@ -2,7 +2,7 @@
 
 **Versione:** 2.0
 **Data:** 2026-03-30
-**Stato:** Attivo — Fasi 1-4 completate, Fase 5 in corso
+**Stato:** Attivo — Fasi 1-5 completate, Fase 6 in corso
 
 ---
 
@@ -59,12 +59,12 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | UX-7 | ✅ Swipe gestures — quick-status, tab navigation | P2 | M | - |
 | UX-8 | ✅ Sorting options — libreria e ricerca | P1 | S | - |
 | **AI-POWERED FEATURES (Fase 5)** | | | | |
-| AI-1 | AI reading insights personalizzati dal taste profile | P1 | M | TP-1 |
-| AI-2 | AI book summaries on-demand (spoiler-free) | P2 | M | - |
-| AI-3 | AI reading goal suggestions | P2 | S | ST-4 |
-| AI-4 | Smart push notifications per utenti inattivi | P2 | L | UX-3 |
-| AI-5 | Natural language library search | P1 | M | - |
-| AI-6 | AI discussion prompts per book club | P2 | S | - |
+| AI-1 | ✅ AI reading insights personalizzati dal taste profile | P1 | M | TP-1 |
+| AI-2 | ✅ AI book summaries on-demand (spoiler-free) | P2 | M | - |
+| AI-3 | ✅ AI reading goal suggestions | P2 | S | ST-4 |
+| AI-4 | ✅ Smart push notifications per utenti inattivi | P2 | L | UX-3 |
+| AI-5 | ✅ Natural language library search | P1 | M | - |
+| AI-6 | ✅ AI discussion prompts per book club | P2 | S | - |
 | **SOCIAL & COMMUNITY (Fase 6)** | | | | |
 | SO-1 | User profile extension — isPublic, follow counts, profileSlug | P1 | M | - |
 | SO-2 | Public profile page /user/[slug] | P1 | M | SO-1 |
@@ -120,9 +120,9 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~UX-4 Micro-interactions, UX-5 Book cards redesign, UX-6 Pull-to-refresh,~~
 > ~~UX-7 Swipe gestures, UX-8 Sorting options~~
 
-### Fase 5 — AI-Powered Features
-> AI-1 Reading insights, AI-2 Book summaries, AI-3 Goal suggestions,
-> AI-4 Smart notifications, AI-5 NL library search, AI-6 Discussion prompts
+### Fase 5 — AI-Powered Features ✅ COMPLETATA
+> ~~AI-1 Reading insights, AI-2 Book summaries, AI-3 Goal suggestions,~~
+> ~~AI-4 Smart notifications, AI-5 NL library search, AI-6 Discussion prompts~~
 
 ### Fase 6 — Social & Community
 > SO-1 User profile extension, SO-2 Public profiles, SO-3 Follow system,
@@ -155,6 +155,12 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 - **UI-3:** Pagina `/book/[id]` arricchita con sezione "Aggiungi alla libreria" per i libri non ancora aggiunti: scelta dello stato (Da leggere / In lettura / ecc.) e conferma
 - **UI-4:** Hero della pagina dettaglio libro completamente ridisegnata — copertina sfocata full-bleed come sfondo, copertina originale galleggiante con ombra e bordo vetro
 - **UI-6:** BottomNav aggiornata — `/search` ora ospita la Ricerca con filtri, `/assistant` ospita il Bibliotecario AI (chat)
+
+### v2.0 — 2026-03-30 (AI Update)
+- **AI-1 & AI-3:** Dashboard AI nel profilo con insights sulla velocità di lettura, generi dominanti e obiettivi personalizzati basati sullo storico.
+- **AI-2 & AI-6:** Strumenti AI nella scheda libro: generazione di riassunti spoiler-free e domande per discussioni da book club.
+- **AI-4:** Sistema di notifiche push per PWA con Service Worker e integrazione Smart AI per reminder personalizzati.
+- **AI-5:** Smart Search in linguaggio naturale nella libreria: trova i libri descrivendo temi o ambientazioni (es. "libri che mi hanno fatto piangere").
 
 ---
 

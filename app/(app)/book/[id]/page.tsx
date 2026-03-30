@@ -52,6 +52,10 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [addStatus, setAddStatus] = useState<ReadingStatus>('to_read')
   const [showAddPanel, setShowAddPanel] = useState(false)
   const [similarBooks, setSimilarBooks] = useState<BookDetail[]>([])
+  const [summary, setSummary] = useState<any | null>(null)
+  const [loadingSummary, setLoadingSummary] = useState(false)
+  const [prompts, setPrompts] = useState<any[]>([])
+  const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const router = useRouter()
 
@@ -160,6 +164,34 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
     } finally {
       setRemoving(false)
       setConfirmRemove(false)
+    }
+  }
+
+  const fetchAiSummary = async () => {
+    if (!book) return
+    setLoadingSummary(true)
+    try {
+      const res = await fetch(`/api/ai/summary/${book._id}`)
+      const data = await res.json()
+      if (data.summary) setSummary(data.summary)
+    } catch {
+      showToast('Errore nel caricamento del riassunto', 'error')
+    } finally {
+      setLoadingSummary(false)
+    }
+  }
+
+  const fetchAiPrompts = async () => {
+    if (!book) return
+    setLoadingPrompts(true)
+    try {
+      const res = await fetch(`/api/ai/book-club/${book._id}`)
+      const data = await res.json()
+      if (data.prompts) setPrompts(data.prompts)
+    } catch {
+      showToast('Errore nel caricamento delle domande', 'error')
+    } finally {
+      setLoadingPrompts(false)
     }
   }
 
@@ -379,6 +411,93 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             <p className={styles.descText}>{book.description}</p>
           </div>
         )}
+
+        {/* AI AI — Section */}
+        <div className={styles.aiTools}>
+          <div className={styles.aiSectionHeader}>
+            <h2 className={styles.sectionLabel}>Strumenti AI</h2>
+            <div className={styles.aiBadge}>AI</div>
+          </div>
+
+          <div className={styles.aiActionRow}>
+            {!summary && !loadingSummary ? (
+              <button className={styles.aiButton} onClick={fetchAiSummary}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+                Genera riassunto spoiler-free
+              </button>
+            ) : null}
+
+            {prompts.length === 0 && !loadingPrompts ? (
+              <button className={styles.aiButton} onClick={fetchAiPrompts}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Domande Book Club
+              </button>
+            ) : null}
+          </div>
+
+          {loadingSummary && (
+            <div className={styles.aiLoading}>
+              <div className="skeleton" style={{ height: 20, width: '40%', marginBottom: 8 }} />
+              <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 4 }} />
+              <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 4 }} />
+              <div className="skeleton" style={{ height: 14, width: '80%' }} />
+            </div>
+          )}
+
+          {summary && (
+            <div className={`${styles.summaryCard} fade-in`}>
+              <div className={styles.summaryBadge}>Riassunto AI</div>
+              <p className={styles.summaryText}>{summary.summary}</p>
+              <div className={styles.summaryMeta}>
+                {summary.mood && (
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Mood:</span>
+                    <span>{summary.mood}</span>
+                  </div>
+                )}
+                {summary.readingTime && (
+                  <div className={styles.metaItem}>
+                    <span className={styles.metaLabel}>Tempo lettura:</span>
+                    <span>{summary.readingTime}</span>
+                  </div>
+                )}
+              </div>
+              {summary.perfectFor && summary.perfectFor.length > 0 && (
+                <div className={styles.perfectFor}>
+                  {summary.perfectFor.map((p: string, i: number) => (
+                    <span key={i} className={styles.perfectTag}>#{p}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {loadingPrompts && (
+            <div className={styles.aiLoading}>
+              <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 4 }} />
+              <div className="skeleton" style={{ height: 14, width: '100%', marginBottom: 4 }} />
+              <div className="skeleton" style={{ height: 14, width: '60%' }} />
+            </div>
+          )}
+
+          {prompts.length > 0 && (
+            <div className={`${styles.promptsCard} fade-in`}>
+              <div className={styles.summaryBadge}>Discussione Book Club</div>
+              <div className={styles.promptsList}>
+                {prompts.map((p) => (
+                  <div key={p.id} className={styles.promptItem}>
+                    <p className={styles.promptTheme}>{p.theme}</p>
+                    <p className={styles.promptQuestion}>{p.question}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Meta details */}
         <div className={styles.details}>
