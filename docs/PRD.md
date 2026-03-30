@@ -2,7 +2,7 @@
 
 **Versione:** 2.0
 **Data:** 2026-03-30
-**Stato:** Attivo — Fasi 1-5 completate, Fase 6 in corso
+**Stato:** Attivo — Fasi 1-6 completate, Fase 7 prossima
 
 ---
 
@@ -66,13 +66,13 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | AI-5 | ✅ Natural language library search | P1 | M | - |
 | AI-6 | ✅ AI discussion prompts per book club | P2 | S | - |
 | **SOCIAL & COMMUNITY (Fase 6)** | | | | |
-| SO-1 | User profile extension — isPublic, follow counts, profileSlug | P1 | M | - |
-| SO-2 | Public profile page /user/[slug] | P1 | M | SO-1 |
-| SO-3 | Follow system — follow/unfollow, followers/following lists | P1 | M | SO-1, SO-2 |
-| SO-4 | Activity feed — azioni degli utenti seguiti | P1 | L | SO-1, SO-3 |
-| SO-5 | Community bookshelves — liste curate pubbliche | P2 | M | SO-1 |
-| SO-6 | Trending books — libri più aggiunti/letti | P1 | S | SO-4 |
-| SO-7 | Reading challenges — personali e community | P2 | L | SO-1, SO-4 |
+| SO-1 | ✅ User profile extension — isPublic, follow counts, profileSlug | P1 | M | - |
+| SO-2 | ✅ Public profile page /user/[slug] | P1 | M | SO-1 |
+| SO-3 | ✅ Follow system — follow/unfollow, followers/following lists | P1 | M | SO-1, SO-2 |
+| SO-4 | ✅ Activity feed — azioni degli utenti seguiti | P1 | L | SO-1, SO-3 |
+| SO-5 | ✅ Community bookshelves — liste curate pubbliche | P2 | M | SO-1 |
+| SO-6 | ✅ Trending books — libri più aggiunti/letti | P1 | S | SO-4 |
+| SO-7 | ✅ Reading challenges — personali e community | P2 | L | SO-1, SO-4 |
 | **STATISTICS REDESIGN (Fase 7)** | | | | |
 | ST-4 | Pagina stats dedicata con SVG charts custom | P1 | L | - |
 | ST-5 | Reading heatmap stile GitHub | P1 | M | ST-4 |
@@ -124,10 +124,10 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~AI-1 Reading insights, AI-2 Book summaries, AI-3 Goal suggestions,~~
 > ~~AI-4 Smart notifications, AI-5 NL library search, AI-6 Discussion prompts~~
 
-### Fase 6 — Social & Community
-> SO-1 User profile extension, SO-2 Public profiles, SO-3 Follow system,
-> SO-4 Activity feed, SO-5 Community bookshelves, SO-6 Trending books,
-> SO-7 Reading challenges
+### Fase 6 — Social & Community ✅ COMPLETATA
+> ~~SO-1 User profile extension, SO-2 Public profiles, SO-3 Follow system,~~
+> ~~SO-4 Activity feed, SO-5 Community bookshelves, SO-6 Trending books,~~
+> ~~SO-7 Reading challenges~~
 
 ### Fase 7 — Statistics Redesign
 > ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,

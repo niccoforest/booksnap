@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const user = await User.create({ email, username, passwordHash })
+    const profileSlug = username.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.random().toString(36).substring(2, 5)
+    const user = await User.create({ email, username, passwordHash, profileSlug })
 
     // Create default library
     await Library.create({
