@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { callLLM } from '@/lib/llm'
 import { buildTasteProfile } from '@/lib/tasteProfile'
+import { User } from '@/models/User'
+import { connectDB } from '@/lib/mongodb'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
     if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+
+    await connectDB()
+    const userDoc = await User.findById(user.userId)
+
+    // Check cache
+    const now = new Date()
+    if (userDoc?.aiCache?.goals?.data?.length > 0 && userDoc.aiCache.goals.expiresAt > now) {
+      return NextResponse.json({ goals: userDoc.aiCache.goals.data })
+    }
 
     const profile = await buildTasteProfile(user.userId)
 
@@ -74,9 +85,15 @@ Rispondi SOLO con JSON:
       goals = JSON.parse(match ? match[0] : clean)
       if (!Array.isArray(goals)) throw new Error()
     } catch {
-      // Fallback goals basati sui dati reali
       goals = generateFallbackGoals(profile)
     }
+
+    // Save to cache (24 hours)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 1)
+    await User.findByIdAndUpdate(user.userId, {
+      $set: { 'aiCache.goals': { data: goals, expiresAt } }
+    })
 
     return NextResponse.json({ goals })
   } catch (error) {

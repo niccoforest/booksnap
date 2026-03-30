@@ -16,6 +16,10 @@ export interface IUser extends Document {
     language: string
     theme: 'dark' | 'light'
   }
+  aiCache?: {
+    insights?: { data: any[]; expiresAt: Date }
+    goals?: { data: any[]; expiresAt: Date }
+  }
   createdAt: Date
   comparePassword(candidate: string): Promise<boolean>
 }
@@ -35,6 +39,10 @@ const UserSchema = new Schema<IUser>(
       genreOverrides: { type: Map, of: String },
       language: { type: String, default: 'it' },
       theme: { type: String, enum: ['dark', 'light'], default: 'dark' },
+    },
+    aiCache: {
+      insights: { data: [Schema.Types.Mixed], expiresAt: Date },
+      goals: { data: [Schema.Types.Mixed], expiresAt: Date },
     },
   },
   { timestamps: true }

@@ -246,12 +246,15 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
 }
 
 function calculateAvgPace(completed: Array<{ entry: BookEntry, book: IBook }>): number | undefined {
-  const diffs = completed
-    .filter(c => c.entry.startedAt && c.entry.finishedAt)
+  const diffs = (completed
+    .filter(c => c.entry.startedAt && c.entry.finishedAt && !c.entry.readInPast)
     .map(c => {
       const diffTime = c.entry.finishedAt!.getTime() - c.entry.startedAt!.getTime()
-      return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+      const days = diffTime / (1000 * 60 * 60 * 24)
+      if (days < 0.25) return null // Less than 6 hours? Probably manual entry
+      return Math.max(1, Math.ceil(days))
     })
+    .filter(d => d !== null) as number[])
 
   if (diffs.length === 0) return undefined
   return Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
@@ -264,13 +267,16 @@ function calculateActivityStreak(all: Array<{ entry: BookEntry, book: IBook }>):
   thirtyDaysAgo.setDate(now.getDate() - 30)
 
   all.forEach(({ entry }) => {
-    [entry.addedAt, entry.startedAt, entry.finishedAt].forEach(d => {
+    // If readInPast, finishedAt was likely just set to 'now' to mark completion, not app activity
+    const dates = [entry.addedAt, entry.startedAt]
+    if (!entry.readInPast) dates.push(entry.finishedAt)
+
+    dates.forEach(d => {
       if (d && d >= thirtyDaysAgo) {
         activityDates.add(d.toISOString().split('T')[0])
       }
     })
   })
 
-  // Count active days in the last 30 days (as a proxy for streak/active level)
   return activityDates.size
 }

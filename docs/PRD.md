@@ -158,9 +158,12 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ### v2.0 — 2026-03-30 (AI Update)
 - **AI-1 & AI-3:** Dashboard AI nel profilo con insights sulla velocità di lettura, generi dominanti e obiettivi personalizzati basati sullo storico.
+- **AI-Cache:** Implementata cache persistente sul database per Insight e Obiettivi (validità 24h) per garantire stabilità della UI e performance.
+- **UX-9:** Supporto per "Letture passate" (readInPast) — i libri scansionati solo ora ma già letti vengono esclusi dal calcolo della velocità media per non falsare le statistiche.
+- **UI-7:** Pulizia estetica globale — rimosse tutte le emoji dalle feature di Fase 5, sostituite con icone SVG premium.
 - **AI-2 & AI-6:** Strumenti AI nella scheda libro: generazione di riassunti spoiler-free e domande per discussioni da book club.
 - **AI-4:** Sistema di notifiche push per PWA con Service Worker e integrazione Smart AI per reminder personalizzati.
-- **AI-5:** Smart Search in linguaggio naturale nella libreria: trova i libri descrivendo temi o ambientazioni (es. "libri che mi hanno fatto piangere").
+- **AI-5:** Smart Search in linguaggio naturale nella libreria: trova i libri descrivendo temi o ambientazioni.
 
 ---
 

@@ -442,6 +442,17 @@
   gap: 4px;
 }
 
+.insightValueRowFlex {
+  margin-top: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.insightIcon svg {
+  color: var(--accent);
+}
+
 .insightValue {
   font-size: 1.1rem;
   font-weight: 800;

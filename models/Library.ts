@@ -11,6 +11,7 @@ export interface BookEntry {
   startedAt?: Date
   finishedAt?: Date
   addedAt: Date
+  readInPast?: boolean
   lentTo?: string
   notes?: string
 }

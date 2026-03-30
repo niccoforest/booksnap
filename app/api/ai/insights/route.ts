@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { callLLM } from '@/lib/llm'
 import { buildTasteProfile } from '@/lib/tasteProfile'
+import { User } from '@/models/User'
+import { connectDB } from '@/lib/mongodb'
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser(request)
     if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+
+    await connectDB()
+    const userDoc = await User.findById(user.userId)
+
+    // Check cache
+    const now = new Date()
+    if (userDoc?.aiCache?.insights?.data?.length > 0 && userDoc.aiCache.insights.expiresAt > now) {
+      return NextResponse.json({ insights: userDoc.aiCache.insights.data })
+    }
 
     const profile = await buildTasteProfile(user.userId)
 
@@ -69,9 +80,15 @@ I valori devono essere reali e basati sui dati forniti. Rispondi SOLO con l'arra
       insights = JSON.parse(match ? match[0] : clean)
       if (!Array.isArray(insights)) throw new Error('Not array')
     } catch {
-      // Fallback insights calcolati staticamente
       insights = generateStaticInsights(profile)
     }
+
+    // Save to cache (24 hours)
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 1)
+    await User.findByIdAndUpdate(user.userId, {
+      $set: { 'aiCache.insights': { data: insights, expiresAt } }
+    })
 
     return NextResponse.json({ insights })
   } catch (error) {

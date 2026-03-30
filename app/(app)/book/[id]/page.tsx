@@ -37,6 +37,7 @@ interface LibraryEntry {
   rating?: number
   review?: string
   tags: string[]
+  readInPast?: boolean
 }
 
 export default function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -50,6 +51,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [adding, setAdding] = useState(false)
   const [addStatus, setAddStatus] = useState<ReadingStatus>('to_read')
+  const [readInPast, setReadInPast] = useState(false)
   const [showAddPanel, setShowAddPanel] = useState(false)
   const [similarBooks, setSimilarBooks] = useState<BookDetail[]>([])
   const [summary, setSummary] = useState<any | null>(null)
@@ -133,7 +135,12 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/libraries/${defaultLib._id}/books`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId: book._id, status: addStatus }),
+        body: JSON.stringify({ 
+          bookId: book._id, 
+          status: addStatus,
+          readInPast: addStatus === 'completed' ? readInPast : false,
+          finishedAt: addStatus === 'completed' ? new Date() : undefined
+        }),
       })
 
       if (!res.ok) {
@@ -286,6 +293,17 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
                     </button>
                   ))}
                 </div>
+
+                {addStatus === 'completed' && (
+                  <label className={styles.checkboxLabel}>
+                    <input 
+                      type="checkbox" 
+                      checked={readInPast} 
+                      onChange={(e) => setReadInPast(e.target.checked)} 
+                    />
+                    <span>Letto in passato (non nell'app)</span>
+                  </label>
+                )}
                 <div className={styles.addPanelActions}>
                   <button className={`btn btn-ghost btn-sm`} onClick={() => setShowAddPanel(false)}>
                     Annulla
@@ -322,6 +340,16 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
                 </button>
               ))}
             </div>
+            {entry.status === 'completed' && (
+              <label className={styles.checkboxLabel} style={{ marginTop: '12px' }}>
+                <input 
+                  type="checkbox" 
+                  checked={entry.readInPast || false} 
+                  onChange={(e) => updateEntry({ readInPast: e.target.checked })} 
+                />
+                <span>Letto in passato (non nell'app)</span>
+              </label>
+            )}
           </div>
         )}
 
@@ -526,7 +554,11 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
                     {sb.coverUrl ? (
                       <img src={sb.coverUrl} alt={sb.title} className={styles.similarCover} />
                     ) : (
-                      <div className={styles.similarCoverPlaceholder}>📚</div>
+                      <div className={styles.similarCoverPlaceholder}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="20" height="20">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                      </div>
                     )}
                   </div>
                   <p className={styles.similarTitle}>{sb.title}</p>

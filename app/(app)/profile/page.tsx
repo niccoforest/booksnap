@@ -150,16 +150,13 @@ export default function ProfilePage() {
         if (!registration) {
           registration = await navigator.serviceWorker.register('/sw.js')
         }
+        
+        // Wait for registration to be active
+        await navigator.serviceWorker.ready
 
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: 'BPa39...' // TODO: Replace with real public VAPID key
-        })
-
-        await fetch('/api/notifications/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ subscription }),
         })
         setNotificationsEnabled(true)
       }
@@ -209,6 +206,20 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
+  }
+
+  const getIcon = (name: string) => {
+    switch (name) {
+      case 'clock': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      case 'star': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      case 'chart': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      case 'book': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      case 'fire': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 3.5 6.5 1 1.5 1.14 3 1.14 3.5a4.3 4.3 0 0 1-4.14 4.5c-2.43 0-2-4-2-4z"/></svg>
+      case 'trophy': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+      case 'compass': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+      case 'heart': return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      default: return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    }
   }
 
   if (loading) {
@@ -289,7 +300,7 @@ export default function ProfilePage() {
                     <p className={styles.insightTitle}>{insight.title}</p>
                     <p className={styles.insightText}>{insight.text}</p>
                     {insight.value && (
-                      <div className={styles.insightValueRow}>
+                      <div className={insight.unit === '%' ? styles.insightValueRowFlex : styles.insightValueRow}>
                         <span className={styles.insightValue}>{insight.value}</span>
                         <span className={styles.insightUnit}>{insight.unit}</span>
                       </div>
@@ -324,7 +335,7 @@ export default function ProfilePage() {
                       <div className={styles.progressFill} style={{ width: `${Math.min(100, (goal.current / goal.target) * 100)}%` }} />
                     </div>
                   </div>
-                  {goal.tip && <p className={styles.goalTip}>💡 {goal.tip}</p>}
+                  {goal.tip && <p className={styles.goalTip}>Idea: {goal.tip}</p>}
                 </div>
               ))}
             </div>
@@ -443,7 +454,6 @@ export default function ProfilePage() {
               </svg>
               {theme === 'dark' ? 'Modalità chiara' : 'Modalità scura'}
             </span>
-            <span style={{ fontSize: '1.1rem' }}>{theme === 'dark' ? '☀️' : '🌙'}</span>
           </button>
           
           <button className={styles.menuItem} onClick={toggleNotifications}>
@@ -472,17 +482,4 @@ export default function ProfilePage() {
       </div>
     </div>
   )
-}
-function getIcon(name: string) {
-  switch (name) {
-    case 'clock': return '🕒'
-    case 'star': return '⭐'
-    case 'chart': return '📊'
-    case 'book': return '📖'
-    case 'fire': return '🔥'
-    case 'trophy': return '🏆'
-    case 'compass': return '🧭'
-    case 'heart': return '❤️'
-    default: return '✨'
-  }
 }
