@@ -19,31 +19,45 @@ export async function GET(request: NextRequest) {
 
     await connectDB()
 
-    let query: any = {}
-    if (q) {
-      query.$text = { $search: q }
-    }
-    
-    if (genre) query.genres = genre
-    if (lang) query.language = lang
+    let baseQuery: any = {}
+    if (genre) baseQuery.genres = genre
+    if (lang) baseQuery.language = lang
     
     if (yearFrom || yearTo) {
-      query.publishedYear = {}
-      if (yearFrom) query.publishedYear.$gte = parseInt(yearFrom)
-      if (yearTo) query.publishedYear.$lte = parseInt(yearTo)
+      baseQuery.publishedYear = {}
+      if (yearFrom) baseQuery.publishedYear.$gte = parseInt(yearFrom)
+      if (yearTo) baseQuery.publishedYear.$lte = parseInt(yearTo)
     }
 
     if (pagesMin || pagesMax) {
-      query.pageCount = {}
-      if (pagesMin) query.pageCount.$gte = parseInt(pagesMin)
-      if (pagesMax) query.pageCount.$lte = parseInt(pagesMax)
+      baseQuery.pageCount = {}
+      if (pagesMin) baseQuery.pageCount.$gte = parseInt(pagesMin)
+      if (pagesMax) baseQuery.pageCount.$lte = parseInt(pagesMax)
     }
 
-    const books = await Book.find(query)
-      .limit(limit)
-      .sort(q ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
+    let books = []
+
+    if (q) {
+      // 1. Try text search with base filters
+      const textQuery = { ...baseQuery, $text: { $search: q } }
+      books = await Book.find(textQuery).limit(limit).sort({ score: { $meta: 'textScore' } })
+
+      // 2. If no results, try broader regex search (basic typo tolerance / partial match)
+      if (books.length === 0) {
+        const regexQuery = { 
+          ...baseQuery,
+          $or: [
+            { title: { $regex: q, $options: 'i' } },
+            { authors: { $regex: q, $options: 'i' } }
+          ]
+        }
+        books = await Book.find(regexQuery).limit(limit).sort({ createdAt: -1 })
+      }
+    } else {
+      // Just filter without term
+      books = await Book.find(baseQuery).limit(limit).sort({ createdAt: -1 })
+    }
       
-    // Average rating cannot be easily filtered here without aggregation, so we omit for now
     return NextResponse.json({ books })
   } catch (error) {
     console.error('[books GET]', error)

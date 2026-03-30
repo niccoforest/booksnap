@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Recommendations from '@/components/Recommendations'
+import { isFuzzyMatch } from '@/lib/fuzzy'
 import styles from './page.module.css'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
@@ -80,11 +81,13 @@ export default function LibraryPage() {
 
   const filteredBooks = (currentLib?.books || []).filter((b) => {
     const matchesStatus = statusFilter === 'all' || b.status === statusFilter
-    const q = searchQuery.trim().toLowerCase()
-    const matchesQuery = !q ||
-      b.bookId.title.toLowerCase().includes(q) ||
-      b.bookId.authors?.some((a) => a.toLowerCase().includes(q))
-    return matchesStatus && matchesQuery
+    const q = searchQuery.trim()
+    if (!q) return matchesStatus
+
+    const titleMatch = isFuzzyMatch(b.bookId.title, q)
+    const authorMatch = b.bookId.authors?.some((a) => isFuzzyMatch(a, q))
+    
+    return matchesStatus && (titleMatch || authorMatch)
   })
 
   // Predictive suggestions: top 5 titles matching current query

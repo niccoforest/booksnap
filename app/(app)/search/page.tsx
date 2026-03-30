@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { isFuzzyMatch } from '@/lib/fuzzy'
 import styles from './page.module.css'
 
 interface BookRec {
@@ -85,8 +86,8 @@ function SearchContent() {
           let filtered = books
           if (q) {
             filtered = books.filter((b: any) => 
-               b.title.toLowerCase().includes(q.toLowerCase()) || 
-               b.authors?.some((a: string) => a.toLowerCase().includes(q.toLowerCase()))
+               isFuzzyMatch(b.title, q) || 
+               b.authors?.some((a: string) => isFuzzyMatch(a, q))
             )
           }
           if (genre) filtered = filtered.filter((b: any) => b.genres?.includes(genre))

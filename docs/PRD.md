@@ -31,7 +31,7 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | **RICERCA** | | | | |
 | SR-1 | ✅ Ricerca con filtri (genere, anno, lingua, pagine) | P1 | M | - |
 | SR-2 | ✅ Ricerca nella propria libreria | P1 | M | - |
-| SR-3 | Fuzzy matching / tolleranza typo | P2 | M | - |
+| SR-3 | ✅ Fuzzy matching / tolleranza typo | P2 | M | - |
 | SR-4 | Autocomplete nella ricerca | P2 | S | - |
 | SR-5 | Libri simili ("Chi ha letto X ha letto anche Y") | P2 | L | TP-1 |
 | **STATISTICHE** | | | | |
@@ -63,7 +63,7 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~UI-1, UI-2, UI-3, UI-4, UI-6~~
 
 ### Fase 3 — Polish e discovery avanzata (P2)
-> SR-3, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5
+> ~~SR-3~~, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5
 
 ---
 
