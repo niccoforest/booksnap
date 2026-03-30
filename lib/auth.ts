@@ -42,7 +42,7 @@ export async function getAuthUser(req?: NextRequest): Promise<JWTPayload | null>
 
 export function createAuthCookieHeader(token: string): string {
   const maxAge = 30 * 24 * 60 * 60 // 30 days
-  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
+  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
 }
 
 export function clearAuthCookieHeader(): string {

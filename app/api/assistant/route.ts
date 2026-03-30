@@ -6,12 +6,14 @@ import { Book } from '@/models/Book'
 import { Library } from '@/models/Library'
 import { Conversation } from '@/models/Conversation'
 import { enrichBookMetadata } from '@/lib/bookMetadata'
+import { buildTasteProfile, TasteProfile } from '@/lib/tasteProfile'
 
 // FIX 1 + FIX 5: Prompt interamente in italiano, con regole esplicite su lingua e generi
 const ASSISTANT_PROMPT = (
   query: string,
   userBooks: string[],
-  history: { role: string; content: string }[]
+  history: { role: string; content: string }[],
+  profile: TasteProfile
 ) => {
   const historyBlock =
     history.length > 0
@@ -24,8 +26,24 @@ const ASSISTANT_PROMPT = (
       ? `\nL'utente possiede già questi libri nella sua libreria:\n${userBooks.map((t) => `- ${t}`).join('\n')}\nNON consigliare libri già in questa lista. Usa questa lista per capire i gusti dell'utente.\n`
       : ''
 
+  const profileBlock = `
+PROFILO LETTORE:
+- Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.score})`).join(', ')}
+- Generi meno apprezzati: ${profile.genreAffinities.slice(-3).map(g => `${g.genre} (score ${g.score})`).join(', ')}
+- Autori preferiti: ${profile.favoriteAuthors.slice(0, 3).map(a => `${a.name} (rating ${a.avgRating.toFixed(1)})`).join(', ')}
+- Letture recenti completate: ${profile.recentlyCompleted.map(l => `"${l.title}"`).join(', ')}
+- Sta leggendo: ${profile.currentlyReading.map(l => `"${l.title}"`).join(', ')}
+- Statistiche: ${profile.stats.totalBooks} libri totali, rating medio dato ${profile.stats.avgRating}, preferisce libri ${profile.stats.preferredPageRange}
+
+REGOLE PERSONALIZZAZIONE:
+- Favorisci raccomandazioni nei generi con score alto, MA suggerisci anche 1 libro "fuori zona" se pertinente alla query
+- Se l'utente chiede genericamente "cosa leggere", usa il profilo per guidare i suggerimenti
+- Evita generi con score < 20 a meno che l'utente li chieda esplicitamente
+- Tieni conto delle letture recenti per evitare ridondanza tematica
+`
+
   return `Sei il Bibliotecario AI di BookSnap. Aiuti gli utenti a scoprire nuovi libri.
-${historyBlock}${libraryBlock}
+${historyBlock}${libraryBlock}${profileBlock}
 Richiesta dell'utente: "${query}"
 
 Rispondi con un array JSON di massimo 5 libri consigliati. Ogni elemento deve avere questa struttura esatta:
@@ -34,7 +52,8 @@ Rispondi con un array JSON di massimo 5 libri consigliati. Ogni elemento deve av
   "author": "Nome Autore",
   "year": 2020,
   "genres": ["Genere1", "Genere2"],
-  "description": "2-3 frasi in italiano che spiegano perché questo libro corrisponde alla richiesta dell'utente.",
+  "description": "2-3 frasi in italiano che spiegano la trama (massimo 200 caratteri).",
+  "matchReason": "Spiega in 1 frase perché questo libro è consigliato per QUESTO utente basandoti sul suo profilo.",
   "isbn": null
 }
 
@@ -42,7 +61,7 @@ REGOLE OBBLIGATORIE:
 - Rispondi SEMPRE in italiano. Le descrizioni devono essere in italiano.
 - I generi devono essere in italiano (es. "Fantascienza", "Romanzo storico", "Thriller", "Saggio", "Fantasy")
 - Consiglia solo libri reali e pubblicati
-- Le descrizioni devono spiegare perché il libro si adatta alla richiesta, non riassumere la trama genericamente
+- Le descrizioni devono descrivere il libro, mentre matchReason spiega il match personalizzato
 - Restituisci SOLO l'array JSON valido, senza markdown, senza spiegazioni aggiuntive`
 }
 
@@ -89,6 +108,8 @@ export async function POST(request: NextRequest) {
       console.error('[assistant] Failed to fetch user library:', err)
     }
 
+    const tasteProfile = await buildTasteProfile(user.userId)
+
     // FIX 3: Memoria conversazionale — ultimi 10 messaggi dal client
     const conversationHistory: { role: string; content: string }[] = []
     if (Array.isArray(clientHistory)) {
@@ -99,7 +120,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const prompt = ASSISTANT_PROMPT(query, userBookTitles, conversationHistory)
+    const prompt = ASSISTANT_PROMPT(query, userBookTitles, conversationHistory, tasteProfile)
     const llmResult = await callLLM(prompt)
 
     let books: any[]

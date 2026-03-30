@@ -17,17 +17,17 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | ID | Feature | Priorità | Effort | Dipendenze |
 |----|---------|----------|--------|------------|
 | **AUTH** | | | | |
-| AU-1 | Google OAuth — API backend (callback, token exchange) | P0 | M | - |
-| AU-2 | Google OAuth — UI (bottone login/register) | P0 | S | AU-1 |
-| AU-3 | Google OAuth — Account linking (match email esistente) | P0 | S | AU-1 |
-| AU-4 | Google OAuth — Avatar e info profilo da Google | P1 | S | AU-1 |
+| AU-1 | ✅ Google OAuth — API backend (callback, token exchange) | P0 | M | - |
+| AU-2 | ✅ Google OAuth — UI (bottone login/register) | P0 | S | AU-1 |
+| AU-3 | ✅ Google OAuth — Account linking (match email esistente) | P0 | S | AU-1 |
+| AU-4 | ✅ Google OAuth — Avatar e info profilo da Google | P1 | S | AU-1 |
 | **TASTE PROFILE** | | | | |
-| TP-1 | Taste Profile Engine | P0 | M | - |
-| TP-2 | Taste Profile API | P0 | S | TP-1 |
+| TP-1 | ✅ Taste Profile Engine | P0 | M | - |
+| TP-2 | ✅ Taste Profile API | P0 | S | TP-1 |
 | **RACCOMANDAZIONI** | | | | |
-| RC-1 | Prompt Assistant potenziato | P0 | S | TP-2 |
+| RC-1 | ✅ Prompt Assistant potenziato | P0 | S | TP-2 |
 | RC-2 | Raccomandazioni proattive (Home) | P1 | L | TP-2 |
-| RC-3 | "Perché questo libro" (spiegazione match) | P1 | S | RC-1 |
+| RC-3 | ✅ "Perché questo libro" (spiegazione match) | P1 | S | RC-1 |
 | **RICERCA** | | | | |
 | SR-1 | Ricerca con filtri (genere, anno, lingua, pagine) | P1 | M | - |
 | SR-2 | Ricerca nella propria libreria | P1 | M | - |
@@ -49,8 +49,8 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ## Fasi di rilascio
 
-### Fase 1 — Fondamenta intelligenti (P0)
-> AU-1, AU-2, AU-3, TP-1, TP-2, RC-1
+### Fase 1 — Fondamenta intelligenti (P0) ✅ COMPLETATA
+> ~~AU-1, AU-2, AU-3, TP-1, TP-2, RC-1~~
 
 ### Fase 2 — Esperienza utente arricchita (P1)
 > AU-4, RC-2, RC-3, SR-1, SR-2, ST-1, PR-1

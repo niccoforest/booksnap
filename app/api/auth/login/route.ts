@@ -18,6 +18,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Credenziali non valide' }, { status: 401 })
     }
 
+    if (!user.passwordHash) {
+      return NextResponse.json({ error: "Questo account utilizza Google per l'accesso. Usa il bottone 'Accedi con Google'." }, { status: 400 })
+    }
+
     const valid = await user.comparePassword(password)
     if (!valid) {
       return NextResponse.json({ error: 'Credenziali non valide' }, { status: 401 })

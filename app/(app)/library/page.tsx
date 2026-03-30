@@ -78,7 +78,7 @@ export default function LibraryPage() {
           <h1 className={styles.title}>La mia Libreria</h1>
           {currentLib && (
             <p className={styles.subtitle}>
-              {totalBooks} libro{totalBooks !== 1 ? 'i' : ''} · {readCount} letti
+              {totalBooks} libr{totalBooks !== 1 ? 'i' : 'o'} · {readCount} lett{readCount !== 1 ? 'i' : 'o'}
             </p>
           )}
         </div>

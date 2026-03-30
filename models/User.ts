@@ -4,11 +4,15 @@ import bcrypt from 'bcryptjs'
 export interface IUser extends Document {
   email: string
   username: string
-  passwordHash: string
+  passwordHash?: string
+  googleId?: string
+  authProvider: 'local' | 'google' | 'both'
+  avatarCustomized?: boolean
   avatar?: string
   bio?: string
   preferences: {
     favoriteGenres: string[]
+    genreOverrides?: Map<string, 'boost' | 'suppress'>
     language: string
     theme: 'dark' | 'light'
   }
@@ -20,11 +24,15 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, unique: true, trim: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String },
+    googleId: { type: String, unique: true, sparse: true },
+    authProvider: { type: String, enum: ['local', 'google', 'both'], default: 'local' },
+    avatarCustomized: { type: Boolean, default: false },
     avatar: { type: String },
     bio: { type: String, maxlength: 300 },
     preferences: {
       favoriteGenres: { type: [String], default: [] },
+      genreOverrides: { type: Map, of: String },
       language: { type: String, default: 'it' },
       theme: { type: String, enum: ['dark', 'light'], default: 'dark' },
     },
@@ -33,6 +41,7 @@ const UserSchema = new Schema<IUser>(
 )
 
 UserSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+  if (!this.passwordHash) return false
   return bcrypt.compare(candidate, this.passwordHash)
 }
 
