@@ -143,30 +143,11 @@
 
 .toggles {
   display: flex;
-  gap: 8px;
   margin-top: 12px;
 }
 
-.toggle {
-  padding: 6px 12px;
-  border-radius: var(--radius-full);
-  font-size: 0.85rem;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.toggle.active {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-  font-weight: 500;
-}
-
 .filterToggle {
-  padding: 6px 12px;
+  padding: 8px 16px;
   border-radius: var(--radius-full);
   font-size: 0.85rem;
   background: var(--bg-secondary);
@@ -176,7 +157,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  font-weight: 600;
 }
 
 .filterToggle.active {
@@ -313,12 +295,18 @@
   font-weight: 600;
 }
 
-.inLibraryBadge {
-  font-size: 0.75rem;
-  color: var(--status-completed);
-  font-weight: 500;
+.ownedBadge {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  background: var(--status-completed);
+  color: white;
+  border-radius: var(--radius-full);
+  font-weight: 700;
   display: flex;
   align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .empty {

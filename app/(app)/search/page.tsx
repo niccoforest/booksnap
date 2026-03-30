@@ -26,7 +26,6 @@ function SearchContent() {
   const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<BookRec[]>([])
   const [loading, setLoading] = useState(false)
-  const [searchContext, setSearchContext] = useState<'all' | 'library'>('all')
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set())
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -50,7 +49,7 @@ function SearchContent() {
   // Autocomplete logic
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (query.trim().length >= 2 && searchContext === 'all') {
+      if (query.trim().length >= 2) {
         fetchSuggestions(query)
       } else {
         setSuggestions([])
@@ -58,7 +57,7 @@ function SearchContent() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [query, searchContext])
+  }, [query])
 
   const fetchSuggestions = async (q: string) => {
     try {
@@ -85,40 +84,18 @@ function SearchContent() {
     
     setLoading(true)
     try {
-      if (searchContext === 'all') {
-        const params = new URLSearchParams()
-        if (q) params.set('q', q)
-        if (genre) params.set('genre', genre)
-        if (yearFrom) params.set('yearFrom', yearFrom)
-        if (yearTo) params.set('yearTo', yearTo)
-        if (lang) params.set('lang', lang)
-        if (pagesMin) params.set('pagesMin', pagesMin)
-        if (pagesMax) params.set('pagesMax', pagesMax)
-        
-        const res = await fetch(`/api/books?${params.toString()}`)
-        const data = await res.json()
-        setResults(data.books || [])
-      } else {
-        // Library search falls back to simple filter over a fresh DB fetch of library books
-        // For simplicity, we just fetch the libraries again or rely on the populated data.
-        const res = await fetch(`/api/libraries`)
-        const data = await res.json()
-        const def = data.libraries?.find((l: any) => l.isDefault) || data.libraries?.[0]
-        
-        if (def) {
-          const books = def.books.map((b: any) => b.bookId)
-          let filtered = books
-          if (q) {
-            filtered = books.filter((b: any) => 
-               isFuzzyMatch(b.title, q) || 
-               b.authors?.some((a: string) => isFuzzyMatch(a, q))
-            )
-          }
-          if (genre) filtered = filtered.filter((b: any) => b.genres?.includes(genre))
-          if (lang) filtered = filtered.filter((b: any) => b.language === lang)
-          setResults(filtered)
-        }
-      }
+      const params = new URLSearchParams()
+      if (q) params.set('q', q)
+      if (genre) params.set('genre', genre)
+      if (yearFrom) params.set('yearFrom', yearFrom)
+      if (yearTo) params.set('yearTo', yearTo)
+      if (lang) params.set('lang', lang)
+      if (pagesMin) params.set('pagesMin', pagesMin)
+      if (pagesMax) params.set('pagesMax', pagesMax)
+      
+      const res = await fetch(`/api/books?${params.toString()}`)
+      const data = await res.json()
+      setResults(data.books || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -181,24 +158,11 @@ function SearchContent() {
         </div>
 
         <div className={styles.toggles}>
-          <button 
-            className={`${styles.toggle} ${searchContext === 'all' ? styles.active : ''}`}
-            onClick={() => setSearchContext('all')}
-          >
-            Tutti i libri
-          </button>
-          <button 
-            className={`${styles.toggle} ${searchContext === 'library' ? styles.active : ''}`}
-            onClick={() => setSearchContext('library')}
-          >
-            I miei libri
-          </button>
-          
           <button className={`${styles.filterToggle} ${showFilters ? styles.active : ''}`} onClick={() => setShowFilters(!showFilters)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
-            Filtri
+            Filtri Avanzati
           </button>
         </div>
 
@@ -242,14 +206,19 @@ function SearchContent() {
                   <span key={g} className={styles.genre}>{g}</span>
                 ))}
               </div>
-              <div className={styles.actions}>
-                 <Link href={`/book/${book._id}`} className={styles.btnPrimary}>
-                   Dettagli
-                 </Link>
-                 {libraryIds.has(book._id) && (
-                   <span className={styles.inLibraryBadge}>✓ In Libreria</span>
-                 )}
-              </div>
+               <div className={styles.actions}>
+                  <Link href={`/book/${book._id}`} className={styles.btnPrimary}>
+                    Dettagli
+                  </Link>
+                  {libraryIds.has(book._id) && (
+                    <div className={styles.ownedBadge}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="12" height="12">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                      In Libreria
+                    </div>
+                  )}
+               </div>
             </div>
           </div>
         ))}
