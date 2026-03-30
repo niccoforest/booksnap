@@ -2,7 +2,7 @@
 
 **Versione:** 2.0
 **Data:** 2026-03-30
-**Stato:** Attivo — Fasi 1-3 completate, Fase 4 in corso
+**Stato:** Attivo — Fasi 1-4 completate, Fase 5 in corso
 
 ---
 
@@ -48,16 +48,16 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | UI-3 | ✅ Book detail — Aggiunta alla libreria con scelta stato | P1 | M | - |
 | UI-4 | ✅ Book detail — Hero con copertina galleggiante su sfondo sfocato | P1 | S | - |
 | UI-5 | ✅ Scan page — revisione layout e UX | P2 | M | - |
-| UI-6 | Navigazione — BottomNav punta a /assistant (chat) e /search (ricerca) | P1 | S | - |
+| UI-6 | ✅ Navigazione — BottomNav punta a /assistant (chat) e /search (ricerca) | P1 | S | - |
 | **UI/UX OVERHAUL (Fase 4)** | | | | |
-| UX-1 | Typography upgrade — Cormorant Garamond per headings | P1 | S | - |
-| UX-2 | Dark mode completion — fix colori hardcoded in tutti i CSS | P1 | M | - |
-| UX-3 | Empty states e onboarding 3-step per nuovi utenti | P1 | M | - |
-| UX-4 | Micro-interactions — entry animations staggerate, transitions | P1 | S | - |
-| UX-5 | Book cards redesign — rating inline, progress bar, vista lista | P1 | M | - |
-| UX-6 | Pull-to-refresh e infinite scroll | P2 | M | - |
-| UX-7 | Swipe gestures — quick-status, tab navigation | P2 | M | - |
-| UX-8 | Sorting options — libreria e ricerca | P1 | S | - |
+| UX-1 | ✅ Typography upgrade — Cormorant Garamond per headings | P1 | S | - |
+| UX-2 | ✅ Dark mode completion — fix colori hardcoded in tutti i CSS | P1 | M | - |
+| UX-3 | ✅ Empty states e onboarding 3-step per nuovi utenti | P1 | M | - |
+| UX-4 | ✅ Micro-interactions — entry animations staggerate, transitions | P1 | S | - |
+| UX-5 | ✅ Book cards redesign — rating inline, progress bar, vista lista | P1 | M | - |
+| UX-6 | ✅ Pull-to-refresh e infinite scroll | P2 | M | - |
+| UX-7 | ✅ Swipe gestures — quick-status, tab navigation | P2 | M | - |
+| UX-8 | ✅ Sorting options — libreria e ricerca | P1 | S | - |
 | **AI-POWERED FEATURES (Fase 5)** | | | | |
 | AI-1 | AI reading insights personalizzati dal taste profile | P1 | M | TP-1 |
 | AI-2 | AI book summaries on-demand (spoiler-free) | P2 | M | - |
@@ -115,10 +115,10 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 ### Fase 3 — Polish e discovery avanzata (P2) ✅ COMPLETATA
 > ~~SR-3, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5~~
 
-### Fase 4 — UI/UX Overhaul 🔄 IN CORSO
-> UX-1 Typography upgrade, UX-2 Dark mode completion, UX-3 Onboarding,
-> UX-4 Micro-interactions, UX-5 Book cards redesign, UX-6 Pull-to-refresh,
-> UX-7 Swipe gestures, UX-8 Sorting options
+### Fase 4 — UI/UX Overhaul ✅ COMPLETATA
+> ~~UX-1 Typography upgrade, UX-2 Dark mode completion, UX-3 Onboarding,~~
+> ~~UX-4 Micro-interactions, UX-5 Book cards redesign, UX-6 Pull-to-refresh,~~
+> ~~UX-7 Swipe gestures, UX-8 Sorting options~~
 
 ### Fase 5 — AI-Powered Features
 > AI-1 Reading insights, AI-2 Book summaries, AI-3 Goal suggestions,

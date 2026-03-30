@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const q = searchParams.get('q')
+    const sortBy = searchParams.get('sortBy') || 'relevance'
     const limit = Math.min(parseInt(searchParams.get('limit') || '40'), 100)
+    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
+    const skip = (page - 1) * limit
     
     // Filters
     const genre = searchParams.get('genre')
@@ -17,6 +20,7 @@ export async function GET(request: NextRequest) {
     const lang = searchParams.get('lang')
     const pagesMin = searchParams.get('pagesMin')
     const pagesMax = searchParams.get('pagesMax')
+    const sortDir = searchParams.get('sortDir') === 'asc' ? 1 : -1
 
     await connectDB()
 
@@ -36,14 +40,23 @@ export async function GET(request: NextRequest) {
       if (pagesMax) baseQuery.pageCount.$lte = parseInt(pagesMax)
     }
 
+    // Determine sort object
+    let sortObj: any = { createdAt: -1 }
+    if (sortBy === 'title') sortObj = { title: 1 }
+    if (sortBy === 'author') sortObj = { authors: 1 }
+    if (sortBy === 'year') sortObj = { publishedYear: -1 }
+    if (sortBy === 'pages') sortObj = { pageCount: -1 }
+    if (sortBy === 'newest') sortObj = { publishedYear: -1 }
+
     let books = []
 
     if (q) {
       // 1. Try text search with base filters
+      const finalSort = sortBy === 'relevance' ? { score: { $meta: 'textScore' } } : sortObj
       const textQuery = { ...baseQuery, $text: { $search: q } }
-      books = await Book.find(textQuery).limit(limit).sort({ score: { $meta: 'textScore' } })
+      books = await Book.find(textQuery).sort(finalSort).skip(skip).limit(limit)
 
-      // 2. If no results, try broader regex search (basic typo tolerance / partial match)
+      // 2. If no results, try broader regex search
       if (books.length === 0) {
         const regexQuery = { 
           ...baseQuery,
@@ -52,11 +65,11 @@ export async function GET(request: NextRequest) {
             { authors: { $regex: q, $options: 'i' } }
           ]
         }
-        books = await Book.find(regexQuery).limit(limit).sort({ createdAt: -1 })
+        books = await Book.find(regexQuery).sort(sortObj).skip(skip).limit(limit)
       }
     } else {
       // Just filter without term
-      books = await Book.find(baseQuery).limit(limit).sort({ createdAt: -1 })
+      books = await Book.find(baseQuery).sort(sortObj).skip(skip).limit(limit)
     }
 
     // 🏆 Fallback to External Search if sparse results

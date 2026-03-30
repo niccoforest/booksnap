@@ -10,12 +10,12 @@ type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
 type SortOption = 'addedAt' | 'title' | 'author' | 'rating' | 'status'
 
-const STATUS_CONFIG: Record<ReadingStatus, { label: string; dot: string; className: string }> = {
-  to_read: { label: 'Da leggere', dot: '#f59e0b', className: 'status-to-read' },
-  reading: { label: 'In lettura', dot: '#3b82f6', className: 'status-reading' },
-  completed: { label: 'Completato', dot: '#22c55e', className: 'status-completed' },
-  abandoned: { label: 'Abbandonato', dot: '#ef4444', className: 'status-abandoned' },
-  lent: { label: 'Prestato', dot: '#a855f7', className: 'status-lent' },
+const STATUS_CONFIG: Record<ReadingStatus, { label: string; className: string }> = {
+  to_read: { label: 'Da leggere', className: 'status-to-read' },
+  reading: { label: 'In lettura', className: 'status-reading' },
+  completed: { label: 'Completato', className: 'status-completed' },
+  abandoned: { label: 'Abbandonato', className: 'status-abandoned' },
+  lent: { label: 'Prestato', className: 'status-lent' },
 }
 
 const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
@@ -206,7 +206,7 @@ export default function LibraryPage() {
                 <span className={styles.suggestionTitle}>{entry.bookId.title}</span>
                 <span className={styles.suggestionAuthor}>{entry.bookId.authors?.[0]}</span>
               </div>
-              <span className={styles.suggestionStatus} style={{ background: STATUS_CONFIG[entry.status].dot }} />
+              <span className={`${styles.suggestionStatus} ${STATUS_CONFIG[entry.status].className}`} />
             </Link>
           ))}
         </div>
@@ -300,8 +300,7 @@ export default function LibraryPage() {
                     </div>
                   )}
                   <span
-                    className={styles.statusOverlay}
-                    style={{ background: STATUS_CONFIG[entry.status].dot }}
+                    className={`${styles.statusOverlay} ${STATUS_CONFIG[entry.status].className}`}
                     title={STATUS_CONFIG[entry.status].label}
                   />
                   {entry.status === 'reading' && (
@@ -348,39 +347,51 @@ export default function LibraryPage() {
                     </p>
                   )}
                 </div>
-                <span className={styles.listStatus} style={{ background: STATUS_CONFIG[entry.status].dot }} />
+                <span className={`${styles.listStatus} ${STATUS_CONFIG[entry.status].className}`} />
               </Link>
             ))}
           </div>
         )
       ) : (
         <div className={styles.empty}>
-          <div className={styles.emptyIcon}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
-              {searchQuery ? (
-                <>
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </>
-              ) : (
-                <>
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                </>
-              )}
+          <div className={styles.emptyIllustration}>
+            {/* Elegant SVG illustration of a book shelf/stack */}
+            <svg viewBox="0 0 200 160" fill="none" width="180" height="144">
+              <rect x="40" y="100" width="120" height="8" rx="4" fill="var(--border)" />
+              <rect x="50" y="40" width="24" height="60" rx="2" fill="var(--accent-dim)" stroke="var(--accent)" strokeWidth="1.5" />
+              <rect x="78" y="30" width="20" height="70" rx="2" fill="var(--bg-card)" stroke="var(--border)" strokeWidth="1.5" />
+              <rect x="102" y="50" width="22" height="50" rx="2" fill="var(--bg-secondary)" stroke="var(--border)" strokeWidth="1.5" />
+              <rect x="128" y="45" width="20" height="55" rx="2" fill="var(--accent-dim)" opacity="0.5" stroke="var(--accent)" strokeWidth="1.5" />
+              <circle cx="160" cy="40" r="15" fill="var(--accent-dim)" />
+              <path d="M152 40h16M160 32v16" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
-          <h3>{searchQuery ? 'Nessun risultato' : 'Nessun libro qui'}</h3>
+          <h3 className={styles.emptyTitle}>
+            {searchQuery ? 'Nessun risultato' : 'La tua libreria è vuota'}
+          </h3>
           <p className={styles.emptyText}>
             {searchQuery
-              ? `Nessun libro corrisponde a "${searchQuery}"`
+              ? `Non abbiamo trovato nulla per "${searchQuery}". Prova con un'altra ricerca.`
               : statusFilter === 'all'
-                ? 'Aggiungi il tuo primo libro scansionando la copertina!'
-                : `Nessun libro con stato "${STATUS_CONFIG[statusFilter as ReadingStatus]?.label}"`}
+                ? 'Inizia a costruire la tua collezione scansionando i codici a barre o le copertine dei tuoi libri.'
+                : `Non hai ancora libri contrassegnati come "${STATUS_CONFIG[statusFilter as ReadingStatus]?.label}".`}
           </p>
           {!searchQuery && statusFilter === 'all' && (
-            <Link href="/scan" className="btn btn-primary">
-              Scansiona un libro
-            </Link>
+            <div className={styles.emptyActions}>
+              <Link href="/scan" className="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+                  <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+                  <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+                  <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+                  <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+                  <rect x="8" y="8" width="8" height="8" rx="1" />
+                </svg>
+                Scansiona un libro
+              </Link>
+              <Link href="/search" className="btn btn-secondary">
+                Cerca nel catalogo
+              </Link>
+            </div>
           )}
           {searchQuery && (
             <button className="btn btn-ghost btn-sm" onClick={() => setSearchQuery('')}>

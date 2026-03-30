@@ -224,6 +224,12 @@
   box-shadow: var(--shadow-sm);
 }
 
+.suggestionStatus:global(.status-reading) { background-color: var(--status-reading); }
+.suggestionStatus:global(.status-completed) { background-color: var(--status-completed); }
+.suggestionStatus:global(.status-to-read) { background-color: var(--status-to-read); }
+.suggestionStatus:global(.status-abandoned) { background-color: var(--status-abandoned); }
+.suggestionStatus:global(.status-lent) { background-color: var(--status-lent); }
+
 /* ─── Tab librerie ─────────────── */
 .libTabs {
   display: flex;
@@ -394,6 +400,12 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
+.statusOverlay:global(.status-reading) { background-color: var(--status-reading); }
+.statusOverlay:global(.status-completed) { background-color: var(--status-completed); }
+.statusOverlay:global(.status-to-read) { background-color: var(--status-to-read); }
+.statusOverlay:global(.status-abandoned) { background-color: var(--status-abandoned); }
+.statusOverlay:global(.status-lent) { background-color: var(--status-lent); }
+
 .ratingOverlay {
   position: absolute;
   bottom: 0;
@@ -412,23 +424,26 @@
 }
 
 .bookTitle {
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
-  line-height: 1.3;
+  line-height: 1.1;
+  color: var(--text-primary);
 }
 
 .bookAuthor {
-  font-size: 0.6875rem;
-  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 /* ─── Skeleton ─────────────────── */
@@ -446,28 +461,41 @@
   padding: var(--spacing-2xl) var(--spacing-lg);
   gap: var(--spacing-md);
   text-align: center;
-  min-height: 40vh;
+  min-height: 50vh;
 }
 
-.emptyIcon {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--bg-placeholder);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--bg-placeholder-icon);
+.emptyIllustration {
+  margin-bottom: var(--spacing-md);
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.05));
+  animation: float 4s ease-in-out infinite;
 }
 
-.empty h3 {
-  font-size: 1.25rem;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.emptyTitle {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .emptyText {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  max-width: 260px;
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  max-width: 280px;
+  line-height: 1.5;
+}
+
+.emptyActions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 240px;
+  margin-top: var(--spacing-md);
 }
 
 /* ─── Cover gradient overlay ──── */
@@ -513,10 +541,10 @@
 
 /* ─── Inline rating (below card) ── */
 .bookRating {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   letter-spacing: 0.5px;
-  margin-top: 2px;
-  color: #fbbf24;
+  margin-top: 4px;
+  color: var(--rating-color);
 }
 
 .bookRating span {
@@ -604,3 +632,9 @@
   border: 2px solid var(--bg-card);
   box-shadow: var(--shadow-sm);
 }
+
+.listStatus:global(.status-reading) { background-color: var(--status-reading); }
+.listStatus:global(.status-completed) { background-color: var(--status-completed); }
+.listStatus:global(.status-to-read) { background-color: var(--status-to-read); }
+.listStatus:global(.status-abandoned) { background-color: var(--status-abandoned); }
+.listStatus:global(.status-lent) { background-color: var(--status-lent); }

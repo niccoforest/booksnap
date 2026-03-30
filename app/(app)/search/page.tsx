@@ -29,6 +29,8 @@ function SearchContent() {
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set())
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
 
   // Filters
   const [showFilters, setShowFilters] = useState(false)
@@ -38,6 +40,7 @@ function SearchContent() {
   const [lang, setLang] = useState('')
   const [pagesMin, setPagesMin] = useState('')
   const [pagesMax, setPagesMax] = useState('')
+  const [sortBy, setSortBy] = useState('relevance')
 
   // Discovery data
   const [discoveryData, setDiscoveryData] = useState<any[]>([])
@@ -102,6 +105,8 @@ function SearchContent() {
     const q = overrideQuery !== undefined ? overrideQuery : query
     
     setLoading(true)
+    if (page === 1) setResults([])
+    
     try {
       const params = new URLSearchParams()
       if (q) params.set('q', q)
@@ -111,15 +116,38 @@ function SearchContent() {
       if (lang) params.set('lang', lang)
       if (pagesMin) params.set('pagesMin', pagesMin)
       if (pagesMax) params.set('pagesMax', pagesMax)
+      params.set('sortBy', sortBy)
+      params.set('page', page.toString())
+      params.set('limit', '20')
       
       const res = await fetch(`/api/books?${params.toString()}`)
       const data = await res.json()
-      setResults(data.books || [])
+      
+      if (page === 1) {
+        setResults(data.books || [])
+      } else {
+        setResults(prev => [...prev, ...(data.books || [])])
+      }
+      
+      if (!data.books || data.books.length < 20) setHasMore(false)
+      else setHasMore(true)
+      
     } catch (err) {
       console.error(err)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Effect to perform search when page changes
+  useEffect(() => {
+    if (page > 1) performSearch()
+  }, [page])
+
+  const handleSearchClick = () => {
+    setPage(1)
+    performSearch()
+    setShowSuggestions(false)
   }
 
   return (
@@ -181,8 +209,25 @@ function SearchContent() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
-            Filtri Avanzati
+            Filtri
           </button>
+          
+          <div className={styles.sortCol}>
+            <select 
+              className={styles.sortSelect} 
+              value={sortBy} 
+              onChange={(e) => {
+                setSortBy(e.target.value)
+                setTimeout(() => performSearch(), 50)
+              }}
+            >
+              <option value="relevance">Rilevanza</option>
+              <option value="title">Titolo A-Z</option>
+              <option value="author">Autore A-Z</option>
+              <option value="year">Anno</option>
+              <option value="pages">N. pagine</option>
+            </select>
+          </div>
         </div>
 
         {showFilters && (
@@ -266,29 +311,44 @@ function SearchContent() {
               )}
             </div>
             <div className={styles.bookInfo}>
-              <h3 className={styles.bookTitle}>{book.title}</h3>
-              <p className={styles.bookAuthor}>{book.authors?.[0]}</p>
-              <div className={styles.bookGenres}>
-                {book.genres?.slice(0, 3).map(g => (
-                  <span key={g} className={styles.genre}>{g}</span>
-                ))}
+              <div className={styles.bookHeader}>
+                <h3 className={styles.bookTitle}>{book.title}</h3>
+                {libraryIds.has(book._id) && (
+                  <span className={styles.ownedCompactBadge} title="In libreria">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="10" height="10">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </span>
+                )}
               </div>
-               <div className={styles.actions}>
+              <p className={styles.bookAuthor}>{book.authors?.[0]}</p>
+              <div className={styles.bookMeta}>
+                {book.publishedYear && <span className={styles.metaItem}>{book.publishedYear}</span>}
+                {book.pageCount && <span className={styles.metaItem}>{book.pageCount} pag.</span>}
+                {book.language && <span className={styles.metaItem} style={{ textTransform: 'uppercase' }}>{book.language}</span>}
+              </div>
+              
+              <div className={styles.actions}>
                   <Link href={`/book/${book._id}`} className={styles.btnPrimary}>
-                    Dettagli
+                    Vedi dettagli
                   </Link>
                   {libraryIds.has(book._id) && (
-                    <div className={styles.ownedBadge}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="12" height="12">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                      In Libreria
-                    </div>
+                    <span className={styles.ownedText}>In libreria</span>
                   )}
-               </div>
+              </div>
             </div>
           </div>
         ))}
+        
+        {query.trim().length > 0 && hasMore && results.length > 0 && (
+          <button 
+            className={styles.loadMoreBtn} 
+            onClick={() => setPage(prev => prev + 1)}
+            disabled={loading}
+          >
+            {loading ? 'Caricamento...' : 'Carica altri'}
+          </button>
+        )}
         {query.trim().length > 0 && !loading && results.length === 0 && (
           <div className={styles.empty}>
             <p>Nessun libro trovato.</p>

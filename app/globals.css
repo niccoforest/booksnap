@@ -36,6 +36,7 @@
   --status-to-read: #f59e0b;
   --status-abandoned: #ef4444;
   --status-lent: #a855f7;
+  --rating-color: #fbbf24;
 
   /* Google button (light always) */
   --google-btn-bg: #ffffff;
