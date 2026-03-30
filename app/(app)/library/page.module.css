@@ -176,12 +176,12 @@
   height: 54px;
   border-radius: 4px;
   overflow: hidden;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c0c0c0;
+  color: var(--bg-placeholder-icon);
 }
 
 .suggestionCover img {
@@ -220,7 +220,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1.5px solid white;
+  border: 1.5px solid var(--bg-card);
   box-shadow: var(--shadow-sm);
 }
 
@@ -254,6 +254,53 @@
   background: var(--accent-dim);
   border-color: var(--border-focus);
   color: var(--accent);
+}
+
+/* ─── Controls row ─────────────── */
+.controlsRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sortRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 var(--spacing-md) var(--spacing-xs);
+}
+
+.sortSelect {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+
+.viewToggle {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.viewToggle:hover {
+  color: var(--accent);
+  border-color: var(--border-focus);
 }
 
 /* ─── Filtri status ─────────────── */
@@ -332,8 +379,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f2f5;
-  color: #c0c0c0;
+  background: var(--bg-placeholder);
+  color: var(--bg-placeholder-icon);
 }
 
 .statusOverlay {
@@ -343,7 +390,7 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid white;
+  border: 2px solid var(--bg-card);
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
@@ -406,11 +453,11 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c0c0c0;
+  color: var(--bg-placeholder-icon);
 }
 
 .empty h3 {
@@ -421,4 +468,139 @@
   color: var(--text-muted);
   font-size: 0.9rem;
   max-width: 260px;
+}
+
+/* ─── Cover gradient overlay ──── */
+.coverGradient {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0,0,0,0.3), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.bookCard:hover .coverGradient {
+  opacity: 1;
+}
+
+/* ─── Reading progress bar ────── */
+.readingBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(0,0,0,0.2);
+  z-index: 2;
+}
+
+.readingBarFill {
+  height: 100%;
+  width: 40%;
+  background: var(--status-reading);
+  border-radius: 0 2px 2px 0;
+  animation: readingPulse 2s ease-in-out infinite;
+}
+
+@keyframes readingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ─── Inline rating (below card) ── */
+.bookRating {
+  font-size: 0.6rem;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  color: #fbbf24;
+}
+
+.bookRating span {
+  color: var(--border);
+}
+
+/* ─── List view ───────────────── */
+.listView {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md) var(--spacing-md);
+}
+
+.listItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.listItem:active {
+  transform: scale(0.99);
+}
+
+.listCoverWrap {
+  width: 40px;
+  height: 60px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bg-placeholder);
+}
+
+.listCover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listCoverPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--bg-placeholder-icon);
+}
+
+.listInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.listTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listAuthor {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listStatus {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid var(--bg-card);
+  box-shadow: var(--shadow-sm);
 }

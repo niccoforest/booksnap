@@ -97,8 +97,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f2f5;
-  color: #c0c0c0;
+  background: var(--bg-placeholder);
+  color: var(--bg-placeholder-icon);
 }
 
 .addBtn {

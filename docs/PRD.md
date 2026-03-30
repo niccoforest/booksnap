@@ -1,8 +1,8 @@
 # BookSnap PRD - Ricerca, Personalizzazione e Raccomandazioni
 
-**Versione:** 1.1
+**Versione:** 2.0
 **Data:** 2026-03-30
-**Stato:** Attivo — Fase 2 completata, Fase 3 in corso
+**Stato:** Attivo — Fasi 1-3 completate, Fase 4 in corso
 
 ---
 
@@ -49,7 +49,57 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | UI-4 | ✅ Book detail — Hero con copertina galleggiante su sfondo sfocato | P1 | S | - |
 | UI-5 | ✅ Scan page — revisione layout e UX | P2 | M | - |
 | UI-6 | Navigazione — BottomNav punta a /assistant (chat) e /search (ricerca) | P1 | S | - |
-**Legenda Priorità:** P0 = Must have (fase 1), P1 = Should have (fase 2), P2 = Nice to have (fase 3)
+| **UI/UX OVERHAUL (Fase 4)** | | | | |
+| UX-1 | Typography upgrade — Cormorant Garamond per headings | P1 | S | - |
+| UX-2 | Dark mode completion — fix colori hardcoded in tutti i CSS | P1 | M | - |
+| UX-3 | Empty states e onboarding 3-step per nuovi utenti | P1 | M | - |
+| UX-4 | Micro-interactions — entry animations staggerate, transitions | P1 | S | - |
+| UX-5 | Book cards redesign — rating inline, progress bar, vista lista | P1 | M | - |
+| UX-6 | Pull-to-refresh e infinite scroll | P2 | M | - |
+| UX-7 | Swipe gestures — quick-status, tab navigation | P2 | M | - |
+| UX-8 | Sorting options — libreria e ricerca | P1 | S | - |
+| **AI-POWERED FEATURES (Fase 5)** | | | | |
+| AI-1 | AI reading insights personalizzati dal taste profile | P1 | M | TP-1 |
+| AI-2 | AI book summaries on-demand (spoiler-free) | P2 | M | - |
+| AI-3 | AI reading goal suggestions | P2 | S | ST-4 |
+| AI-4 | Smart push notifications per utenti inattivi | P2 | L | UX-3 |
+| AI-5 | Natural language library search | P1 | M | - |
+| AI-6 | AI discussion prompts per book club | P2 | S | - |
+| **SOCIAL & COMMUNITY (Fase 6)** | | | | |
+| SO-1 | User profile extension — isPublic, follow counts, profileSlug | P1 | M | - |
+| SO-2 | Public profile page /user/[slug] | P1 | M | SO-1 |
+| SO-3 | Follow system — follow/unfollow, followers/following lists | P1 | M | SO-1, SO-2 |
+| SO-4 | Activity feed — azioni degli utenti seguiti | P1 | L | SO-1, SO-3 |
+| SO-5 | Community bookshelves — liste curate pubbliche | P2 | M | SO-1 |
+| SO-6 | Trending books — libri più aggiunti/letti | P1 | S | SO-4 |
+| SO-7 | Reading challenges — personali e community | P2 | L | SO-1, SO-4 |
+| **STATISTICS REDESIGN (Fase 7)** | | | | |
+| ST-4 | Pagina stats dedicata con SVG charts custom | P1 | L | - |
+| ST-5 | Reading heatmap stile GitHub | P1 | M | ST-4 |
+| ST-6 | Genre radar chart SVG | P1 | M | ST-4, TP-1 |
+| ST-7 | Reading pace line chart | P1 | M | ST-4 |
+| ST-8 | Annual reading goals con progress ring | P1 | S | ST-4 |
+| ST-9 | Year in Review — "Il tuo 2026 in libri" | P2 | L | ST-4 |
+| ST-10 | Confronto periodi con delta indicators | P2 | S | ST-4 |
+| **LIBRARY MANAGEMENT (Fase 8)** | | | | |
+| LM-1 | Custom libraries UI — emoji picker, redesign tabs | P1 | S | - |
+| LM-2 | Library sharing via link pubblico | P2 | S | SO-2 |
+| LM-3 | Bulk operations — multi-select, status change, move | P1 | M | - |
+| LM-4 | Drag-and-drop reordering | P2 | M | - |
+| LM-5 | Library templates predefiniti | P2 | S | - |
+| **BOOK IMPORT (Fase 9)** | | | | |
+| IM-1 | ISBN barcode scanning con BarcodeDetector API | P1 | M | - |
+| IM-2 | CSV/Goodreads import con mapping statuses | P1 | M | - |
+| IM-3 | EPUB metadata extraction (client-side JSZip) | P2 | M | - |
+| IM-4 | Manual ISBN entry con lookup | P1 | S | - |
+| IM-5 | Bulk text list import ("Titolo - Autore" per riga) | P2 | S | - |
+| IM-6 | Amazon wishlist import (experimental) | P3 | L | - |
+| **MONETIZZAZIONE (Fase 10)** | | | | |
+| MO-1 | Freemium model + Stripe Checkout | P1 | L | - |
+| MO-2 | Affiliate links Amazon con tag | P1 | S | - |
+| MO-3 | Usage gating con UsageCounter | P1 | M | MO-1 |
+
+**Legenda Priorità:** P0 = Must have (fase 1), P1 = Should have, P2 = Nice to have, P3 = Experimental
 
 ---
 
@@ -62,8 +112,38 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~AU-4, RC-2, RC-3, SR-1, SR-2, ST-1, PR-1~~
 > ~~UI-1, UI-2, UI-3, UI-4, UI-6~~
 
-### Fase 3 — Polish e discovery avanzata (P2)
+### Fase 3 — Polish e discovery avanzata (P2) ✅ COMPLETATA
 > ~~SR-3, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5~~
+
+### Fase 4 — UI/UX Overhaul 🔄 IN CORSO
+> UX-1 Typography upgrade, UX-2 Dark mode completion, UX-3 Onboarding,
+> UX-4 Micro-interactions, UX-5 Book cards redesign, UX-6 Pull-to-refresh,
+> UX-7 Swipe gestures, UX-8 Sorting options
+
+### Fase 5 — AI-Powered Features
+> AI-1 Reading insights, AI-2 Book summaries, AI-3 Goal suggestions,
+> AI-4 Smart notifications, AI-5 NL library search, AI-6 Discussion prompts
+
+### Fase 6 — Social & Community
+> SO-1 User profile extension, SO-2 Public profiles, SO-3 Follow system,
+> SO-4 Activity feed, SO-5 Community bookshelves, SO-6 Trending books,
+> SO-7 Reading challenges
+
+### Fase 7 — Statistics Redesign
+> ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,
+> ST-7 Reading pace chart, ST-8 Annual goals, ST-9 Year in review,
+> ST-10 Period comparison
+
+### Fase 8 — Library Management Enhancement
+> LM-1 Custom libraries UI, LM-2 Library sharing, LM-3 Bulk operations,
+> LM-4 Drag-and-drop, LM-5 Library templates
+
+### Fase 9 — Book Import
+> IM-1 ISBN barcode scan, IM-2 CSV/Goodreads import, IM-3 EPUB metadata,
+> IM-4 Manual ISBN entry, IM-5 Bulk text list, IM-6 Amazon wishlist
+
+### Fase 10 — Monetizzazione
+> MO-1 Freemium model + Stripe, MO-2 Affiliate links, MO-3 Usage gating
 
 ---
 

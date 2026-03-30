@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Read(//c/Users/nicco/.claude/plugins/marketplaces/ui-ux-pro-max-skill/**)",
+      "Bash(python3 skills/ui-ux-pro-max/scripts/search.py \"book library reading PWA mobile-first social community Italian dark-mode\" --design-system -p \"BookSnap\")",
+      "Bash(python skills/ui-ux-pro-max/scripts/search.py \"book library reading PWA mobile-first social community Italian dark-mode\" --design-system -p \"BookSnap\")",
+      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"book library reading PWA mobile-first social community\" --design-system -p \"BookSnap\")",
+      "Bash(xargs grep:*)",
+      "mcp__plugin_claude-mem_mcp-search__save_memory",
+      "Bash(find /c/Users/nicco/OneDrive/Desktop/booksnap -maxdepth 2 -not -path */node_modules/* -not -path */.next/* -type d)",
+      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"social reading community dashboard statistics\" --domain ux -n 10)",
+      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"book reading library PWA\" --stack nextjs -n 10)",
+      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"dashboard statistics chart\" --domain chart -n 10)"
     ]
   }
 }

@@ -218,12 +218,12 @@
 .coverPh {
   width: 70px;
   height: 105px;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8c8c8;
+  color: var(--bg-placeholder-icon);
 }
 
 .bookInfo {
@@ -270,7 +270,7 @@
 .year {
   font-size: 0.7rem;
   padding: 2px 8px;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   color: var(--text-muted);
   border-radius: var(--radius-full);
 }

@@ -8,6 +8,8 @@ import styles from './page.module.css'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
+type SortOption = 'addedAt' | 'title' | 'author' | 'rating' | 'status'
+
 const STATUS_CONFIG: Record<ReadingStatus, { label: string; dot: string; className: string }> = {
   to_read: { label: 'Da leggere', dot: '#f59e0b', className: 'status-to-read' },
   reading: { label: 'In lettura', dot: '#3b82f6', className: 'status-reading' },
@@ -15,6 +17,13 @@ const STATUS_CONFIG: Record<ReadingStatus, { label: string; dot: string; classNa
   abandoned: { label: 'Abbandonato', dot: '#ef4444', className: 'status-abandoned' },
   lent: { label: 'Prestato', dot: '#a855f7', className: 'status-lent' },
 }
+
+const SORT_OPTIONS: Array<{ value: SortOption; label: string }> = [
+  { value: 'addedAt', label: 'Recenti' },
+  { value: 'title', label: 'Titolo A-Z' },
+  { value: 'author', label: 'Autore A-Z' },
+  { value: 'rating', label: 'Valutazione' },
+]
 
 interface BookEntry {
   bookId: {
@@ -46,6 +55,8 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [sortBy, setSortBy] = useState<SortOption>('addedAt')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -79,16 +90,30 @@ export default function LibraryPage() {
 
   const currentLib = libraries.find((l) => l._id === selectedLib)
 
-  const filteredBooks = (currentLib?.books || []).filter((b) => {
-    const matchesStatus = statusFilter === 'all' || b.status === statusFilter
-    const q = searchQuery.trim()
-    if (!q) return matchesStatus
+  const filteredBooks = (currentLib?.books || [])
+    .filter((b) => {
+      const matchesStatus = statusFilter === 'all' || b.status === statusFilter
+      const q = searchQuery.trim()
+      if (!q) return matchesStatus
 
-    const titleMatch = isFuzzyMatch(b.bookId.title, q)
-    const authorMatch = b.bookId.authors?.some((a) => isFuzzyMatch(a, q))
-    
-    return matchesStatus && (titleMatch || authorMatch)
-  })
+      const titleMatch = isFuzzyMatch(b.bookId.title, q)
+      const authorMatch = b.bookId.authors?.some((a) => isFuzzyMatch(a, q))
+
+      return matchesStatus && (titleMatch || authorMatch)
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.bookId.title.localeCompare(b.bookId.title, 'it')
+        case 'author':
+          return (a.bookId.authors?.[0] || '').localeCompare(b.bookId.authors?.[0] || '', 'it')
+        case 'rating':
+          return (b.rating || 0) - (a.rating || 0)
+        case 'addedAt':
+        default:
+          return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+      }
+    })
 
   // Predictive suggestions: top 5 titles matching current query
   const suggestions = searchQuery.trim().length > 0
@@ -205,17 +230,46 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* Status filters */}
-      <div className={styles.filters}>
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            className={`${styles.filterChip} ${statusFilter === s ? styles.active : ''}`}
-            onClick={() => setStatusFilter(s)}
+      {/* Status filters + sort/view controls */}
+      <div className={styles.controlsRow}>
+        <div className={styles.filters}>
+          {STATUS_FILTERS.map((s) => (
+            <button
+              key={s}
+              className={`${styles.filterChip} ${statusFilter === s ? styles.active : ''}`}
+              onClick={() => setStatusFilter(s)}
+            >
+              {s === 'all' ? 'Tutti' : STATUS_CONFIG[s].label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.sortRow}>
+          <select
+            className={styles.sortSelect}
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            aria-label="Ordina per"
           >
-            {s === 'all' ? 'Tutti' : STATUS_CONFIG[s].label}
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <button
+            className={styles.viewToggle}
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            aria-label={viewMode === 'grid' ? 'Vista lista' : 'Vista griglia'}
+          >
+            {viewMode === 'grid' ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+              </svg>
+            )}
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Books grid */}
@@ -230,38 +284,75 @@ export default function LibraryPage() {
           ))}
         </div>
       ) : filteredBooks.length > 0 ? (
-        <div className={styles.grid}>
-          {filteredBooks.map((entry) => (
-            <Link key={entry.bookId._id} href={`/book/${entry.bookId._id}`} className={styles.bookCard}>
-              <div className={styles.coverWrap}>
-                {entry.bookId.coverUrl ? (
-                  <img src={entry.bookId.coverUrl} alt={entry.bookId.title} className={styles.cover} />
-                ) : (
-                  <div className={styles.coverPlaceholder}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
-                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                    </svg>
-                  </div>
-                )}
-                <span
-                  className={styles.statusOverlay}
-                  style={{ background: STATUS_CONFIG[entry.status].dot }}
-                  title={STATUS_CONFIG[entry.status].label}
-                />
-                {entry.rating && (
-                  <div className={styles.ratingOverlay}>
-                    {'★'.repeat(entry.rating)}
-                  </div>
-                )}
-              </div>
-              <div className={styles.bookMeta}>
-                <p className={styles.bookTitle}>{entry.bookId.title}</p>
-                <p className={styles.bookAuthor}>{entry.bookId.authors?.[0] || '—'}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        viewMode === 'grid' ? (
+          <div className={`${styles.grid} stagger-children`}>
+            {filteredBooks.map((entry) => (
+              <Link key={entry.bookId._id} href={`/book/${entry.bookId._id}`} className={styles.bookCard}>
+                <div className={styles.coverWrap}>
+                  {entry.bookId.coverUrl ? (
+                    <img src={entry.bookId.coverUrl} alt={entry.bookId.title} className={styles.cover} />
+                  ) : (
+                    <div className={styles.coverPlaceholder}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                    </div>
+                  )}
+                  <span
+                    className={styles.statusOverlay}
+                    style={{ background: STATUS_CONFIG[entry.status].dot }}
+                    title={STATUS_CONFIG[entry.status].label}
+                  />
+                  {entry.status === 'reading' && (
+                    <div className={styles.readingBar}>
+                      <div className={styles.readingBarFill} />
+                    </div>
+                  )}
+                  <div className={styles.coverGradient} />
+                </div>
+                <div className={styles.bookMeta}>
+                  <p className={styles.bookTitle}>{entry.bookId.title}</p>
+                  <p className={styles.bookAuthor}>{entry.bookId.authors?.[0] || '—'}</p>
+                  {entry.rating && (
+                    <p className={styles.bookRating}>
+                      {'★'.repeat(entry.rating)}<span>{'★'.repeat(5 - entry.rating)}</span>
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className={`${styles.listView} stagger-children`}>
+            {filteredBooks.map((entry) => (
+              <Link key={entry.bookId._id} href={`/book/${entry.bookId._id}`} className={styles.listItem}>
+                <div className={styles.listCoverWrap}>
+                  {entry.bookId.coverUrl ? (
+                    <img src={entry.bookId.coverUrl} alt={entry.bookId.title} className={styles.listCover} />
+                  ) : (
+                    <div className={styles.listCoverPlaceholder}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.listInfo}>
+                  <p className={styles.listTitle}>{entry.bookId.title}</p>
+                  <p className={styles.listAuthor}>{entry.bookId.authors?.[0] || '—'}</p>
+                  {entry.rating && (
+                    <p className={styles.bookRating}>
+                      {'★'.repeat(entry.rating)}<span>{'★'.repeat(5 - entry.rating)}</span>
+                    </p>
+                  )}
+                </div>
+                <span className={styles.listStatus} style={{ background: STATUS_CONFIG[entry.status].dot }} />
+              </Link>
+            ))}
+          </div>
+        )
       ) : (
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>

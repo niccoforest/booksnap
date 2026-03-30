@@ -111,9 +111,9 @@
   gap: 12px;
   width: 100%;
   padding: 12px 16px;
-  background-color: #ffffff;
-  color: #3c4043;
-  border: 1px solid #dadce0;
+  background-color: var(--google-btn-bg);
+  color: var(--google-btn-color);
+  border: 1px solid var(--google-btn-border);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
   font-weight: 500;
@@ -123,8 +123,8 @@
 }
 
 .googleBtn:hover {
-  background-color: #f8f9fa;
-  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+  background-color: var(--bg-card-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .googleIcon {

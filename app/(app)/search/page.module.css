@@ -103,12 +103,12 @@
   height: 45px;
   border-radius: 4px;
   overflow: hidden;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8c8c8;
+  color: var(--bg-placeholder-icon);
 }
 
 .suggestionCover img {
@@ -362,12 +362,12 @@
 .coverPlaceholder {
   width: 70px;
   height: 105px;
-  background: #f0f2f5;
+  background: var(--bg-placeholder);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c8c8c8;
+  color: var(--bg-placeholder-icon);
 }
 
 .bookInfo {
