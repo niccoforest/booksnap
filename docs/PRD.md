@@ -32,22 +32,22 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | SR-1 | ✅ Ricerca con filtri (genere, anno, lingua, pagine) | P1 | M | - |
 | SR-2 | ✅ Ricerca nella propria libreria | P1 | M | - |
 | SR-3 | ✅ Fuzzy matching / tolleranza typo | P2 | M | - |
-| SR-4 | Autocomplete nella ricerca | P2 | S | - |
-| SR-5 | Libri simili ("Chi ha letto X ha letto anche Y") | P2 | L | TP-1 |
+| SR-4 | ✅ Autocomplete nella ricerca | P2 | S | - |
+| SR-5 | ✅ Libri simili ("Chi ha letto X ha letto anche Y") | P2 | L | TP-1 |
 | **STATISTICHE** | | | | |
 | ST-1 | ✅ Dashboard statistiche lettura | P1 | M | - |
-| ST-2 | Distribuzione generi (grafico) | P2 | S | ST-1 |
-| ST-3 | Reading pace e streak | P2 | S | ST-1 |
+| ST-2 | ✅ Distribuzione generi (grafico) | P2 | S | ST-1 |
+| ST-3 | ✅ Reading pace e streak | P2 | S | ST-1 |
 | **PROFILO** | | | | |
 | PR-1 | ✅ Pagina profilo gusti (visualizzazione taste profile) | P1 | M | TP-2 |
-| PR-2 | Override manuale generi preferiti | P2 | S | PR-1 |
+| PR-2 | ✅ Override manuale generi preferiti | P2 | S | PR-1 |
 
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
 | UI-2 | ✅ Rec. proattive — filtro libri già in libreria (no duplicati) | P1 | S | RC-2 |
 | UI-3 | ✅ Book detail — Aggiunta alla libreria con scelta stato | P1 | M | - |
 | UI-4 | ✅ Book detail — Hero con copertina galleggiante su sfondo sfocato | P1 | S | - |
-| UI-5 | Scan page — revisione layout e UX | P2 | M | - |
+| UI-5 | ✅ Scan page — revisione layout e UX | P2 | M | - |
 | UI-6 | Navigazione — BottomNav punta a /assistant (chat) e /search (ricerca) | P1 | S | - |
 **Legenda Priorità:** P0 = Must have (fase 1), P1 = Should have (fase 2), P2 = Nice to have (fase 3)
 
@@ -63,7 +63,7 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~UI-1, UI-2, UI-3, UI-4, UI-6~~
 
 ### Fase 3 — Polish e discovery avanzata (P2)
-> ~~SR-3~~, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5
+> ~~SR-3, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5~~
 
 ---
 

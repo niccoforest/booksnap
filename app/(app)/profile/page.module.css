@@ -1,6 +1,7 @@
 .page {
   min-height: 100dvh;
   padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  background: var(--bg-primary);
 }
 
 .skeleton {
@@ -65,7 +66,7 @@
 /* Stats grid */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-sm);
   padding: 0 var(--spacing-md) var(--spacing-lg);
 }
@@ -83,18 +84,217 @@
 }
 
 .statValue {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--accent);
   letter-spacing: -0.02em;
 }
 
 .statLabel {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  text-align: center;
+}
+
+/* Taste Profile */
+.tasteProfile {
+  margin: 0 var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.tasteSummary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-lg);
+  background: var(--accent-dim);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+.tasteSummary strong {
+  color: var(--accent);
+}
+
+/* Taste Dashboard Layout */
+.tasteDashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+@media (min-width: 600px) {
+  .tasteDashboard {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.chartSection {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-md) 0;
+}
+
+.donutChart {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.5s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.donutCenter {
+  width: 90px;
+  height: 90px;
+  background: var(--bg-card);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.donutVal {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.donutLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.genreBars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.genreRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.genreLabels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.genreName {
+  color: var(--text-primary);
+}
+
+.genreActions {
+  display: flex;
+  gap: 4px;
+}
+
+.gAction {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gAction:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.barWrap {
+  height: 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Favorite Authors */
+.tasteSection {
+  margin-top: var(--spacing-lg);
+}
+
+.subTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.authorList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.authorItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.authorName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.authorMeta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 /* Menu */
@@ -109,16 +309,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-}
-
-.sectionTitle {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 0 var(--spacing-sm);
-  margin-bottom: 4px;
 }
 
 .menuItem {
@@ -150,125 +340,11 @@
 .menuItem:hover { background: var(--bg-card-hover); }
 .menuItem:active { transform: scale(0.99); }
 
-/* Taste Profile */
-.tasteProfile {
-  margin: 0 var(--spacing-md) var(--spacing-lg);
-  padding: var(--spacing-md);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-}
-
-.sectionTitle {
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary);
-}
-
-.tasteSummary {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin-bottom: var(--spacing-md);
-  background: var(--accent-dim);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border-left: 3px solid var(--accent);
-}
-
-.tasteSummary strong {
-  color: var(--accent);
-}
-
-.tasteSection {
-  margin-top: var(--spacing-lg);
-}
-
-.subTitle {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: var(--spacing-sm);
-}
-
-.genreBars {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.genreRow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.genreLabels {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.genreName {
-  color: var(--text-primary);
-}
-
-.genreScore {
-  color: var(--accent);
-}
-
-.barWrap {
-  height: 8px;
-  background: var(--bg-secondary);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.barFill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
-  transition: width 0.5s ease-out;
-}
-
-.authorList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.authorItem {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-}
-
-.authorName {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-}
-
-.authorMeta {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
 .danger {
-  border-color: rgba(239,68,68,0.2);
+  border-color: rgba(239, 68, 68, 0.2);
   color: #f87171;
 }
 
-.danger:hover { background: rgba(239,68,68,0.1); }
+.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}

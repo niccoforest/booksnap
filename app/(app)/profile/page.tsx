@@ -25,6 +25,8 @@ interface TasteProfile {
     avgRating: number
     preferredPageRange: string
     topGenres: string[]
+    avgPace?: number
+    streak?: number
   }
 }
 
@@ -72,6 +74,18 @@ export default function ProfilePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme: next }),
     })
+  }
+
+  const handleOverride = async (genre: string, type: 'boost' | 'suppress' | null) => {
+    try {
+      await fetch('/api/profile/taste/overrides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ genre, type }),
+      })
+      // Refresh taste profile
+      fetchTasteProfile()
+    } catch {}
   }
 
   const fetchStats = async () => {
@@ -139,6 +153,18 @@ export default function ProfilePage() {
           <span className={styles.statValue}>{readingStats.to_read}</span>
           <span className={styles.statLabel}>Da leggere</span>
         </div>
+        {tasteProfile?.stats.avgPace && (
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tasteProfile.stats.avgPace}</span>
+            <span className={styles.statLabel}>Giorni/Libro</span>
+          </div>
+        )}
+        {tasteProfile?.stats.streak !== undefined && (
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tasteProfile.stats.streak}</span>
+            <span className={styles.statLabel}>Giorni attivi</span>
+          </div>
+        )}
       </div>
 
       {/* Taste Profile */}
@@ -152,14 +178,39 @@ export default function ProfilePage() {
             </p>
           )}
 
-          <div className={styles.tasteSection}>
-            <p className={styles.subTitle}>I tuoi generi</p>
+          <div className={styles.tasteDashboard}>
+            <div className={styles.chartSection}>
+              {/* CSS Donut Chart */}
+              <div 
+                className={styles.donutChart}
+                style={{
+                   background: `conic-gradient(
+                     var(--accent) 0% ${tasteProfile.genreAffinities[0]?.score || 0}%,
+                     #3b82f6 ${tasteProfile.genreAffinities[0]?.score || 0}% ${(tasteProfile.genreAffinities[0]?.score || 0) + (tasteProfile.genreAffinities[1]?.score || 0) * 0.5}%,
+                     #a855f7 ${(tasteProfile.genreAffinities[0]?.score || 0) + (tasteProfile.genreAffinities[1]?.score || 0) * 0.5}% 100%
+                   )`
+                }}
+              >
+                <div className={styles.donutCenter}>
+                  <span className={styles.donutVal}>{tasteProfile.stats.completedBooks}</span>
+                  <span className={styles.donutLabel}>Letti</span>
+                </div>
+              </div>
+            </div>
+
             <div className={styles.genreBars}>
               {tasteProfile.genreAffinities.slice(0, 5).map(g => (
                 <div key={g.genre} className={styles.genreRow}>
                   <div className={styles.genreLabels}>
                     <span className={styles.genreName}>{g.genre}</span>
-                    <span className={styles.genreScore}>{g.score}</span>
+                    <div className={styles.genreActions}>
+                      <button className={styles.gAction} onClick={() => handleOverride(g.genre, 'suppress')} aria-label="Nascondi">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                      <button className={styles.gAction} onClick={() => handleOverride(g.genre, 'boost')} aria-label="Più di questo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><polyline points="18 15 12 9 6 15"/></svg>
+                      </button>
+                    </div>
                   </div>
                   <div className={styles.barWrap}>
                     <div className={styles.barFill} style={{ width: `${g.score}%` }} />

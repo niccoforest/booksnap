@@ -369,3 +369,70 @@
 .btnDanger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
+
+/* Similar Books */
+.similarSection {
+  margin-top: var(--spacing-lg);
+}
+
+.similarGrid {
+  display: flex;
+  gap: var(--spacing-md);
+  overflow-x: auto;
+  padding: var(--spacing-sm) 0 var(--spacing-md);
+  margin: 0 calc(var(--spacing-md) * -1);
+  padding: 0 var(--spacing-md);
+  scrollbar-width: none;
+}
+
+.similarGrid::-webkit-scrollbar { display: none; }
+
+.similarCard {
+  flex: 0 0 100px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s;
+}
+
+.similarCard:active { transform: scale(0.95); }
+
+.similarCoverWrap {
+  width: 100%;
+  aspect-ratio: 2/3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.similarCover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.similarCoverPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: var(--bg-secondary);
+}
+
+.similarTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text-primary);
+}

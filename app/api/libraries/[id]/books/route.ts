@@ -27,12 +27,21 @@ export async function POST(
     const existing = library.books.find((b: BookEntry) => b.bookId.toString() === bookId)
     if (existing) return NextResponse.json({ error: 'Libro già presente in questa libreria' }, { status: 409 })
 
-    library.books.push({
+    const now = new Date()
+    const entry: any = {
       bookId: new mongoose.Types.ObjectId(bookId),
       status,
       tags: [],
-      addedAt: new Date(),
-    })
+      addedAt: now,
+    }
+
+    if (status === 'reading') entry.startedAt = now
+    if (status === 'completed') {
+      entry.startedAt = entry.startedAt || now
+      entry.finishedAt = now
+    }
+
+    library.books.push(entry)
 
     await library.save()
 
@@ -64,11 +73,22 @@ export async function PATCH(
     if (!entry) return NextResponse.json({ error: 'Libro non trovato in questa libreria' }, { status: 404 })
 
     const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes']
+    const now = new Date()
+
     allowedFields.forEach((field) => {
       if (updates[field] !== undefined) {
         (entry as any)[field] = updates[field]
       }
     })
+
+    // Automatic date handling
+    if (updates.status === 'reading' && !entry.startedAt) {
+      entry.startedAt = now
+    }
+    if (updates.status === 'completed' && !entry.finishedAt) {
+      entry.finishedAt = now
+      if (!entry.startedAt) entry.startedAt = now
+    }
 
     await library.save()
     return NextResponse.json({ message: 'Aggiornato', entry })

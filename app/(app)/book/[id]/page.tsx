@@ -51,6 +51,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [adding, setAdding] = useState(false)
   const [addStatus, setAddStatus] = useState<ReadingStatus>('to_read')
   const [showAddPanel, setShowAddPanel] = useState(false)
+  const [similarBooks, setSimilarBooks] = useState<BookDetail[]>([])
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const router = useRouter()
 
@@ -75,17 +76,22 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
       if (libRes.status === 401) { router.push('/login'); return }
       const libData = await libRes.json()
 
-      for (const lib of libData.libraries || []) {
-        const found = lib.books?.find((b: any) => {
+      const found = libData.libraries?.find((lib: any) =>
+        lib.books?.find((b: any) => {
           const bId = b.bookId?._id?.toString() || b.bookId?.toString()
           return bId === id
         })
-        if (found) {
-          setEntry({ ...found, libraryId: lib._id, bookId: id })
-          setReview(found.review || '')
-          break
-        }
+      )
+      if (found) {
+        const foundEntry = found.books.find((b: any) => (b.bookId?._id || b.bookId).toString() === id)
+        setEntry({ ...foundEntry, libraryId: found._id, bookId: id })
+        setReview(foundEntry.review || '')
       }
+
+      // Fetch similar books
+      const simRes = await fetch(`/api/books/${id}/similar`)
+      const simData = await simRes.json()
+      setSimilarBooks(simData.books || [])
     } finally {
       setLoading(false)
     }
@@ -389,6 +395,27 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
         </div>
+
+        {/* Similar Books */}
+        {similarBooks.length > 0 && (
+          <div className={styles.similarSection}>
+            <p className={styles.sectionLabel}>Libri Simili</p>
+            <div className={styles.similarGrid}>
+              {similarBooks.map((sb) => (
+                <Link key={sb._id} href={`/book/${sb._id}`} className={styles.similarCard} onClick={() => window.scrollTo(0, 0)}>
+                  <div className={styles.similarCoverWrap}>
+                    {sb.coverUrl ? (
+                      <img src={sb.coverUrl} alt={sb.title} className={styles.similarCover} />
+                    ) : (
+                      <div className={styles.similarCoverPlaceholder}>📚</div>
+                    )}
+                  </div>
+                  <p className={styles.similarTitle}>{sb.title}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Toast */}

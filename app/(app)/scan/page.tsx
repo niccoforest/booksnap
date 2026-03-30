@@ -408,8 +408,8 @@ export default function ScanPage() {
                     <p className={styles.bookAuthor}>{book.authors.join(', ')}</p>
                     {book.isbn && <p className={styles.bookIsbn}>ISBN: {book.isbn}</p>}
                     <div className={styles.confidence}>
-                      <div className={styles.confidenceBar} style={{ width: `${Math.round(book.confidence * 100)}%` }} />
-                      <span>{Math.round(book.confidence * 100)}% sicuro</span>
+                      <div className={styles.confidenceBar} style={{ '--c-width': `${Math.round(book.confidence * 100)}%` } as any} />
+                      <span className={styles.confidenceText}>{Math.round(book.confidence * 100)}%</span>
                     </div>
                   </div>
                   <button

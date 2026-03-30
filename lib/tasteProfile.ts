@@ -32,6 +32,8 @@ export interface TasteProfile {
     avgRating: number
     preferredPageRange: string
     topGenres: string[]
+    avgPace?: number // avg days to finish a book
+    streak?: number  // active days in last 30 days
   }
 }
 
@@ -236,7 +238,39 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
       completedBooks,
       avgRating: totalRatedCount > 0 ? parseFloat((totalRatingSum / totalRatedCount).toFixed(1)) : 0,
       preferredPageRange,
-      topGenres
+      topGenres,
+      avgPace: calculateAvgPace(completedList),
+      streak: calculateActivityStreak(allBooks)
     }
   }
+}
+
+function calculateAvgPace(completed: Array<{ entry: BookEntry, book: IBook }>): number | undefined {
+  const diffs = completed
+    .filter(c => c.entry.startedAt && c.entry.finishedAt)
+    .map(c => {
+      const diffTime = c.entry.finishedAt!.getTime() - c.entry.startedAt!.getTime()
+      return Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)))
+    })
+
+  if (diffs.length === 0) return undefined
+  return Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
+}
+
+function calculateActivityStreak(all: Array<{ entry: BookEntry, book: IBook }>): number {
+  const activityDates = new Set<string>()
+  const now = new Date()
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(now.getDate() - 30)
+
+  all.forEach(({ entry }) => {
+    [entry.addedAt, entry.startedAt, entry.finishedAt].forEach(d => {
+      if (d && d >= thirtyDaysAgo) {
+        activityDates.add(d.toISOString().split('T')[0])
+      }
+    })
+  })
+
+  // Count active days in the last 30 days (as a proxy for streak/active level)
+  return activityDates.size
 }

@@ -28,6 +28,8 @@ function SearchContent() {
   const [loading, setLoading] = useState(false)
   const [searchContext, setSearchContext] = useState<'all' | 'library'>('all')
   const [libraryIds, setLibraryIds] = useState<Set<string>>(new Set())
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   // Filters
   const [showFilters, setShowFilters] = useState(false)
@@ -44,6 +46,28 @@ function SearchContent() {
       performSearch(initialQuery)
     }
   }, [])
+
+  // Autocomplete logic
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (query.trim().length >= 2 && searchContext === 'all') {
+        fetchSuggestions(query)
+      } else {
+        setSuggestions([])
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [query, searchContext])
+
+  const fetchSuggestions = async (q: string) => {
+    try {
+      const res = await fetch(`/api/books/autocomplete?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      setSuggestions(data.suggestions || [])
+      setShowSuggestions(true)
+    } catch {}
+  }
 
   const fetchLibrary = async () => {
     try {
@@ -116,8 +140,37 @@ function SearchContent() {
             placeholder="Cerca per titolo, autore..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && performSearch()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                performSearch()
+                setShowSuggestions(false)
+              }
+            }}
+            onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           />
+          {showSuggestions && suggestions.length > 0 && (
+            <div className={styles.suggestions}>
+              {suggestions.map((s) => (
+                <Link key={s._id} href={`/book/${s._id}`} className={styles.suggestionItem}>
+                  <div className={styles.suggestionCover}>
+                    {s.coverUrl ? (
+                      <img src={s.coverUrl} alt={s.title} />
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className={styles.suggestionInfo}>
+                    <p className={styles.suggestionTitle}>{s.title}</p>
+                    <p className={styles.suggestionAuthor}>{s.authors?.[0]}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
           <button className={styles.searchBtn} onClick={() => performSearch()} disabled={loading}>
             {loading ? '...' : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
