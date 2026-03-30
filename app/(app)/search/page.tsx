@@ -39,12 +39,31 @@ function SearchContent() {
   const [pagesMin, setPagesMin] = useState('')
   const [pagesMax, setPagesMax] = useState('')
 
+  // Discovery data
+  const [discoveryData, setDiscoveryData] = useState<any[]>([])
+  const [discoveryLoading, setDiscoveryLoading] = useState(false)
+
   useEffect(() => {
     fetchLibrary()
     if (initialQuery) {
       performSearch(initialQuery)
+    } else {
+      fetchDiscovery()
     }
   }, [])
+
+  const fetchDiscovery = async () => {
+    setDiscoveryLoading(true)
+    try {
+      const res = await fetch('/api/books/discovery')
+      const data = await res.json()
+      setDiscoveryData(data.discovery || [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setDiscoveryLoading(false)
+    }
+  }
 
   // Autocomplete logic
   useEffect(() => {
@@ -184,7 +203,55 @@ function SearchContent() {
       </div>
 
       <div className={styles.resultsArea}>
-        {results.map((book) => (
+        {query.trim().length === 0 && !loading && (
+          <div className={styles.discovery}>
+            {discoveryLoading ? (
+              <div className={styles.discoverySkeleton}>
+                {[1, 2].map(i => (
+                  <div key={i} className={styles.categorySkeleton}>
+                    <div className="skeleton" style={{ height: '20px', width: '120px', marginBottom: '12px' }} />
+                    <div className={styles.carouselSkeleton}>
+                      {[1, 2, 3].map(j => (
+                        <div key={j} className="skeleton" style={{ width: '120px', height: '180px', borderRadius: '8px' }} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              discoveryData.map((section) => (
+                <div key={section.genre} className={section.books.length > 0 ? styles.discoverySection : styles.hidden}>
+                  <h2 className={styles.sectionTitle}>In voga: {section.genre}</h2>
+                  <div className={styles.carousel}>
+                    {section.books.map((book: any) => (
+                      <Link key={book._id} href={`/book/${book._id}`} className={styles.discoveryCard}>
+                        <div className={styles.discoveryCover}>
+                          {book.coverUrl ? (
+                            <img src={book.coverUrl} alt={book.title} />
+                          ) : (
+                            <div className={styles.discoveryPlaceholder}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
+                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                              </svg>
+                            </div>
+                          )}
+                          {libraryIds.has(book._id) && (
+                            <div className={styles.cardBadge}>✓</div>
+                          )}
+                        </div>
+                        <p className={styles.cardTitle}>{book.title}</p>
+                        <p className={styles.cardAuthor}>{book.authors?.[0]}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {query.trim().length > 0 && results.map((book) => (
           <div key={book._id} className={styles.bookCard}>
             <div className={styles.coverWrap}>
               {book.coverUrl ? (
@@ -222,7 +289,7 @@ function SearchContent() {
             </div>
           </div>
         ))}
-        {!loading && results.length === 0 && (
+        {query.trim().length > 0 && !loading && results.length === 0 && (
           <div className={styles.empty}>
             <p>Nessun libro trovato.</p>
           </div>
