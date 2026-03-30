@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get('state')
   const cookieStore = await cookies()
   const storedState = cookieStore.get('oauth_state')?.value
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+  baseUrl = baseUrl.replace(/\/$/, '')
   
   console.log('[OAuth Callback] Code:', !!code, 'State:', state, 'StoredState:', storedState)
 

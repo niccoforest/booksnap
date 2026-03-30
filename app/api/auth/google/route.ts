@@ -5,7 +5,8 @@ import { cookies } from 'next/headers'
 export async function GET(request: NextRequest) {
   const state = crypto.randomBytes(16).toString('hex')
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+  baseUrl = baseUrl.replace(/\/$/, '')
   
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
