@@ -5,9 +5,11 @@ import { cookies } from 'next/headers'
 export async function GET(request: NextRequest) {
   const state = crypto.randomBytes(16).toString('hex')
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+  
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`,
+    redirect_uri: `${baseUrl}/api/auth/google/callback`,
     response_type: 'code',
     scope: 'openid email profile',
     prompt: 'select_account',

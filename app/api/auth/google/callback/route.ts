@@ -10,12 +10,13 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get('state')
   const cookieStore = await cookies()
   const storedState = cookieStore.get('oauth_state')?.value
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
   
   console.log('[OAuth Callback] Code:', !!code, 'State:', state, 'StoredState:', storedState)
 
   if (!code || !state || state !== storedState) {
     console.error('[OAuth Callback] Validation failed:', { codeFromUrl: !!code, stateFromUrl: state, stateFromCookie: storedState })
-    const errorResponse = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login?error=google_failed`)
+    const errorResponse = NextResponse.redirect(`${baseUrl}/login?error=google_failed`)
     errorResponse.headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0; HttpOnly')
     return errorResponse
   }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`,
+        redirect_uri: `${baseUrl}/api/auth/google/callback`,
         grant_type: 'authorization_code',
       }),
     })
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
     const token = signToken({ userId: user._id.toString(), email: user.email })
     
     // Redirect to library with cookie
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/library`)
+    const response = NextResponse.redirect(`${baseUrl}/library`)
     response.headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0; HttpOnly')
     response.headers.append('Set-Cookie', createAuthCookieHeader(token))
     
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Google Auth callback error:', error)
-    const errResp = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/login?error=google_failed`)
+    const errResp = NextResponse.redirect(`${baseUrl}/login?error=google_failed`)
     errResp.headers.append('Set-Cookie', 'oauth_state=; Path=/; Max-Age=0; HttpOnly')
     return errResp
   }
