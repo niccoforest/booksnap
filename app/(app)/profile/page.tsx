@@ -11,6 +11,8 @@ interface User {
   avatar?: string
   bio?: string
   preferences?: { theme: 'dark' | 'light' }
+  isPublic?: boolean
+  profileSlug?: string
 }
 
 interface TasteProfile {
@@ -60,6 +62,7 @@ export default function ProfilePage() {
   const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [isPublic, setIsPublic] = useState(true)
   const [loading, setLoading] = useState(true)
   const [aiLoading, setAiLoading] = useState(true)
   const router = useRouter()
@@ -76,6 +79,7 @@ export default function ProfilePage() {
       const data = await res.json()
       setUser(data.user)
       setTheme(data.user?.preferences?.theme || 'light')
+      setIsPublic(data.user?.isPublic !== false)
     } finally {
       setLoading(false)
     }
@@ -174,6 +178,16 @@ export default function ProfilePage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ theme: next }),
+    })
+  }
+
+  const togglePrivacy = async () => {
+    const next = !isPublic
+    setIsPublic(next)
+    await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPublic: next }),
     })
   }
 
@@ -439,6 +453,27 @@ export default function ProfilePage() {
             </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
           </a>
+        </div>
+
+        <div className={styles.section}>
+          <p className={styles.sectionTitle}>Privacy e Community</p>
+          <button className={styles.menuItem} onClick={togglePrivacy}>
+            <span className={styles.menuItemLeft}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width="18" height="18">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Profilo pubblico
+            </span>
+            <div className={`${styles.toggle} ${isPublic ? styles.toggleOn : ''}`}>
+              <div className={styles.toggleCircle} />
+            </div>
+          </button>
+          {isPublic && user?.profileSlug && (
+             <div className={styles.slugInfo}>
+               <span>Il tuo link pubblico:</span>
+               <code>booksnap.it/user/{user.profileSlug}</code>
+             </div>
+          )}
         </div>
 
         <div className={styles.section}>

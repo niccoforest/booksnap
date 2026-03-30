@@ -20,6 +20,10 @@ export interface IUser extends Document {
     insights?: { data: any[]; expiresAt: Date }
     goals?: { data: any[]; expiresAt: Date }
   }
+  isPublic: boolean
+  followers: mongoose.Types.ObjectId[]
+  following: mongoose.Types.ObjectId[]
+  profileSlug: string
   createdAt: Date
   comparePassword(candidate: string): Promise<boolean>
 }
@@ -44,6 +48,10 @@ const UserSchema = new Schema<IUser>(
       insights: { data: [Schema.Types.Mixed], expiresAt: Date },
       goals: { data: [Schema.Types.Mixed], expiresAt: Date },
     },
+    isPublic: { type: Boolean, default: true },
+    followers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    following: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    profileSlug: { type: String, unique: true, sparse: true, trim: true },
   },
   { timestamps: true }
 )

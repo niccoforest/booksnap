@@ -1,0 +1,478 @@
+.page {
+  padding-bottom: calc(var(--bottom-nav-height) + 20px);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px var(--spacing-md);
+  position: sticky;
+  top: 0;
+  background: var(--bg-primary);
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.refreshBtn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refreshBtn:hover { background: var(--accent-dim); }
+
+/* ─── Tabs ────────────────────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  padding: 0 var(--spacing-md);
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 57px;
+  background: var(--bg-primary);
+  z-index: 9;
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s;
+}
+
+.tabActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ─── Content ─────────────────────────────────────────────────────────────── */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+  gap: var(--spacing-md);
+}
+
+/* ─── Skeletons ───────────────────────────────────────────────────────────── */
+
+.skeletons { display: flex; flex-direction: column; gap: 16px; }
+
+.skeletonCard { display: flex; gap: 12px; align-items: flex-start; }
+
+/* ─── Empty ───────────────────────────────────────────────────────────────── */
+
+.empty {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* ─── Activity card ───────────────────────────────────────────────────────── */
+
+.activityCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.activityHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.userAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.userAvatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.activityMeta {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+
+.actUsername {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.actAction { color: var(--text-secondary); }
+
+.actTime { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+
+.actBook {
+  display: flex;
+  gap: 12px;
+  background: var(--bg-card);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  transition: transform 0.15s;
+}
+
+.actBook:hover { transform: scale(1.02); }
+
+.actCover {
+  width: 44px;
+  aspect-ratio: 2/3;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  flex-shrink: 0;
+}
+
+.actCover img { width: 100%; height: 100%; object-fit: cover; }
+
+.actBookInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+
+.actBookTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.actBookAuthor { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* ─── Trending card ───────────────────────────────────────────────────────── */
+
+.trendingCard {
+  display: flex;
+  gap: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+
+.trendingCard:hover { transform: scale(1.01); }
+
+.trendingCover {
+  width: 54px;
+  aspect-ratio: 2/3;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.trendingCover img { width: 100%; height: 100%; object-fit: cover; }
+
+.trendingInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.trendingTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.trendingAuthor { font-size: 0.8rem; color: var(--text-secondary); }
+
+.trendingCount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-top: 4px;
+}
+
+/* ─── Shelf card ──────────────────────────────────────────────────────────── */
+
+.shelfCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.shelfCovers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  height: 90px;
+  gap: 2px;
+  background: var(--border);
+}
+
+.shelfCoverItem {
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.shelfCoverItem img { width: 100%; height: 100%; object-fit: cover; }
+
+.shelfCoverEmpty { background: var(--bg-placeholder); }
+
+.shelfInfo { padding: 12px 14px; }
+
+.shelfTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.shelfDesc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shelfMeta { font-size: 0.75rem; color: var(--text-muted); }
+
+.shelfAuthor {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+/* ─── Challenge card ──────────────────────────────────────────────────────── */
+
+.challengeCard {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.challengeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.challengeTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.challengeDesc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.joinBtn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.joinedBtn {
+  background: var(--bg-card);
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+}
+
+.challengeMeta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.challengeGoal { color: var(--text-secondary); }
+.challengeEnd { color: var(--text-muted); }
+
+.progressWrap {
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.progressText {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.challengeFooter {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.challengeCreator { color: var(--accent); text-decoration: none; }
+.challengeParticipants { color: var(--text-muted); }
+
+/* ─── New challenge form ──────────────────────────────────────────────────── */
+
+.newChallengeBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.newChallengeBtn:hover { background: var(--accent-dim); }
+
+.newChallengeForm {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.formLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.formInput {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.formSelect {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+/* ─── Shared ──────────────────────────────────────────────────────────────── */
+
+.coverPlaceholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--bg-card), var(--bg-secondary));
+}

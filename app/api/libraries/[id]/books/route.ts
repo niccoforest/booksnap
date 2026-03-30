@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { connectDB } from '@/lib/mongodb'
 import { Library, BookEntry } from '@/models/Library'
+import { logActivity } from '@/lib/activities'
 import mongoose from 'mongoose'
 
 // POST /api/libraries/[id]/books - Add book to library
@@ -14,7 +15,7 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 
     const { id } = await ctx.params
-    const { bookId, status = 'to_read' } = await request.json()
+    const { bookId, status = 'to_read', readInPast = false } = await request.json()
 
     if (!bookId) return NextResponse.json({ error: 'bookId obbligatorio' }, { status: 400 })
 
@@ -33,6 +34,7 @@ export async function POST(
       status,
       tags: [],
       addedAt: now,
+      readInPast
     }
 
     if (status === 'reading') entry.startedAt = now
@@ -42,10 +44,14 @@ export async function POST(
     }
 
     library.books.push(entry)
-
     await library.save()
 
-    return NextResponse.json({ message: 'Libro aggiunto', library }, { status: 201 })
+    // Activity log - only log if NOT read in past (to keep feed clean of old stuff)
+    if (!readInPast) {
+      await logActivity(user.userId, 'book_added', bookId)
+    }
+
+    return NextResponse.json({ message: 'Libro aggiunto', library: library.toObject() }, { status: 201 })
   } catch (error) {
     console.error('[library add book]', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
@@ -72,7 +78,9 @@ export async function PATCH(
     const entry = library.books.find((b: BookEntry) => b.bookId.toString() === bookId)
     if (!entry) return NextResponse.json({ error: 'Libro non trovato in questa libreria' }, { status: 404 })
 
-    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes']
+    const oldStatus = entry.status
+    const oldRating = entry.rating
+    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast']
     const now = new Date()
 
     allowedFields.forEach((field) => {
@@ -91,6 +99,15 @@ export async function PATCH(
     }
 
     await library.save()
+
+    // Activity logs
+    if (updates.status === 'completed' && oldStatus !== 'completed' && !entry.readInPast) {
+      await logActivity(user.userId, 'book_finished', bookId)
+    }
+    if (updates.rating !== undefined && updates.rating !== oldRating) {
+      await logActivity(user.userId, 'book_rated', bookId, { rating: updates.rating })
+    }
+
     return NextResponse.json({ message: 'Aggiornato', entry })
   } catch (error) {
     console.error('[library update book]', error)

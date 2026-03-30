@@ -11,7 +11,9 @@
       "Bash(find /c/Users/nicco/OneDrive/Desktop/booksnap -maxdepth 2 -not -path */node_modules/* -not -path */.next/* -type d)",
       "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"social reading community dashboard statistics\" --domain ux -n 10)",
       "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"book reading library PWA\" --stack nextjs -n 10)",
-      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"dashboard statistics chart\" --domain chart -n 10)"
+      "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"dashboard statistics chart\" --domain chart -n 10)",
+      "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]\")",
+      "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]/join\")"
     ]
   }
 }
