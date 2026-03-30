@@ -150,6 +150,122 @@
 .menuItem:hover { background: var(--bg-card-hover); }
 .menuItem:active { transform: scale(0.99); }
 
+/* Taste Profile */
+.tasteProfile {
+  margin: 0 var(--spacing-md) var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.tasteSummary {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-md);
+  background: var(--accent-dim);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+.tasteSummary strong {
+  color: var(--accent);
+}
+
+.tasteSection {
+  margin-top: var(--spacing-lg);
+}
+
+.subTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.genreBars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.genreRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.genreLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.genreName {
+  color: var(--text-primary);
+}
+
+.genreScore {
+  color: var(--accent);
+}
+
+.barWrap {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.5s ease-out;
+}
+
+.authorList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.authorItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.authorName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.authorMeta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .danger {
   border-color: rgba(239,68,68,0.2);
   color: #f87171;

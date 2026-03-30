@@ -48,22 +48,29 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [review, setReview] = useState('')
   const [removing, setRemoving] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [addStatus, setAddStatus] = useState<ReadingStatus>('to_read')
+  const [showAddPanel, setShowAddPanel] = useState(false)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     loadData()
   }, [])
 
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
+
   const loadData = async () => {
     const { id } = await params
     try {
-      // Fetch book
       const bookRes = await fetch(`/api/books/${id}`)
       if (bookRes.status === 404) { router.push('/library'); return }
       const bookData = await bookRes.json()
       setBook(bookData.book)
 
-      // Check if in library
       const libRes = await fetch('/api/libraries')
       if (libRes.status === 401) { router.push('/login'); return }
       const libData = await libRes.json()
@@ -104,6 +111,36 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
     setShowReview(false)
   }
 
+  const addToLibrary = async () => {
+    if (!book) return
+    setAdding(true)
+    try {
+      const libRes = await fetch('/api/libraries')
+      const libData = await libRes.json()
+      const defaultLib = libData.libraries?.find((l: any) => l.isDefault) || libData.libraries?.[0]
+      if (!defaultLib) throw new Error('Nessuna libreria trovata')
+
+      const res = await fetch(`/api/libraries/${defaultLib._id}/books`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: book._id, status: addStatus }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Errore')
+      }
+
+      setEntry({ libraryId: defaultLib._id, bookId: book._id, status: addStatus, tags: [] })
+      setShowAddPanel(false)
+      showToast(`"${book.title}" aggiunto alla libreria`)
+    } catch (err: any) {
+      showToast(err.message, 'error')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   const removeFromLibrary = async () => {
     if (!entry) return
     setRemoving(true)
@@ -123,8 +160,8 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) {
     return (
       <div className={styles.page}>
-        <div className={styles.skeleton}>
-          <div className="skeleton" style={{ width: '100%', height: 350 }} />
+        <div className={styles.heroSkeleton}>
+          <div className="skeleton" style={{ width: '100%', height: '100%' }} />
         </div>
       </div>
     )
@@ -141,19 +178,27 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
         </svg>
       </button>
 
-      {/* Hero cover */}
+      {/* Hero — blurred bg + floating cover */}
       <div className={styles.hero}>
-        {book.coverUrl ? (
-          <img src={book.coverUrl} alt={book.title} className={styles.cover} />
-        ) : (
-          <div className={styles.coverPlaceholder}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-          </div>
+        {book.coverUrl && (
+          <img src={book.coverUrl} alt="" aria-hidden className={styles.heroBg} />
         )}
-        <div className={styles.heroGlow} />
+        <div className={styles.heroOverlay} />
+        <div className={styles.heroContent}>
+          <div className={styles.coverFloat}>
+            {book.coverUrl ? (
+              <img src={book.coverUrl} alt={book.title} className={styles.coverImg} />
+            ) : (
+              <div className={styles.coverPlaceholder}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className={styles.heroFade} />
       </div>
 
       {/* Info */}
@@ -176,6 +221,45 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             {book.pageCount && <span>· {book.pageCount} pag</span>}
           </div>
         </div>
+
+        {/* ADD TO LIBRARY — shown only if not in library */}
+        {!entry && (
+          <div className={styles.addSection}>
+            {!showAddPanel ? (
+              <button className={styles.addBtn} onClick={() => setShowAddPanel(true)}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Aggiungi alla libreria
+              </button>
+            ) : (
+              <div className={styles.addPanel}>
+                <p className={styles.sectionLabel}>Aggiungi come...</p>
+                <div className={styles.statusOptions}>
+                  {STATUS_OPTIONS.map((s) => (
+                    <button
+                      key={s}
+                      className={`${styles.statusOption} ${addStatus === s ? styles.active : ''}`}
+                      onClick={() => setAddStatus(s)}
+                      style={addStatus === s ? { borderColor: STATUS_CONFIG[s].color, color: STATUS_CONFIG[s].color } : undefined}
+                    >
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_CONFIG[s].color, flexShrink: 0 }} />
+                      {STATUS_CONFIG[s].label}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.addPanelActions}>
+                  <button className={`btn btn-ghost btn-sm`} onClick={() => setShowAddPanel(false)}>
+                    Annulla
+                  </button>
+                  <button className={`btn btn-primary btn-sm`} onClick={addToLibrary} disabled={adding}>
+                    {adding ? 'Aggiunta...' : 'Conferma'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Status selector */}
         {entry && (
@@ -254,10 +338,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             {confirmRemove ? (
               <div className={styles.confirmRow}>
                 <span className={styles.confirmText}>Rimuovere dalla libreria?</span>
-                <button
-                  className={`btn btn-ghost btn-sm`}
-                  onClick={() => setConfirmRemove(false)}
-                >
+                <button className={`btn btn-ghost btn-sm`} onClick={() => setConfirmRemove(false)}>
                   Annulla
                 </button>
                 <button
@@ -309,6 +390,13 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
           )}
         </div>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="toast-container">
+          <div className={`toast toast-${toast.type}`}>{toast.msg}</div>
+        </div>
+      )}
     </div>
   )
 }

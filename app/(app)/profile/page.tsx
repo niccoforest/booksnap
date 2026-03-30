@@ -13,22 +13,31 @@ interface User {
   preferences?: { theme: 'dark' | 'light' }
 }
 
-interface Stats {
-  total: number
-  completed: number
-  reading: number
-  to_read: number
+interface TasteProfile {
+  genreAffinities: Array<{ genre: string; score: number; bookCount: number; avgRating: number }>
+  favoriteAuthors: Array<{ name: string; bookCount: number; avgRating: number }>
+  recentlyCompleted: Array<{ title: string; author: string; rating?: number }>
+  stats: {
+    totalBooks: number
+    completedBooks: number
+    readingBooks?: number 
+    toReadBooks?: number
+    avgRating: number
+    preferredPageRange: string
+    topGenres: string[]
+  }
 }
 
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null)
-  const [stats, setStats] = useState<Stats>({ total: 0, completed: 0, reading: 0, to_read: 0 })
+  const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null)
+  const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    Promise.all([fetchUser(), fetchStats()])
+    Promise.all([fetchUser(), fetchStats(), fetchTasteProfile()])
   }, [])
 
   const fetchUser = async () => {
@@ -41,6 +50,16 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchTasteProfile = async () => {
+    try {
+      const res = await fetch('/api/profile/taste')
+      const data = await res.json()
+      if (data.profile) {
+        setTasteProfile(data.profile)
+      }
+    } catch {}
   }
 
   const toggleTheme = async () => {
@@ -60,7 +79,7 @@ export default function ProfilePage() {
       const res = await fetch('/api/libraries')
       const data = await res.json()
       const allBooks = data.libraries?.flatMap((l: any) => l.books) || []
-      setStats({
+      setReadingStats({
         total: allBooks.length,
         completed: allBooks.filter((b: any) => b.status === 'completed').length,
         reading: allBooks.filter((b: any) => b.status === 'reading').length,
@@ -105,22 +124,66 @@ export default function ProfilePage() {
       {/* Stats */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
-          <span className={styles.statValue}>{stats.total}</span>
+          <span className={styles.statValue}>{readingStats.total}</span>
           <span className={styles.statLabel}>Totale</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statValue}>{stats.completed}</span>
+          <span className={styles.statValue}>{readingStats.completed}</span>
           <span className={styles.statLabel}>Letti</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statValue}>{stats.reading}</span>
+          <span className={styles.statValue}>{readingStats.reading}</span>
           <span className={styles.statLabel}>In lettura</span>
         </div>
         <div className={styles.statCard}>
-          <span className={styles.statValue}>{stats.to_read}</span>
+          <span className={styles.statValue}>{readingStats.to_read}</span>
           <span className={styles.statLabel}>Da leggere</span>
         </div>
       </div>
+
+      {/* Taste Profile */}
+      {tasteProfile && tasteProfile.stats.totalBooks > 0 && (
+        <div className={styles.tasteProfile}>
+          <h2 className={styles.sectionTitle}>Il tuo Profilo Gusti</h2>
+          
+          {tasteProfile.stats.topGenres && tasteProfile.stats.topGenres.length > 0 && (
+            <p className={styles.tasteSummary}>
+              Sei un lettore con una preferenza per <strong>{tasteProfile.stats.topGenres.join(', ')}</strong>, leggi in media {tasteProfile.stats.preferredPageRange} e valuti i libri con {tasteProfile.stats.avgRating} stelle.
+            </p>
+          )}
+
+          <div className={styles.tasteSection}>
+            <p className={styles.subTitle}>I tuoi generi</p>
+            <div className={styles.genreBars}>
+              {tasteProfile.genreAffinities.slice(0, 5).map(g => (
+                <div key={g.genre} className={styles.genreRow}>
+                  <div className={styles.genreLabels}>
+                    <span className={styles.genreName}>{g.genre}</span>
+                    <span className={styles.genreScore}>{g.score}</span>
+                  </div>
+                  <div className={styles.barWrap}>
+                    <div className={styles.barFill} style={{ width: `${g.score}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {tasteProfile.favoriteAuthors && tasteProfile.favoriteAuthors.length > 0 && (
+            <div className={styles.tasteSection}>
+              <p className={styles.subTitle}>I tuoi autori preferiti</p>
+              <ul className={styles.authorList}>
+                {tasteProfile.favoriteAuthors.slice(0, 5).map(a => (
+                  <li key={a.name} className={styles.authorItem}>
+                    <span className={styles.authorName}>{a.name}</span>
+                    <span className={styles.authorMeta}>{a.bookCount} libri • {a.avgRating.toFixed(1)} ★</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Menu */}
       <div className={styles.menu}>

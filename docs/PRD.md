@@ -26,20 +26,20 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | TP-2 | ✅ Taste Profile API | P0 | S | TP-1 |
 | **RACCOMANDAZIONI** | | | | |
 | RC-1 | ✅ Prompt Assistant potenziato | P0 | S | TP-2 |
-| RC-2 | Raccomandazioni proattive (Home) | P1 | L | TP-2 |
+| RC-2 | ✅ Raccomandazioni proattive (Home) | P1 | L | TP-2 |
 | RC-3 | ✅ "Perché questo libro" (spiegazione match) | P1 | S | RC-1 |
 | **RICERCA** | | | | |
-| SR-1 | Ricerca con filtri (genere, anno, lingua, pagine) | P1 | M | - |
-| SR-2 | Ricerca nella propria libreria | P1 | M | - |
+| SR-1 | ✅ Ricerca con filtri (genere, anno, lingua, pagine) | P1 | M | - |
+| SR-2 | ✅ Ricerca nella propria libreria | P1 | M | - |
 | SR-3 | Fuzzy matching / tolleranza typo | P2 | M | - |
 | SR-4 | Autocomplete nella ricerca | P2 | S | - |
 | SR-5 | Libri simili ("Chi ha letto X ha letto anche Y") | P2 | L | TP-1 |
 | **STATISTICHE** | | | | |
-| ST-1 | Dashboard statistiche lettura | P1 | M | - |
+| ST-1 | ✅ Dashboard statistiche lettura | P1 | M | - |
 | ST-2 | Distribuzione generi (grafico) | P2 | S | ST-1 |
 | ST-3 | Reading pace e streak | P2 | S | ST-1 |
 | **PROFILO** | | | | |
-| PR-1 | Pagina profilo gusti (visualizzazione taste profile) | P1 | M | TP-2 |
+| PR-1 | ✅ Pagina profilo gusti (visualizzazione taste profile) | P1 | M | TP-2 |
 | PR-2 | Override manuale generi preferiti | P2 | S | PR-1 |
 
 **Legenda Effort:** S = Small (< 1 giorno), M = Medium (1-2 giorni), L = Large (3+ giorni)
@@ -52,8 +52,8 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 ### Fase 1 — Fondamenta intelligenti (P0) ✅ COMPLETATA
 > ~~AU-1, AU-2, AU-3, TP-1, TP-2, RC-1~~
 
-### Fase 2 — Esperienza utente arricchita (P1)
-> AU-4, RC-2, RC-3, SR-1, SR-2, ST-1, PR-1
+### Fase 2 — Esperienza utente arricchita (P1) ✅ COMPLETATA
+> ~~AU-4, RC-2, RC-3, SR-1, SR-2, ST-1, PR-1~~
 
 ### Fase 3 — Polish e discovery avanzata (P2)
 > SR-3, SR-4, SR-5, ST-2, ST-3, PR-2

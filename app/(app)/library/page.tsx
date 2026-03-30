@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Recommendations from '@/components/Recommendations'
 import styles from './page.module.css'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
@@ -101,6 +102,9 @@ export default function LibraryPage() {
           )}
         </button>
       </div>
+
+      {/* Recommendations */}
+      <Recommendations />
 
       {/* Library tabs */}
       {libraries.length > 1 && (

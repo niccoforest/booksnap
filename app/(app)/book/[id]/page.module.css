@@ -1,10 +1,11 @@
 .page {
   min-height: 100dvh;
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 24px);
   background: var(--bg-primary);
 }
 
-.skeleton {
+.heroSkeleton {
+  height: 340px;
   overflow: hidden;
 }
 
@@ -13,37 +14,93 @@
   top: var(--spacing-md);
   left: var(--spacing-md);
   z-index: 20;
-  background: rgba(17,17,24,0.7);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.18);
   border-radius: 50%;
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: white;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.backBtn:hover { background: var(--bg-card); }
+.backBtn:hover { background: rgba(0,0,0,0.65); }
 
-/* Hero */
+/* ─── Hero ─────────────────────── */
 .hero {
   position: relative;
-  height: 300px;
+  height: 340px;
   overflow: hidden;
-  background: var(--bg-card);
+  background: #1a1a2e;
 }
 
-.cover {
+/* Full-bleed blurred background */
+.heroBg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: blur(24px) brightness(0.4);
-  transform: scale(1.1);
+  filter: blur(28px) brightness(0.35) saturate(1.4);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+
+/* Dark overlay gradient */
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0.0) 0%,
+    rgba(0,0,0,0.2) 50%,
+    rgba(0,0,0,0.5) 100%
+  );
+  z-index: 1;
+}
+
+/* Fade into page background at the bottom */
+.heroFade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(to bottom, transparent, var(--bg-primary));
+  z-index: 2;
+}
+
+/* Container for floating book cover */
+.heroContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0;
+  z-index: 3;
+}
+
+/* Floating cover card */
+.coverFloat {
+  width: 130px;
+  aspect-ratio: 2/3;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.3);
+  transform: translateY(40px);
+  border: 2px solid rgba(255,255,255,0.12);
+}
+
+.coverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .coverPlaceholder {
@@ -52,25 +109,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 5rem;
-  background: #f0f2f5;
-  color: #c0c0c0;
+  background: linear-gradient(135deg, #2a2a3e, #1a1a2e);
+  color: rgba(255,255,255,0.3);
 }
 
-/* Floating cover (shown above blurred bg via content positioning) */
-.heroGlow {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 40%, var(--bg-primary) 100%);
-}
-
-/* Content */
+/* ─── Content ─────────────────────── */
 .content {
   padding: 0 var(--spacing-md) var(--spacing-xl);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
-  margin-top: -60px;
+  /* Push content below the floating cover */
+  margin-top: 56px; /* 40px translateY + 16px breathing room */
   position: relative;
   z-index: 1;
 }
@@ -79,15 +129,8 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  /* Show cover centered above */
   align-items: flex-start;
-}
-
-/* Actually show book cover centered */
-.mainInfo::before {
-  content: '';
-  display: block;
-  height: 0;
+  padding-top: var(--spacing-sm);
 }
 
 .title {
@@ -126,7 +169,50 @@
   font-size: 0.8125rem;
 }
 
-/* Status section */
+/* ─── Add to Library ─────────────── */
+.addSection {
+  /* no extra styles needed */
+}
+
+.addBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: var(--shadow-accent);
+}
+
+.addBtn:hover { background: var(--accent-hover); }
+.addBtn:active { transform: scale(0.99); }
+
+.addPanel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.addPanelActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+/* ─── Sections ─────────────────────── */
 .statusSection, .ratingSection, .reviewSection, .description, .details {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -225,8 +311,8 @@
   line-height: 1.6;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 6;
-  line-clamp: 6;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
   -webkit-box-orient: vertical;
 }
 
@@ -260,9 +346,7 @@
   gap: 6px;
 }
 
-.removeBtn:hover {
-  color: #ef4444;
-}
+.removeBtn:hover { color: #ef4444; }
 
 .confirmRow {
   display: flex;
