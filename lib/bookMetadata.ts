@@ -109,6 +109,26 @@ async function searchGoogleBooks(recognized: RecognizedBook): Promise<BookMetada
   return null
 }
 
+/**
+ * Searches Google Books for multiple results matching a general query.
+ */
+export async function searchExternalBooks(q: string, limit = 10): Promise<BookMetadata[]> {
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY
+  try {
+    const params = new URLSearchParams({ q, maxResults: limit.toString() })
+    if (apiKey) params.set('key', apiKey)
+    const res = await fetch(`${GOOGLE_BOOKS_API}?${params}`, { signal: withTimeout(TIMEOUT_MS) })
+    if (!res.ok) return []
+    const data = await res.json()
+    if (!data.items) return []
+
+    return data.items.map((item: any) => parseGoogleBooksItem(item, { title: '', author: '' }))
+  } catch (err) {
+    console.error('[searchExternalBooks]', err)
+    return []
+  }
+}
+
 // ─── Open Library (fallback) ──────────────────────────────
 
 async function searchOpenLibrary(recognized: RecognizedBook): Promise<BookMetadata | null> {
