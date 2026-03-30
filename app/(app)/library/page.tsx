@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Recommendations from '@/components/Recommendations'
 import styles from './page.module.css'
@@ -43,11 +43,23 @@ export default function LibraryPage() {
   const [selectedLib, setSelectedLib] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<ReadingStatus | 'all'>('all')
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchLibraries()
   }, [])
+
+  // When search opens, focus input
+  useEffect(() => {
+    if (searchOpen) {
+      setTimeout(() => inputRef.current?.focus(), 50)
+    } else {
+      setSearchQuery('')
+    }
+  }, [searchOpen])
 
   const fetchLibraries = async () => {
     try {
@@ -65,9 +77,25 @@ export default function LibraryPage() {
   }
 
   const currentLib = libraries.find((l) => l._id === selectedLib)
-  const filteredBooks = currentLib?.books.filter((b) =>
-    statusFilter === 'all' ? true : b.status === statusFilter
-  ) || []
+
+  const filteredBooks = (currentLib?.books || []).filter((b) => {
+    const matchesStatus = statusFilter === 'all' || b.status === statusFilter
+    const q = searchQuery.trim().toLowerCase()
+    const matchesQuery = !q ||
+      b.bookId.title.toLowerCase().includes(q) ||
+      b.bookId.authors?.some((a) => a.toLowerCase().includes(q))
+    return matchesStatus && matchesQuery
+  })
+
+  // Predictive suggestions: top 5 titles matching current query
+  const suggestions = searchQuery.trim().length > 0
+    ? (currentLib?.books || [])
+        .filter(b =>
+          b.bookId.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          b.bookId.authors?.some(a => a.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+        .slice(0, 5)
+    : []
 
   const totalBooks = currentLib?.books.length || 0
   const readCount = currentLib?.books.filter((b) => b.status === 'completed').length || 0
@@ -75,7 +103,7 @@ export default function LibraryPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div>
+        <div className={`${styles.headerTitle} ${searchOpen ? styles.hidden : ''}`}>
           <h1 className={styles.title}>La mia Libreria</h1>
           {currentLib && (
             <p className={styles.subtitle}>
@@ -83,28 +111,81 @@ export default function LibraryPage() {
             </p>
           )}
         </div>
-        <button
-          className={styles.viewToggle}
-          onClick={() => setView(view === 'grid' ? 'list' : 'grid')}
-          aria-label="Cambia vista"
-        >
-          {view === 'grid' ? (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-              <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-              <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
+
+        <div className={`${styles.searchExpand} ${searchOpen ? styles.searchOpen : ''}`}>
+          {searchOpen ? (
+            <>
+              <div className={styles.searchInputWrap}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className={styles.searchIcon}>
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className={styles.searchInput}
+                  placeholder="Cerca titolo o autore..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setSearchOpen(false)}
+                />
+                {searchQuery && (
+                  <button className={styles.searchClear} onClick={() => setSearchQuery('')} aria-label="Cancella">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <button className={styles.searchCloseBtn} onClick={() => setSearchOpen(false)}>
+                Chiudi
+              </button>
+            </>
           ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
+            <button
+              className={styles.searchIconBtn}
+              onClick={() => setSearchOpen(true)}
+              aria-label="Cerca"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
-      {/* Recommendations */}
-      <Recommendations />
+      {/* Predictive suggestions dropdown */}
+      {searchOpen && suggestions.length > 0 && (
+        <div className={styles.suggestions}>
+          {suggestions.map((entry) => (
+            <Link
+              key={entry.bookId._id}
+              href={`/book/${entry.bookId._id}`}
+              className={styles.suggestionItem}
+              onClick={() => setSearchOpen(false)}
+            >
+              <div className={styles.suggestionCover}>
+                {entry.bookId.coverUrl ? (
+                  <img src={entry.bookId.coverUrl} alt={entry.bookId.title} />
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                  </svg>
+                )}
+              </div>
+              <div className={styles.suggestionInfo}>
+                <span className={styles.suggestionTitle}>{entry.bookId.title}</span>
+                <span className={styles.suggestionAuthor}>{entry.bookId.authors?.[0]}</span>
+              </div>
+              <span className={styles.suggestionStatus} style={{ background: STATUS_CONFIG[entry.status].dot }} />
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* Recommendations — hidden when searching */}
+      {!searchOpen && <Recommendations />}
 
       {/* Library tabs */}
       {libraries.length > 1 && (
@@ -134,9 +215,9 @@ export default function LibraryPage() {
         ))}
       </div>
 
-      {/* Books grid/list */}
+      {/* Books grid */}
       {loading ? (
-        <div className={`${styles.grid} ${view === 'list' ? styles.listView : ''}`}>
+        <div className={styles.grid}>
           {Array.from({ length: 9 }).map((_, i) => (
             <div key={i} className={styles.skeletonCard}>
               <div className="skeleton" style={{ aspectRatio: '2/3', borderRadius: '8px' }} />
@@ -146,7 +227,7 @@ export default function LibraryPage() {
           ))}
         </div>
       ) : filteredBooks.length > 0 ? (
-        <div className={`${styles.grid} ${view === 'list' ? styles.listView : ''}`}>
+        <div className={styles.grid}>
           {filteredBooks.map((entry) => (
             <Link key={entry.bookId._id} href={`/book/${entry.bookId._id}`} className={styles.bookCard}>
               <div className={styles.coverWrap}>
@@ -182,20 +263,35 @@ export default function LibraryPage() {
         <div className={styles.empty}>
           <div className={styles.emptyIcon}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              {searchQuery ? (
+                <>
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </>
+              ) : (
+                <>
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </>
+              )}
             </svg>
           </div>
-          <h3>Nessun libro qui</h3>
+          <h3>{searchQuery ? 'Nessun risultato' : 'Nessun libro qui'}</h3>
           <p className={styles.emptyText}>
-            {statusFilter === 'all'
-              ? 'Aggiungi il tuo primo libro scansionando la copertina!'
-              : `Nessun libro con stato "${STATUS_CONFIG[statusFilter as ReadingStatus]?.label}"`}
+            {searchQuery
+              ? `Nessun libro corrisponde a "${searchQuery}"`
+              : statusFilter === 'all'
+                ? 'Aggiungi il tuo primo libro scansionando la copertina!'
+                : `Nessun libro con stato "${STATUS_CONFIG[statusFilter as ReadingStatus]?.label}"`}
           </p>
-          {statusFilter === 'all' && (
+          {!searchQuery && statusFilter === 'all' && (
             <Link href="/scan" className="btn btn-primary">
               Scansiona un libro
             </Link>
+          )}
+          {searchQuery && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setSearchQuery('')}>
+              Cancella ricerca
+            </button>
           )}
         </div>
       )}

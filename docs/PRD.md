@@ -1,8 +1,8 @@
 # BookSnap PRD - Ricerca, Personalizzazione e Raccomandazioni
 
-**Versione:** 1.0
+**Versione:** 1.1
 **Data:** 2026-03-30
-**Stato:** Draft
+**Stato:** Attivo — Fase 2 completata, Fase 3 in corso
 
 ---
 
@@ -42,7 +42,13 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | PR-1 | ✅ Pagina profilo gusti (visualizzazione taste profile) | P1 | M | TP-2 |
 | PR-2 | Override manuale generi preferiti | P2 | S | PR-1 |
 
-**Legenda Effort:** S = Small (< 1 giorno), M = Medium (1-2 giorni), L = Large (3+ giorni)
+| **UI/UX IMPROVEMENTS** | | | | |
+| UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
+| UI-2 | ✅ Rec. proattive — filtro libri già in libreria (no duplicati) | P1 | S | RC-2 |
+| UI-3 | ✅ Book detail — Aggiunta alla libreria con scelta stato | P1 | M | - |
+| UI-4 | ✅ Book detail — Hero con copertina galleggiante su sfondo sfocato | P1 | S | - |
+| UI-5 | Scan page — revisione layout e UX | P2 | M | - |
+| UI-6 | Navigazione — BottomNav punta a /assistant (chat) e /search (ricerca) | P1 | S | - |
 **Legenda Priorità:** P0 = Must have (fase 1), P1 = Should have (fase 2), P2 = Nice to have (fase 3)
 
 ---
@@ -54,9 +60,21 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ### Fase 2 — Esperienza utente arricchita (P1) ✅ COMPLETATA
 > ~~AU-4, RC-2, RC-3, SR-1, SR-2, ST-1, PR-1~~
+> ~~UI-1, UI-2, UI-3, UI-4, UI-6~~
 
 ### Fase 3 — Polish e discovery avanzata (P2)
-> SR-3, SR-4, SR-5, ST-2, ST-3, PR-2
+> SR-3, SR-4, SR-5, ST-2, ST-3, PR-2, UI-5
+
+---
+
+## Changelog
+
+### v1.1 — 2026-03-30
+- **UI-1:** Raccomandazioni ridisegnate come book card (copertina 2:3 + titolo + autore) con scroll orizzontale, pulsante "+" sovrapposto sulla cover per aggiunta rapida
+- **UI-2:** API `/api/recommendations` ora esclude dalla risposta i libri già presenti nella libreria utente — doppio filtro (prompt LLM + post-processing server)
+- **UI-3:** Pagina `/book/[id]` arricchita con sezione "Aggiungi alla libreria" per i libri non ancora aggiunti: scelta dello stato (Da leggere / In lettura / ecc.) e conferma
+- **UI-4:** Hero della pagina dettaglio libro completamente ridisegnata — copertina sfocata full-bleed come sfondo, copertina originale galleggiante con ombra e bordo vetro
+- **UI-6:** BottomNav aggiornata — `/search` ora ospita la Ricerca con filtri, `/assistant` ospita il Bibliotecario AI (chat)
 
 ---
 
