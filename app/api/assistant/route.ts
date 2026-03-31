@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { callLLM } from '@/lib/llm'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 import { connectDB } from '@/lib/mongodb'
 import { Book } from '@/models/Book'
 import { Library } from '@/models/Library'
@@ -72,6 +73,14 @@ export async function POST(request: NextRequest) {
 
     const { query, conversationId, history: clientHistory } = await request.json()
     if (!query?.trim()) return NextResponse.json({ error: 'Query richiesta' }, { status: 400 })
+
+    const rate = await checkRateLimit(user.userId, 'assistant')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Limite richieste assistente giornaliero raggiunto (${RATE_LIMITS.assistant}/giorno). Riprova domani.` },
+        { status: 429 }
+      )
+    }
 
     await connectDB()
 

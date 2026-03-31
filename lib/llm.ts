@@ -75,23 +75,45 @@ async function callOpenRouter(prompt: string, imageBase64?: string): Promise<LLM
     messages.push({ role: 'user', content: prompt })
   }
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'BookSnap',
-    },
-    body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.1 }),
-  })
+  const MAX_RETRIES = 2
+  let lastError: Error | null = null
 
-  if (!response.ok) {
-    throw new Error(`OpenRouter error: ${response.status} ${await response.text()}`)
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = attempt * 3000
+      console.log(`[LLM] OpenRouter attempt ${attempt + 1}/${MAX_RETRIES + 1}, waiting ${delay}ms...`)
+      await new Promise((r) => setTimeout(r, delay))
+    }
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+        'X-Title': 'BookSnap',
+      },
+      body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.1 }),
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      return { content: data.choices[0].message.content }
+    }
+
+    const status = response.status
+    // Retry only on transient server errors (502, 503, 504)
+    if (status === 502 || status === 503 || status === 504) {
+      lastError = new Error(`OpenRouter error: ${status} (servizio temporaneamente non disponibile)`)
+      console.warn(`[LLM] OpenRouter transient error ${status}, attempt ${attempt + 1}`)
+      continue
+    }
+
+    // Non-retryable error
+    throw new Error(`OpenRouter error: ${status} ${await response.text()}`)
   }
 
-  const data = await response.json()
-  return { content: data.choices[0].message.content }
+  throw lastError ?? new Error('OpenRouter: max retries exceeded')
 }
 
 export async function callLLM(prompt: string, imageBase64?: string): Promise<LLMResponse> {

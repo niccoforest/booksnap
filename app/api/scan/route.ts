@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Book } from '@/models/Book'
 import { ScanHistory } from '@/models/ScanHistory'
 import { fetchBookMetadata } from '@/lib/bookMetadata'
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rateLimit'
 
 interface RecognizedBook {
   title: string
@@ -30,6 +31,14 @@ export async function POST(request: NextRequest) {
 
     if (!imageBase64) {
       return NextResponse.json({ error: 'Immagine richiesta' }, { status: 400 })
+    }
+
+    const rate = await checkRateLimit(user.userId, 'scan')
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: `Limite scansioni giornaliero raggiunto (${RATE_LIMITS.scan}/giorno). Riprova domani.` },
+        { status: 429 }
+      )
     }
 
     // Call LLM for recognition
@@ -108,6 +117,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ type: scanResult.type, books: enrichedBooks })
   } catch (error) {
     console.error('[scan]', error)
+    const msg = error instanceof Error ? error.message : ''
+    if (msg.includes('temporaneamente non disponibile') || msg.includes('502') || msg.includes('503')) {
+      return NextResponse.json(
+        { error: 'Il servizio AI è temporaneamente non disponibile. Riprova tra qualche minuto.' },
+        { status: 503 }
+      )
+    }
     return NextResponse.json({ error: 'Errore durante la scansione' }, { status: 500 })
   }
 }
