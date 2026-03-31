@@ -55,12 +55,12 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     // Add/remove book
     if (body.addBookId) {
       const bookOid = new mongoose.Types.ObjectId(body.addBookId)
-      if (!shelf.books.some(b => b.toString() === body.addBookId)) {
+      if (!shelf.books.some((b: mongoose.Types.ObjectId) => b.toString() === body.addBookId)) {
         shelf.books.push(bookOid)
       }
     }
     if (body.removeBookId) {
-      shelf.books = shelf.books.filter(b => b.toString() !== body.removeBookId)
+      shelf.books = shelf.books.filter((b: mongoose.Types.ObjectId) => b.toString() !== body.removeBookId)
     }
 
     await shelf.save()

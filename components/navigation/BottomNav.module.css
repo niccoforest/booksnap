@@ -77,3 +77,8 @@
   width: 22px;
   height: 22px;
 }
+
+/* Hide nav when scan camera is active (immersive mode) */
+:global(body.camera-active) .nav {
+  display: none;
+}

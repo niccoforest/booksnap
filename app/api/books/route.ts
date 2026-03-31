@@ -4,6 +4,40 @@ import { connectDB } from '@/lib/mongodb'
 import { Book } from '@/models/Book'
 import { searchExternalBooks } from '@/lib/bookMetadata'
 
+// POST /api/books - Create a book manually (no external API lookup)
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getAuthUser(request)
+    if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+
+    const { title, authors, isbn } = await request.json()
+
+    if (!title?.trim() || !authors?.length) {
+      return NextResponse.json({ error: 'Titolo e autore obbligatori' }, { status: 400 })
+    }
+
+    await connectDB()
+
+    // Check for duplicates
+    const orFilters: any[] = [{ title: title.trim(), 'authors.0': authors[0].trim() }]
+    if (isbn?.trim()) orFilters.push({ isbn: isbn.trim() })
+
+    const existing = await Book.findOne({ $or: orFilters })
+    if (existing) return NextResponse.json({ book: existing }, { status: 200 })
+
+    const book = await Book.create({
+      title: title.trim(),
+      authors: authors.map((a: string) => a.trim()).filter(Boolean),
+      ...(isbn?.trim() ? { isbn: isbn.trim() } : {}),
+    })
+
+    return NextResponse.json({ book }, { status: 201 })
+  } catch (error) {
+    console.error('[books POST]', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

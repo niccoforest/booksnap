@@ -210,7 +210,7 @@
 }
 
 /* ─── Sections ─────────────────────── */
-.statusSection, .ratingSection, .reviewSection, .description, .details {
+.statusSection, .ratingSection, .reactionsSection, .reviewSection, .description, .details {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -252,6 +252,57 @@
   background: var(--accent-dim);
   border-color: var(--border-focus);
   color: var(--accent);
+}
+
+/* Reactions — Piaciuto / Preferito */
+.reactionsSection {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.reactionBtn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.reactionBtn:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.reactionLiked {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.reactionFavorite {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #f59e0b;
+}
+
+:global([data-theme='dark']) .reactionLiked {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+:global([data-theme='dark']) .reactionFavorite {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
 }
 
 /* Stars */

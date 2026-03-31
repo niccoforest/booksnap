@@ -101,6 +101,13 @@ export default function ScanPage() {
     return () => stopCamera()
   }, [tab, mode, startCamera, stopCamera])
 
+  // Immersive scan: hide BottomNav whenever scan tab is active without result
+  useEffect(() => {
+    const isImmersive = tab === 'scan' && !result
+    document.body.classList.toggle('camera-active', isImmersive)
+    return () => document.body.classList.remove('camera-active')
+  }, [tab, result])
+
   // ── Image helpers ────────────────────────────────────────
   const resizeImage = useCallback((dataUrl: string, maxDim = 1920): Promise<string> => {
     return new Promise((resolve) => {
@@ -275,12 +282,18 @@ export default function ScanPage() {
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
+        <button className={styles.backBtn} onClick={() => router.back()} aria-label="Indietro">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
         <h1 className={styles.title}>Scansiona</h1>
-        {tab === 'scan' && !result && (
+        {tab === 'scan' && (
           <div className={styles.modeToggle}>
             <button
               className={`${styles.modeBtn} ${mode === 'camera' ? styles.active : ''}`}
               onClick={() => { setMode('camera'); resetScan() }}
+              aria-label="Camera"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -291,6 +304,7 @@ export default function ScanPage() {
             <button
               className={`${styles.modeBtn} ${mode === 'upload' ? styles.active : ''}`}
               onClick={() => { setMode('upload'); resetScan() }}
+              aria-label="Galleria"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -535,6 +549,7 @@ export default function ScanPage() {
         </div>
       )}
 
+      {error && (
         <div className={styles.errorBanner}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
@@ -542,6 +557,7 @@ export default function ScanPage() {
           <span>{error}</span>
           <button onClick={() => setError(null)}>✕</button>
         </div>
+      )}
 
       {/* Success toast */}
       {successMsg && (

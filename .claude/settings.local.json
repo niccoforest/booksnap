@@ -13,7 +13,11 @@
       "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"book reading library PWA\" --stack nextjs -n 10)",
       "Bash(\"C:\\\\Users\\\\nicco\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python311\\\\python.exe\" src/ui-ux-pro-max/scripts/search.py \"dashboard statistics chart\" --domain chart -n 10)",
       "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]\")",
-      "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]/join\")"
+      "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]/join\")",
+      "Bash(grep -r \"book-club\\\\|book club\\\\|bookClub\\\\|book_club\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"smart.*notif\\\\|smart notif\\\\|smartNotif\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
+      "Bash(grep -n \"prompts\\\\|loadingPrompts\\\\|book-club\\\\|BookClub\" /workspaces/booksnap/app/\\\\\\(app\\\\\\)/book/[id]/page.tsx)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
