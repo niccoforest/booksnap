@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** In implementazione — Fase 1 completata
+**Stato:** In implementazione — Fase 2 completata
 **Feature ID:** LT-1
 
 ---
@@ -199,15 +199,15 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ---
 
-### Fase 2 — Componente LocationInput (UI riutilizzabile, isolato)
+### Fase 2 — Componente LocationInput (UI riutilizzabile, isolato) ✅
 
 **Obiettivo:** Componente autocompletamento funzionante, utilizzabile ovunque.
 
-1. Creare `components/LocationInput.tsx`:
+1. ✅ Creare `components/LocationInput.tsx`:
    - Props: `value`, `onChange`, `behindRow`, `onBehindRowChange`, `locations` (array suggerimenti)
    - Input con dropdown suggerimenti filtrati client-side
    - Toggle "Fila posteriore" integrato
-2. Creare `components/LocationInput.module.css` con stili coerenti con il design system (CSS vars da globals.css)
+2. ✅ Creare `components/LocationInput.module.css` con stili coerenti con il design system (CSS vars da globals.css)
 
 **Verifica:** Componente visibile e funzionante in isolamento (può essere testato montandolo temporaneamente in qualsiasi pagina).
 
