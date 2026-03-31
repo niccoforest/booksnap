@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** In implementazione — Fase 2 completata
+**Stato:** In implementazione — Fase 3 completata
 **Feature ID:** LT-1
 
 ---
@@ -213,16 +213,16 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ---
 
-### Fase 3 — Integrazione Book Detail (singolo libro)
+### Fase 3 — Integrazione Book Detail (singolo libro) ✅
 
 **Obiettivo:** L'utente può assegnare/modificare la posizione di un libro dalla sua scheda.
 
-1. In `app/(app)/book/[id]/page.tsx`:
+1. ✅ In `app/(app)/book/[id]/page.tsx`:
    - Fetch locations al mount (`GET /api/libraries/locations`)
    - Aggiungere sezione "Posizione" con `LocationInput`
    - Salvataggio via PATCH (pattern identico a rating/review)
    - Aggiornamento ottimistico dello stato locale
-2. Stili in `page.module.css`
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** Aprire un libro → impostare location → ricaricare pagina → la location persiste. Autocompletamento funziona con location già esistenti.
 
