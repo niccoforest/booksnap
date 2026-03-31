@@ -1,6 +1,6 @@
 # BookSnap PRD - Ricerca, Personalizzazione e Raccomandazioni
 
-**Versione:** 2.1
+**Versione:** 2.3
 **Data:** 2026-03-31
 **Stato:** Attivo — Fasi 1-6 completate, Fase 7b (fix/revisioni) in corso, Fase 7 prossima
 
@@ -64,6 +64,19 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | FX-16 | ✅ Scansione immersiva — BottomNav nascosta con classe `camera-active` su body quando fotocamera attiva | P1 | S | - |
 | IM-4 | ✅ Inserimento manuale libro — bottom sheet in libreria con form (titolo, autore, ISBN opzionale); POST `/api/books` + aggiunta automatica alla libreria corrente | P1 | M | - |
 | SR-6 | Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query e migliora i risultati) | P1 | M | - |
+| **SCAN ENHANCEMENTS** | | | | |
+| SC-1 | Monitoraggio scansioni — contatore libri aggiunti per ogni sessione di scansione; riepilogo post-scan "X libri aggiunti" | P1 | S | - |
+| SC-2 | Scansione — possibilità di eliminare/deselezionare un libro riconosciuto prima di confermarlo alla libreria | P1 | S | - |
+| SC-3 | Menu "+" in libreria — tap sul + apre bottom sheet con modalità: Scansione fotocamera, Manuale, Da galleria (immagine), Da CSV (futuro, disabilitato) | P1 | M | IM-4 |
+| **AI FEATURES (estensioni)** | | | | |
+| AI-7 | Libri simili via AI — nella scheda libro, sezione "Libri simili" che interroga l'AI con titolo+autore+generi e restituisce 5 suggerimenti affini | P1 | M | - |
+| **LOAN TRACKING** | | | | |
+| LN-1 | Tracciamento prestiti — quando status = `lent`, campo "Prestato a" (nome contatto) + data prestito salvati su BookEntry | P1 | S | - |
+| LN-2 | Reminder prestiti — notifica periodica "Hai ancora X da Marco?" configurabile (es. ogni 30 giorni); funziona anche per prestiti fuori dal gruppo | P1 | M | LN-1 |
+| **SUPER TRENDING** | | | | |
+| TR-1 | Super Trending — lista unica top 20 libri più hot in pagina /search; score composito da 4 fonti: NYT Bestsellers (40%), Google Books Charts (30%), OpenLibrary Popular (20%), scansioni BookSnap (10%) | P1 | L | - |
+| TR-2 | Super Trending — UI: sezione "📈 Super Trending" fissa in /search; card con copertina + rank NYT + "Perché trending"; click → book detail con "+ Libreria" | P1 | M | TR-1 |
+| TR-3 | Super Trending — endpoint `GET /api/trending` → `{ trending: 20 libri }` con cache 24h | P1 | M | TR-1 |
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
 | UI-2 | ✅ Rec. proattive — filtro libri già in libreria (no duplicati) | P1 | S | RC-2 |
@@ -153,8 +166,8 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ### Fase 7b — Fix & Revisioni ← IN CORSO
 > ~~FX-1~~, ~~FX-2~~, ~~FX-3~~, ~~FX-4~~, ~~FX-4b~~, ~~FX-5~~, ~~FX-6~~, ~~BK-1~~,
- > ~~FX-9~~, ~~FX-11~~, ~~FX-13~~, ~~FX-14~~, ~~FX-15~~, ~~FX-16~~
-> **Prossimi:** FX-12 like su card, FX-10 multi-filtri combinabili, IM-4 inserimento manuale libro
+> ~~FX-9~~, ~~FX-11~~, ~~FX-13~~, ~~FX-14~~, ~~FX-15~~, ~~FX-16~~,
+> ~~FX-12~~, ~~FX-10~~, ~~IM-4~~
 > **Backlog:** FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato, SR-6 Ricerca AI nella pagina search
 
 ### Fase 7 — Statistics Redesign
@@ -221,6 +234,16 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 ---
 
 ## Changelog
+
+### v2.3 — 2026-03-31 (Nuove feature + completamenti)
+- **FX-10 ✅:** Libreria — multi-filtri combinabili implementati (piaciuti + completati simultanei; filtri status e reaction ora indipendenti)
+- **FX-12 ✅:** Book card — like (cuoricino) in basso a destra sulla card griglia e inline lista; toggle ottimistico con PATCH `/api/libraries/[id]/books`
+- **IM-4 ✅:** Inserimento manuale libro — bottom sheet con form (titolo, autore, ISBN opzionale); POST `/api/books` + aggiunta automatica alla libreria corrente
+- **SC-1/SC-2 NEW:** Monitoraggio scansioni — contatore libri aggiunti per sessione + possibilità di rimuovere un libro riconosciuto prima di confermarlo
+- **SC-3 NEW:** Menu "+" in libreria — bottom sheet con scelta modalità (fotocamera / manuale / galleria / CSV futuro)
+- **AI-7 NEW:** Libri simili via AI — sezione nella scheda libro che interroga l'AI per 5 titoli affini
+- **LN-1/LN-2 NEW:** Tracciamento prestiti — campo "Prestato a" su BookEntry + reminder periodico configurabile
+- **TR-1/TR-2/TR-3 NEW:** Super Trending — lista top 20 con score composito (NYT 40% + Google Books 30% + OpenLibrary 20% + BookSnap scans 10%), sezione fissa in /search, endpoint `/api/trending` con cache 24h
 
 ### v2.2 — 2026-03-31 (Segnalazioni round 2)
 - **FX-9 ✅:** `reactionsSection` (cuore + stella) spostata sopra `statusSection` in `book/[id]/page.tsx`
