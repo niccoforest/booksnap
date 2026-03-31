@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** Draft — in attesa approvazione prima di implementare
+**Stato:** In implementazione — Fase 1 completata
 **Feature ID:** LT-1
 
 ---
@@ -185,15 +185,15 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ## Piano a fasi (step-by-step)
 
-### Fase 1 — Schema DB + API (backend puro, testabile subito)
+### Fase 1 — Schema DB + API (backend puro, testabile subito) ✅
 
 **Obiettivo:** I campi esistono nel DB e l'API li accetta/restituisce.
 
-1. Aggiornare `models/Library.ts`: aggiungere `location` e `behindRow` a interface e schema
-2. Aggiornare `app/api/libraries/[id]/books/route.ts`:
+1. ✅ Aggiornare `models/Library.ts`: aggiungere `location` e `behindRow` a interface e schema
+2. ✅ Aggiornare `app/api/libraries/[id]/books/route.ts`:
    - POST: leggere `location` e `behindRow` dal body, includerli nel nuovo BookEntry
    - PATCH: aggiungere `'location'` e `'behindRow'` a `allowedFields`
-3. Creare `app/api/libraries/locations/route.ts`: GET che aggrega le location distinte dell'utente
+3. ✅ Creare `app/api/libraries/locations/route.ts`: GET che aggrega le location distinte dell'utente
 
 **Verifica:** Testabile via curl/Postman — POST un libro con location, PATCH per modificarla, GET locations per confermare che appare nella lista.
 
