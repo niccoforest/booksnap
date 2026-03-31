@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './page.module.css'
 import LocationInput from '@/components/LocationInput'
+import { normalizeLocationLLM } from '@/lib/locationUtils'
 
 interface ScannedBook {
   _id: string
@@ -236,6 +237,11 @@ export default function ScanPage() {
       const defaultLib = await getDefaultLib()
       if (!defaultLib) throw new Error('Nessuna libreria trovata')
 
+      // Normalize via LLM (deduplicates typos/semantic variants) before saving
+      const finalLocation = bulkLocation.trim()
+        ? await normalizeLocationLLM(bulkLocation, availableLocations)
+        : undefined
+
       const toSave = displayedBooks.filter((b) => selectedForLocation.has(b._id))
       const newBooks = toSave.filter((b) => !libraryBookIds.has(b._id))
       const existingBooks = toSave.filter((b) => libraryBookIds.has(b._id))
@@ -249,7 +255,7 @@ export default function ScanPage() {
             body: JSON.stringify({
               bookId: b._id,
               status: 'to_read',
-              location: bulkLocation || undefined,
+              location: finalLocation || undefined,
               behindRow: bulkBehindRow || undefined,
             }),
           })
@@ -261,7 +267,7 @@ export default function ScanPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               bookId: b._id,
-              location: bulkLocation || undefined,
+              location: finalLocation || undefined,
               behindRow: bulkBehindRow || undefined,
             }),
           })
@@ -272,8 +278,8 @@ export default function ScanPage() {
       const updatedLibraryIds = new Set([...libraryBookIds, ...newBooks.map((b) => b._id)])
       setLibraryBookIds(updatedLibraryIds)
 
-      if (bulkLocation && !availableLocations.some((l) => l.toLowerCase() === bulkLocation.toLowerCase())) {
-        setAvailableLocations((prev) => [...prev, bulkLocation].sort((a, b) => a.localeCompare(b)))
+      if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
+        setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
       }
 
       const remaining = displayedBooks.filter((b) => !savedIds.has(b._id))

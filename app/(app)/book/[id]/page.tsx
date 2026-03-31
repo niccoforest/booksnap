@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import styles from './page.module.css'
 import LocationInput from '@/components/LocationInput'
+import { normalizeLocationLLM } from '@/lib/locationUtils'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
@@ -139,10 +140,14 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
     setShowReview(false)
   }
 
-  const saveLocation = (newLocation: string, newBehindRow: boolean) => {
-    updateEntry({ location: newLocation, behindRow: newBehindRow })
-    if (newLocation && !availableLocations.some((l) => l.toLowerCase() === newLocation.toLowerCase())) {
-      setAvailableLocations((prev) => [...prev, newLocation].sort((a, b) => a.localeCompare(b)))
+  const saveLocation = async (newLocation: string, newBehindRow: boolean) => {
+    // Normalize via LLM to deduplicate typos/semantic variants
+    const finalLocation = newLocation.trim()
+      ? await normalizeLocationLLM(newLocation, availableLocations)
+      : newLocation
+    updateEntry({ location: finalLocation, behindRow: newBehindRow })
+    if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
+      setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
     }
   }
 
