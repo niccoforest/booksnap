@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
 import { connectDB } from '@/lib/mongodb'
 import { Library } from '@/models/Library'
+import mongoose from 'mongoose'
 
 // GET /api/libraries/locations - Distinct locations used by the current user
 export async function GET(request: NextRequest) {
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     await connectDB()
 
     const results = await Library.aggregate([
-      { $match: { userId: user.userId } },
+      { $match: { userId: new mongoose.Types.ObjectId(user.userId) } },
       { $unwind: '$books' },
       { $match: { 'books.location': { $exists: true, $ne: '' } } },
       { $sort: { 'books.addedAt': -1 } },
