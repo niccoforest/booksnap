@@ -106,17 +106,6 @@ export default function Recommendations() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.title}>Consigliati per te</h2>
-        <button 
-          className={styles.refreshBtn}
-          onClick={() => fetchRecommendations(true)}
-          disabled={loading}
-          aria-label="Nuovi suggerimenti"
-          title="Nuovi suggerimenti"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
-            <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.92-10.26l5.57 5.57"/>
-          </svg>
-        </button>
       </div>
       
       {error && <p className={styles.error}>{error}</p>}

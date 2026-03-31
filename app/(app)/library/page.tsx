@@ -59,7 +59,6 @@ export default function LibraryPage() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('addedAt')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [isAiSearching, setIsAiSearching] = useState(false)
   const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null)
   const [reactionFilter, setReactionFilter] = useState<'all' | 'liked' | 'favorite'>('all')
 
@@ -94,26 +93,6 @@ export default function LibraryPage() {
   }
 
   const currentLib = libraries.find((l) => l._id === selectedLib)
-
-  const handleAiSearch = async () => {
-    if (!searchQuery.trim()) return
-    setIsAiSearching(true)
-    try {
-      const res = await fetch('/api/ai/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery }),
-      })
-      const data = await res.json()
-      if (data.books) {
-        setAiSearchResults(data.books)
-      }
-    } catch {
-      console.error('AI Search failed')
-    } finally {
-      setIsAiSearching(false)
-    }
-  }
 
   const clearSearch = () => {
     setSearchQuery('')
@@ -167,73 +146,60 @@ export default function LibraryPage() {
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <div className={`${styles.headerTitle} ${searchOpen ? styles.hidden : ''}`}>
+        <div className={styles.headerRow}>
           <h1 className={styles.title}>La mia Libreria</h1>
-          {currentLib && (
-            <p className={styles.subtitle}>
-              {totalBooks} libr{totalBooks !== 1 ? 'i' : 'o'} · {readCount} lett{readCount !== 1 ? 'i' : 'o'}
-            </p>
-          )}
-        </div>
-        
-        {aiSearchResults && !searchOpen && (
-          <div className={styles.aiSearchIndicator}>
-            <span>Risultati Smart Search per "{searchQuery}"</span>
-            <button className={styles.clearAiBtn} onClick={clearSearch}>X</button>
-          </div>
-        )}
-
-        <div className={`${styles.searchExpand} ${searchOpen ? styles.searchOpen : ''}`}>
-          {searchOpen ? (
-            <>
-              <div className={styles.searchInputWrap}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className={styles.searchIcon}>
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  className={styles.searchInput}
-                  placeholder="Cerca titolo o autore..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setAiSearchResults(null); }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAiSearch()}
-                />
-                {searchQuery && (
-                  <button className={styles.searchClear} onClick={clearSearch} aria-label="Cancella">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                )}
-              </div>
-              <button
-                className={`${styles.aiSearchBtn} ${isAiSearching ? styles.spinning : ''}`}
-                onClick={handleAiSearch}
-                disabled={isAiSearching || !searchQuery.trim()}
-                aria-label="Cerca con intelligenza artificiale"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
-                  <path d="M12 2l2 6h6l-5 3.6L17 18l-5-3.6L7 18l2-6.4L4 8h6z"/>
-                </svg>
-                {isAiSearching ? 'Cerco...' : 'Cerca con AI'}
-              </button>
-              <button className={styles.searchCloseBtn} onClick={() => setSearchOpen(false)}>
-                Chiudi
-              </button>
-            </>
-          ) : (
-            <button
-              className={styles.searchIconBtn}
-              onClick={() => setSearchOpen(true)}
-              aria-label="Cerca"
-            >
+          <button
+            className={styles.searchIconBtn}
+            onClick={() => setSearchOpen(!searchOpen)}
+            aria-label={searchOpen ? 'Chiudi ricerca' : 'Cerca'}
+          >
+            {searchOpen ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            ) : (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-            </button>
-          )}
+            )}
+          </button>
         </div>
+
+        {searchOpen && (
+          <div className={styles.searchInputWrap}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16" className={styles.searchIcon}>
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              ref={inputRef}
+              type="text"
+              className={styles.searchInput}
+              placeholder="Cerca titolo o autore..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setAiSearchResults(null); }}
+            />
+            {searchQuery && (
+              <button className={styles.searchClear} onClick={clearSearch} aria-label="Cancella">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+
+        {currentLib && (
+          <p className={styles.subtitle}>
+            {totalBooks} libr{totalBooks !== 1 ? 'i' : 'o'} · {readCount} lett{readCount !== 1 ? 'i' : 'o'}
+          </p>
+        )}
+
+        {aiSearchResults && (
+          <div className={styles.aiSearchIndicator}>
+            <span>Risultati Smart Search per &quot;{searchQuery}&quot;</span>
+            <button className={styles.clearAiBtn} onClick={clearSearch}>✕</button>
+          </div>
+        )}
       </div>
 
       {/* Predictive suggestions dropdown */}

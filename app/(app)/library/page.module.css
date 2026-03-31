@@ -8,31 +8,20 @@
 .header {
   padding: var(--spacing-lg) var(--spacing-md) var(--spacing-sm);
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: var(--spacing-sm);
   position: sticky;
   top: 0;
   z-index: 20;
   background: linear-gradient(to bottom, var(--bg-primary) 80%, transparent);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  gap: var(--spacing-sm);
-  min-height: 72px;
 }
 
-.headerTitle {
-  flex: 1;
-  min-width: 0;
-  transition: opacity 0.2s, transform 0.2s;
-}
-
-.headerTitle.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-8px);
-  flex: 0;
-  max-width: 0;
-  overflow: hidden;
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .title {
@@ -47,18 +36,7 @@
   margin-top: 2px;
 }
 
-/* ─── Search expand ─────────────── */
-.searchExpand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* when open: takes full width */
-.searchOpen {
-  flex: 1;
-}
+/* ─── Search input row ─────────────── */
 
 .searchIconBtn {
   width: 38px;
@@ -82,7 +60,7 @@
 }
 
 .searchInputWrap {
-  flex: 1;
+  width: 100%;
   position: relative;
   display: flex;
   align-items: center;

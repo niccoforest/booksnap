@@ -54,6 +54,15 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | FX-6 | ✅ Cache summaries spoiler-free sul modello Book (condivisa tra utenti) | P1 | S | - |
 | FX-7 | Profilo Gusti — redesign per renderlo comprensibile (da definire UI) | P1 | M | - |
 | FX-8 | Raccomandazioni — potenziare con AI engine + segnali preferiti/piaciuti | P1 | M | BK-1 |
+| FX-9 | ✅ Scheda libro — cuore (liked) e stella (favorite) visibili sopra lo stato di lettura | P0 | S | BK-1 |
+| FX-10 | Libreria — multi-filtri combinabili (es. "piaciuti" + "completati") | P1 | M | BK-1 |
+| FX-11 | ✅ Libreria — rimosso pulsante "Cerca con AI" (l'AI è già integrata nei risultati della pagina /search) | P0 | XS | SR-6 |
+| FX-12 | Book card — aggiungere azione like (cuoricino) in basso a destra sulla card | P1 | S | BK-1 |
+| FX-13 | ✅ Bug libreria — header ristrutturato: titolo sempre visibile, barra di ricerca in riga dedicata sopra al contatore, no più spazio bianco | P0 | S | - |
+| FX-14 | ✅ Home — rimossa icona "Aggiorna consigliati per te" | P1 | XS | - |
+| FX-15 | ✅ Bug scansione — alert errore ora condizionale (solo se error != null) + chiudibile | P0 | S | - |
+| FX-16 | ✅ Scansione immersiva — BottomNav nascosta con classe `camera-active` su body quando fotocamera attiva | P1 | S | - |
+| IM-4 | Inserimento manuale libro — form per aggiungere un libro non trovato dalle API (titolo, autore, ISBN opzionale) | P1 | M | - |
 | SR-6 | Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query e migliora i risultati) | P1 | M | - |
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
@@ -144,8 +153,9 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ### Fase 7b — Fix & Revisioni ← IN CORSO
 > ~~FX-1~~, ~~FX-2~~, ~~FX-3~~, ~~FX-4~~, ~~FX-4b~~, ~~FX-5~~, ~~FX-6~~, ~~BK-1~~,
-> FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
-> SR-6 Ricerca AI nella pagina search
+ > ~~FX-9~~, ~~FX-11~~, ~~FX-13~~, ~~FX-14~~, ~~FX-15~~, ~~FX-16~~
+> **Prossimi:** FX-12 like su card, FX-10 multi-filtri combinabili, IM-4 inserimento manuale libro
+> **Backlog:** FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato, SR-6 Ricerca AI nella pagina search
 
 ### Fase 7 — Statistics Redesign
 > ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,
@@ -211,6 +221,17 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 ---
 
 ## Changelog
+
+### v2.2 — 2026-03-31 (Segnalazioni round 2)
+- **FX-9 ✅:** `reactionsSection` (cuore + stella) spostata sopra `statusSection` in `book/[id]/page.tsx`
+- **FX-10:** Libreria — multi-filtri combinabili (es. piaciuti + completati) — da fare
+- **FX-11 ✅:** Rimosso pulsante "Cerca con AI" dalla libreria + rimossa funzione `handleAiSearch` e stato `isAiSearching` (dead code)
+- **FX-12:** Book card — like (cuoricino) in basso a destra — da fare
+- **FX-13 ✅:** Header libreria ristrutturato: `headerRow` (titolo + icona cerca sempre visibili) → search bar condizionale → subtitle contatore sempre visibile. Rimosso `searchExpand`/`.hidden` pattern.
+- **FX-14 ✅:** Rimosso `refreshBtn` da `Recommendations.tsx`
+- **FX-15 ✅:** `errorBanner` in scan avvolto in `{error && (...)}` — non più sempre visibile
+- **FX-16 ✅:** Scan page: `useEffect` toglie classe `camera-active` su `document.body`; `BottomNav.module.css` nasconde `.nav` con `:global(body.camera-active) .nav { display: none }`
+- **IM-4:** Inserimento manuale libro — da fare
 
 ### v2.1 — 2026-03-31 (Fix & Revisioni)
 - **FX-1 ✅:** Navigazione ripristinata — `/search` al posto di `/community` nel BottomNav
