@@ -1,8 +1,8 @@
 # BookSnap PRD - Ricerca, Personalizzazione e Raccomandazioni
 
-**Versione:** 2.0
-**Data:** 2026-03-30
-**Stato:** Attivo — Fasi 1-6 completate, Fase 7 prossima
+**Versione:** 2.1
+**Data:** 2026-03-31
+**Stato:** Attivo — Fasi 1-6 completate, Fase 7b (fix/revisioni) in corso, Fase 7 prossima
 
 ---
 
@@ -42,6 +42,17 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | PR-1 | ✅ Pagina profilo gusti (visualizzazione taste profile) | P1 | M | TP-2 |
 | PR-2 | ✅ Override manuale generi preferiti | P2 | S | PR-1 |
 
+| **PREFERITI & INTERAZIONI LIBRO** | | | | |
+| BK-1 | Preferiti / Piaciuti — cuore su ogni libro, usato nelle raccomandazioni | P1 | S | - |
+| **FIX & REVISIONI (Fase 7b)** | | | | |
+| FX-1 | Navigazione — rimettere `/search` al posto di `/community` nel BottomNav | P0 | XS | - |
+| FX-2 | Nascondi domande Book Club dall'UI (API intatta, feature sospesa) | P1 | XS | - |
+| FX-3 | Nascondi Reading Insights dal profilo (feature sospesa, da riprendere) | P1 | XS | - |
+| FX-4 | Nascondi Notifiche Smart dal profilo (feature incompleta, non esporre) | P1 | XS | - |
+| FX-5 | Fix ricerca libreria — expand field troppo stretto + icona "3 layer" incomprensibile | P0 | S | - |
+| FX-6 | Cache summaries spoiler-free sul modello Book (condivisa tra utenti) | P1 | S | - |
+| FX-7 | Profilo Gusti — redesign per renderlo comprensibile (da definire UI) | P1 | M | - |
+| FX-8 | Raccomandazioni — potenziare con AI engine + segnali preferiti/piaciuti | P1 | M | BK-1 |
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
 | UI-2 | ✅ Rec. proattive — filtro libri già in libreria (no duplicati) | P1 | S | RC-2 |
@@ -129,6 +140,12 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~SO-4 Activity feed, SO-5 Community bookshelves, SO-6 Trending books,~~
 > ~~SO-7 Reading challenges~~
 
+### Fase 7b — Fix & Revisioni ← IN CORSO
+> FX-1 Nav search restore, FX-2 Nascondi book club, FX-3 Nascondi reading insights,
+> FX-4 Nascondi notifiche smart, FX-5 Fix ricerca libreria,
+> FX-6 Cache summaries, FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
+> BK-1 Preferiti/Piaciuti
+
 ### Fase 7 — Statistics Redesign
 > ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,
 > ST-7 Reading pace chart, ST-8 Annual goals, ST-9 Year in review,
@@ -147,7 +164,64 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 
 ---
 
+---
+
+## Community — Ridefinizione Concetto
+
+### Visione originale implementata (Fase 6 — da rivedere)
+La fase 6 ha implementato una community pubblica globale: activity feed di tutti gli utenti seguiti, trending libri globale, bookshelves pubbliche, reading challenges aperte. Questo modello è distante dalla vision del prodotto.
+
+### Nuova visione — Community Intima (da implementare, fase futura)
+La community di BookSnap deve essere **ristretta e familiare**, non pubblica e globale.
+
+**Concetto chiave: il Gruppo / Famiglia**
+- Un utente può creare o entrare in un **Gruppo** (es. famiglia, coppia, gruppo di amici)
+- Ogni membro del gruppo può **condividere la propria libreria** con il gruppo
+- Gli altri membri possono **cercare libri nelle librerie condivise** → trovano dove è fisicamente il libro e chi ce l'ha
+- Sistema di **prestito fisico**: "Marco ha questo libro → posso chiederlo in prestito"
+- I libri prestati usano lo status `lent` già esistente nel modello Library
+- **Rating e recensioni del gruppo** visibili sulla scheda libro (non rating globale anonimo)
+
+**Stato attuale del codice Fase 6:**
+- Feed globale, trending, challenges → **nascondere dall'UI** (non eliminare il codice)
+- Bookshelves pubbliche → **tenere**, utili in futuro per condivisione nel gruppo
+- Follow system → **tenere**, base per il sistema gruppo
+- Tab Community nel BottomNav → **sostituire con Search** (FX-1)
+
+**Punti aperti da approfondire:**
+- Come invitare qualcuno in un gruppo (link, codice, ricerca per username)?
+- Privacy: le librerie condivise nel gruppo mostrano tutto o solo certi scaffali?
+- Notifiche prestito: "Hai restituito X a Marco?"
+- Quanti gruppi può avere un utente?
+
+---
+
+## Punti Aperti da Approfondire
+
+| # | Argomento | Domanda aperta | Priorità |
+|---|-----------|----------------|----------|
+| A | Profilo Gusti | Che informazioni mostrare? Lista semplice "Ti piacciono: Thriller, Fantasy" oppure visuale con grafici? La UI attuale (donut + barre %) non è comprensibile | Alta |
+| B | Community Gruppo | Meccanismo di invito nel gruppo (link? codice? ricerca username?) | Alta |
+| C | Community Gruppo | Privacy librerie condivise: tutto visibile o solo scaffali selezionati? | Alta |
+| D | Raccomandazioni | Bilanciamento algoritmo vs AI: quanta importanza dare ai preferiti/piaciuti rispetto ai completati? | Media |
+| E | Notifiche Smart | Quando e cosa notificare? Usare AI per decidere il momento? Definire casi d'uso concreti prima di esporre la feature | Media |
+| F | Reading Insights | Quali insight sono davvero utili per un lettore comune? Riprendere in una fase dedicata con user feedback | Bassa |
+
+---
+
 ## Changelog
+
+### v2.1 — 2026-03-31 (Fix & Revisioni)
+- **FX-1:** Navigazione ripristinata — `/search` al posto di `/community` nel BottomNav
+- **FX-2:** Domande Book Club nascoste dall'UI (API preservata)
+- **FX-3:** Reading Insights nascosti dal profilo (feature sospesa)
+- **FX-4:** Notifiche Smart nascoste dal profilo (feature incompleta)
+- **FX-5:** Fix ricerca libreria — campo espanso correttamente + bottone AI Search con label esplicita
+- **FX-6:** Summaries spoiler-free ora cached sul modello Book (condivisi tra utenti, non rigenerati)
+- **FX-7:** Profilo Gusti redesign (da definire)
+- **FX-8:** Raccomandazioni potenziate con segnali preferiti/piaciuti
+- **BK-1:** Preferiti/Piaciuti — cuore sulla scheda libro, persistito nel BookEntry, usato nelle raccomandazioni
+- **Community:** ridefinizione concetto — community intima (gruppo/famiglia) pianificata per fase futura; feature Fase 6 nascoste dall'UI ma codice preservato
 
 ### v1.1 — 2026-03-30
 - **UI-1:** Raccomandazioni ridisegnate come book card (copertina 2:3 + titolo + autore) con scroll orizzontale, pulsante "+" sovrapposto sulla cover per aggiunta rapida

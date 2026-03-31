@@ -298,33 +298,7 @@ export default function ProfilePage() {
 
       {/* AI Insights & Goals */}
       <div className={styles.aiDashboard}>
-        {insights.length > 0 && (
-          <div className={styles.aiSection}>
-            <div className={styles.aiSectionHeader}>
-              <h2 className={styles.sectionTitle}>Reading Insights</h2>
-              <div className={styles.aiBadge}>AI</div>
-            </div>
-            <div className={styles.insightsGrid}>
-              {insights.map((insight, idx) => (
-                <div key={idx} className={styles.insightCard}>
-                  <div className={styles.insightIconWrap}>
-                    <span className={styles.insightIcon}>{getIcon(insight.icon)}</span>
-                  </div>
-                  <div className={styles.insightContent}>
-                    <p className={styles.insightTitle}>{insight.title}</p>
-                    <p className={styles.insightText}>{insight.text}</p>
-                    {insight.value && (
-                      <div className={insight.unit === '%' ? styles.insightValueRowFlex : styles.insightValueRow}>
-                        <span className={styles.insightValue}>{insight.value}</span>
-                        <span className={styles.insightUnit}>{insight.unit}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Reading Insights hidden — feature sospesa, da riprendere */}
 
         {goals.length > 0 && (
           <div className={styles.aiSection}>
@@ -491,18 +465,7 @@ export default function ProfilePage() {
             </span>
           </button>
           
-          <button className={styles.menuItem} onClick={toggleNotifications}>
-            <span className={styles.menuItemLeft}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width="18" height="18">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              Notifiche Smart AI
-            </span>
-            <div className={`${styles.toggle} ${notificationsEnabled ? styles.toggleOn : ''}`}>
-              <div className={styles.toggleCircle} />
-            </div>
-          </button>
+          {/* Notifiche Smart hidden — feature incompleta, da riprendere */}
           <button className={`${styles.menuItem} ${styles.danger}`} onClick={handleLogout}>
             <span className={styles.menuItemLeft}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width="18" height="18">
