@@ -241,6 +241,8 @@ export default function ScanPage() {
       const finalLocation = bulkLocation.trim()
         ? await normalizeLocationLLM(bulkLocation, availableLocations)
         : undefined
+      // Reflect the normalized value in the input field
+      if (finalLocation !== undefined) setBulkLocation(finalLocation)
 
       const toSave = displayedBooks.filter((b) => selectedForLocation.has(b._id))
       const newBooks = toSave.filter((b) => !libraryBookIds.has(b._id))

@@ -119,6 +119,8 @@ export default function LocationInput({
         </span>
         <input
           type="text"
+          id="location-input"
+          name="location"
           className={styles.input}
           value={value}
           onChange={handleInput}

@@ -145,7 +145,9 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
     const finalLocation = newLocation.trim()
       ? await normalizeLocationLLM(newLocation, availableLocations)
       : newLocation
-    updateEntry({ location: finalLocation, behindRow: newBehindRow })
+    // Update input to show the normalized value (so UI matches what is saved)
+    setLocation(finalLocation)
+    await updateEntry({ location: finalLocation, behindRow: newBehindRow })
     if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
       setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
     }

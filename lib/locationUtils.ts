@@ -37,7 +37,8 @@ export async function normalizeLocationLLM(
     })
     if (!res.ok) return normalizeLocation(trimmed)
     const data = await res.json()
-    return data.normalized || normalizeLocation(trimmed)
+    const normalized = typeof data?.normalized === 'string' ? data.normalized.trim() : ''
+    return normalized || normalizeLocation(trimmed)
   } catch {
     return normalizeLocation(trimmed)
   }
