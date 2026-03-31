@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** Completato ✅ — tutte le fasi implementate
+**Stato:** Completato ✅ — tutte le fasi implementate (incl. refactoring UX split-screen scan)
 **Feature ID:** LT-1
 
 ---

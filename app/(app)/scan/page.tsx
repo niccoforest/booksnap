@@ -45,17 +45,16 @@ export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [addingBook, setAddingBook] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [libraryBookIds, setLibraryBookIds] = useState<Set<string>>(new Set())
 
-  // Location step
-  const [locationStep, setLocationStep] = useState(false)
+  // Split-screen bulk location state
   const [bulkLocation, setBulkLocation] = useState('')
   const [bulkBehindRow, setBulkBehindRow] = useState(false)
   const [selectedForLocation, setSelectedForLocation] = useState<Set<string>>(new Set())
   const [savingBulk, setSavingBulk] = useState(false)
   const [availableLocations, setAvailableLocations] = useState<string[]>([])
+  const [displayedBooks, setDisplayedBooks] = useState<ScannedBook[]>([])
 
   // Fetch library + locations on mount
   useEffect(() => {
@@ -78,6 +77,19 @@ export default function ScanPage() {
     }
     fetchInit()
   }, [])
+
+  // Init displayed books + selection when result changes
+  useEffect(() => {
+    if (!result) {
+      setDisplayedBooks([])
+      setSelectedForLocation(new Set())
+      return
+    }
+    setDisplayedBooks(result.books)
+    setSelectedForLocation(
+      new Set(result.books.filter((b) => !libraryBookIds.has(b._id)).map((b) => b._id))
+    )
+  }, [result]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([])
@@ -196,19 +208,20 @@ export default function ScanPage() {
     setResult(null)
     setPreview(null)
     setError(null)
-    setLocationStep(false)
     setBulkLocation('')
     setBulkBehindRow(false)
+    setDisplayedBooks([])
+    setSelectedForLocation(new Set())
     if (mode === 'camera') startCamera()
   }
 
-  const openLocationStep = () => {
-    if (!result) return
-    const pending = result.books.filter((b) => !libraryBookIds.has(b._id)).map((b) => b._id)
-    setSelectedForLocation(new Set(pending))
-    setBulkLocation('')
-    setBulkBehindRow(false)
-    setLocationStep(true)
+  const toggleBookSelection = (bookId: string) => {
+    setSelectedForLocation((prev) => {
+      const next = new Set(prev)
+      if (next.has(bookId)) next.delete(bookId)
+      else next.add(bookId)
+      return next
+    })
   }
 
   const getDefaultLib = async () => {
@@ -218,15 +231,18 @@ export default function ScanPage() {
   }
 
   const saveBulkWithLocation = async () => {
-    if (!result) return
     setSavingBulk(true)
     try {
       const defaultLib = await getDefaultLib()
       if (!defaultLib) throw new Error('Nessuna libreria trovata')
 
-      const toSave = result.books.filter((b) => selectedForLocation.has(b._id))
-      await Promise.all(
-        toSave.map((b) =>
+      const toSave = displayedBooks.filter((b) => selectedForLocation.has(b._id))
+      const newBooks = toSave.filter((b) => !libraryBookIds.has(b._id))
+      const existingBooks = toSave.filter((b) => libraryBookIds.has(b._id))
+
+      await Promise.all([
+        // POST new books
+        ...newBooks.map((b) =>
           fetch(`/api/libraries/${defaultLib._id}/books`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -237,25 +253,41 @@ export default function ScanPage() {
               behindRow: bulkBehindRow || undefined,
             }),
           })
-        )
-      )
+        ),
+        // PATCH existing books (location only)
+        ...existingBooks.map((b) =>
+          fetch(`/api/libraries/${defaultLib._id}/books`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookId: b._id,
+              location: bulkLocation || undefined,
+              behindRow: bulkBehindRow || undefined,
+            }),
+          })
+        ),
+      ])
 
-      const saved = new Set(toSave.map((b) => b._id))
-      setLibraryBookIds((prev) => new Set([...prev, ...saved]))
+      const savedIds = new Set(toSave.map((b) => b._id))
+      const updatedLibraryIds = new Set([...libraryBookIds, ...newBooks.map((b) => b._id)])
+      setLibraryBookIds(updatedLibraryIds)
 
       if (bulkLocation && !availableLocations.some((l) => l.toLowerCase() === bulkLocation.toLowerCase())) {
         setAvailableLocations((prev) => [...prev, bulkLocation].sort((a, b) => a.localeCompare(b)))
       }
 
-      // Check if any books still pending
-      const stillPending = result.books.filter((b) => !libraryBookIds.has(b._id) && !saved.has(b._id))
-      if (stillPending.length === 0) {
-        setLocationStep(false)
-        setSuccessMsg(`${toSave.length} ${toSave.length === 1 ? 'libro aggiunto' : 'libri aggiunti'} alla libreria!`)
+      const remaining = displayedBooks.filter((b) => !savedIds.has(b._id))
+      setDisplayedBooks(remaining)
+
+      if (remaining.length === 0) {
+        setSuccessMsg(`${toSave.length} ${toSave.length === 1 ? 'libro salvato' : 'libri salvati'}!`)
         setTimeout(() => setSuccessMsg(null), 3000)
+        resetScan()
       } else {
-        // Reset for next batch
-        setSelectedForLocation(new Set(stillPending.map((b) => b._id)))
+        // Reset for next batch — select only new (not-yet-in-library) remaining books
+        setSelectedForLocation(
+          new Set(remaining.filter((b) => !updatedLibraryIds.has(b._id)).map((b) => b._id))
+        )
         setBulkLocation('')
         setBulkBehindRow(false)
       }
@@ -267,13 +299,12 @@ export default function ScanPage() {
   }
 
   const skipBulkLocation = async () => {
-    if (!result) return
     setSavingBulk(true)
     try {
       const defaultLib = await getDefaultLib()
       if (!defaultLib) throw new Error('Nessuna libreria trovata')
 
-      const pending = result.books.filter((b) => !libraryBookIds.has(b._id))
+      const pending = displayedBooks.filter((b) => !libraryBookIds.has(b._id))
       await Promise.all(
         pending.map((b) =>
           fetch(`/api/libraries/${defaultLib._id}/books`, {
@@ -285,41 +316,13 @@ export default function ScanPage() {
       )
 
       setLibraryBookIds((prev) => new Set([...prev, ...pending.map((b) => b._id)]))
-      setLocationStep(false)
       setSuccessMsg(`${pending.length} ${pending.length === 1 ? 'libro aggiunto' : 'libri aggiunti'} alla libreria!`)
       setTimeout(() => setSuccessMsg(null), 3000)
+      resetScan()
     } catch (err: any) {
       setError(err.message)
     } finally {
       setSavingBulk(false)
-    }
-  }
-
-  // ── Add to library ───────────────────────────────────────
-  const addToLibrary = async (bookId: string, title: string) => {
-    setAddingBook(bookId)
-    try {
-      const libRes = await fetch('/api/libraries')
-      const libData = await libRes.json()
-      const defaultLib = libData.libraries?.find((l: any) => l.isDefault) || libData.libraries?.[0]
-      if (!defaultLib) throw new Error('Nessuna libreria trovata')
-
-      const res = await fetch(`/api/libraries/${defaultLib._id}/books`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId, status: 'to_read' }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Errore')
-      }
-      setSuccessMsg(`"${title}" aggiunto alla libreria!`)
-      setLibraryBookIds(prev => new Set(prev).add(bookId))
-      setTimeout(() => setSuccessMsg(null), 3000)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setAddingBook(null)
     }
   }
 
@@ -343,7 +346,6 @@ export default function ScanPage() {
   }, [tab, loadHistory])
 
   const loadFromHistory = (entry: HistoryEntry) => {
-    // Map history book data back to the active scan result format
     setResult({
       type: entry.scanType,
       books: entry.books.map((b) => ({
@@ -354,13 +356,10 @@ export default function ScanPage() {
         confidence: b.confidence,
       })) as ScannedBook[],
     })
-    
-    // Switch to upload mode if we have a preview, to avoid camera turning on
     if (entry.imageThumbnail) {
       setPreview(entry.imageThumbnail)
       setMode('upload')
     }
-    
     setTab('scan')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -388,18 +387,24 @@ export default function ScanPage() {
     return map[type] || type
   }
 
+  const pendingCount = displayedBooks.filter((b) => !libraryBookIds.has(b._id)).length
+
   // ── Render ────────────────────────────────────────────────
   return (
     <div className={styles.page}>
       {/* Header */}
       <div className={styles.header}>
-        <button className={styles.backBtn} onClick={() => router.back()} aria-label="Indietro">
+        <button
+          className={styles.backBtn}
+          onClick={() => result ? resetScan() : router.back()}
+          aria-label={result ? 'Nuova scansione' : 'Indietro'}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="20" height="20">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <h1 className={styles.title}>Scansiona</h1>
-        {tab === 'scan' && (
+        <h1 className={styles.title}>{result ? 'Risultati' : 'Scansiona'}</h1>
+        {tab === 'scan' && !result && (
           <div className={styles.modeToggle}>
             <button
               className={`${styles.modeBtn} ${mode === 'camera' ? styles.active : ''}`}
@@ -428,7 +433,7 @@ export default function ScanPage() {
         )}
       </div>
 
-      {/* Tab switcher - hidden when result is active */}
+      {/* Tab switcher — hidden when result is active */}
       {!result && (
         <div className={styles.tabBar}>
           <button
@@ -460,117 +465,199 @@ export default function ScanPage() {
       {/* ── TAB SCAN ── */}
       {tab === 'scan' && (
         <>
-          <div className={styles.viewfinder}>
-            {preview ? (
-              <img src={preview} alt="Preview" className={styles.previewImg} />
-            ) : mode === 'camera' ? (
-              <video ref={videoRef} autoPlay playsInline muted className={styles.video} />
-            ) : (
-              <div className={styles.uploadArea}>
-                <div className={styles.uploadIcon}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                </div>
-                <p>Seleziona un&apos;immagine dalla galleria</p>
-                <label className="btn btn-secondary btn-sm">
-                  Scegli immagine
-                  <input type="file" accept="image/*" onChange={handleFileUpload} hidden />
-                </label>
-              </div>
-            )}
-            {scanning && (
-              <div className={styles.scanningOverlay}>
-                <div className={styles.scanLine} />
-                <p className={styles.scanningText}>Analisi in corso...</p>
-              </div>
-            )}
-            {!preview && mode === 'camera' && (
-              <div className={styles.corners}>
-                <div className={`${styles.corner} ${styles.tl}`} />
-                <div className={`${styles.corner} ${styles.tr}`} />
-                <div className={`${styles.corner} ${styles.bl}`} />
-                <div className={`${styles.corner} ${styles.br}`} />
-              </div>
-            )}
-          </div>
-
-          {!preview && mode === 'camera' && !scanning && (
-            <div className={styles.captureArea}>
-              <p className={styles.hint}>Inquadra la copertina, la costa o il codice ISBN</p>
-              <button className={styles.captureBtn} onClick={captureFromCamera} aria-label="Scatta foto" />
-            </div>
-          )}
-
-          {result && (
-            <div className={styles.results}>
-              <div className={styles.resultsHeader}>
-                <h2>{result.books.length > 0
-                  ? `${result.books.length} ${result.books.length === 1 ? 'libro trovato' : 'libri trovati'}`
-                  : 'Nessun libro riconosciuto'}
-                </h2>
-                <button className="btn btn-ghost btn-sm" onClick={resetScan}>Chiudi</button>
-              </div>
-
-              {result.books.map((book) => (
-                <div key={book._id} className={styles.bookResult}>
-                  <div className={styles.bookCoverWrap}>
-                    {book.coverUrl ? (
-                      <img src={book.coverUrl} alt={book.title} className={styles.bookCover} />
-                    ) : (
-                      <div className={styles.coverPlaceholder}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="24" height="24">
-                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles.bookInfo}>
-                    <p className={styles.bookTitle}>{book.title}</p>
-                    <p className={styles.bookAuthor}>{book.authors.join(', ')}</p>
-                    {book.isbn && <p className={styles.bookIsbn}>ISBN: {book.isbn}</p>}
-                    <div className={styles.confidence}>
-                      <div className={styles.confidenceBar} style={{ '--c-width': `${Math.round(book.confidence * 100)}%` } as any} />
-                      <span className={styles.confidenceText}>{Math.round(book.confidence * 100)}%</span>
+          {/* Viewfinder — only when no result */}
+          {!result && (
+            <>
+              <div className={styles.viewfinder}>
+                {preview ? (
+                  <img src={preview} alt="Preview" className={styles.previewImg} />
+                ) : mode === 'camera' ? (
+                  <video ref={videoRef} autoPlay playsInline muted className={styles.video} />
+                ) : (
+                  <div className={styles.uploadArea}>
+                    <div className={styles.uploadIcon}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
                     </div>
+                    <p>Seleziona un&apos;immagine dalla galleria</p>
+                    <label className="btn btn-secondary btn-sm">
+                      Scegli immagine
+                      <input type="file" accept="image/*" onChange={handleFileUpload} hidden />
+                    </label>
                   </div>
-                  <button
-                    className={`btn btn-primary btn-sm ${styles.addBtn} ${libraryBookIds.has(book._id) ? styles.addedBtn : ''}`}
-                    onClick={() => {
-                      if (!libraryBookIds.has(book._id)) addToLibrary(book._id, book.title)
-                    }}
-                    disabled={addingBook === book._id || libraryBookIds.has(book._id)}
-                    aria-label={`Aggiungi ${book.title} alla libreria`}
-                  >
-                    {addingBook === book._id ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" className={styles.spinning}>
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                      </svg>
-                    ) : libraryBookIds.has(book._id) ? (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="14" height="14">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    ) : '+'}
-                  </button>
-                </div>
-              ))}
+                )}
+                {scanning && (
+                  <div className={styles.scanningOverlay}>
+                    <div className={styles.scanLine} />
+                    <p className={styles.scanningText}>Analisi in corso...</p>
+                  </div>
+                )}
+                {!preview && mode === 'camera' && (
+                  <div className={styles.corners}>
+                    <div className={`${styles.corner} ${styles.tl}`} />
+                    <div className={`${styles.corner} ${styles.tr}`} />
+                    <div className={`${styles.corner} ${styles.bl}`} />
+                    <div className={`${styles.corner} ${styles.br}`} />
+                  </div>
+                )}
+              </div>
 
-              {result.books.length === 0 && (
-                <div className={styles.noResult}>
-                  <p>Prova con un&apos;altra angolazione o carica un&apos;immagine più nitida.</p>
+              {!preview && mode === 'camera' && !scanning && (
+                <div className={styles.captureArea}>
+                  <p className={styles.hint}>Inquadra la copertina, la costa o il codice ISBN</p>
+                  <button className={styles.captureBtn} onClick={captureFromCamera} aria-label="Scatta foto" />
                 </div>
               )}
+            </>
+          )}
 
-              {result.books.some((b) => !libraryBookIds.has(b._id)) && (
-                <button className={styles.bulkAddBtn} onClick={openLocationStep}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          {/* ── Split Screen — results ── */}
+          {result && (
+            <div className={styles.splitScreen}>
+              {result.books.length === 0 ? (
+                <div className={styles.noResult}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="48" height="48">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
                   </svg>
-                  Aggiungi alla libreria
-                </button>
+                  <p>Nessun libro riconosciuto</p>
+                  <p className={styles.noResultHint}>Prova con un&apos;altra angolazione o un&apos;immagine più nitida.</p>
+                  <button className="btn btn-primary btn-sm" onClick={resetScan}>Riprova</button>
+                </div>
+              ) : (
+                <>
+                  {/* Top: Carousel */}
+                  <div className={styles.carouselSection}>
+                    <p className={styles.carouselLabel}>
+                      {displayedBooks.length} {displayedBooks.length === 1 ? 'libro trovato' : 'libri trovati'}
+                      {selectedForLocation.size > 0 && (
+                        <span className={styles.carouselSelectedCount}> · {selectedForLocation.size} selezionati</span>
+                      )}
+                    </p>
+                    <div className={styles.carousel}>
+                      {displayedBooks.map((book) => {
+                        const isOwned = libraryBookIds.has(book._id)
+                        const isSelected = selectedForLocation.has(book._id)
+                        return (
+                          <div
+                            key={book._id}
+                            className={`${styles.carouselCard} ${isSelected ? styles.cardSelected : ''} ${isOwned && !isSelected ? styles.cardOwned : ''}`}
+                            onClick={() => toggleBookSelection(book._id)}
+                          >
+                            <div className={styles.carouselCoverWrap}>
+                              {book.coverUrl ? (
+                                <img src={book.coverUrl} alt={book.title} className={styles.carouselCover} />
+                              ) : (
+                                <div className={styles.carouselCoverPlaceholder}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="28" height="28">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                                  </svg>
+                                </div>
+                              )}
+                              {/* Selection indicator */}
+                              <div className={`${styles.selectIndicator} ${isSelected ? styles.indicatorSelected : ''}`}>
+                                {isSelected ? (
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="13" height="13">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                ) : (
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="12" height="12">
+                                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                                  </svg>
+                                )}
+                              </div>
+                              {/* Already-owned badge */}
+                              {isOwned && (
+                                <span className={styles.ownedBadge}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" width="9" height="9">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                  In libreria
+                                </span>
+                              )}
+                            </div>
+                            <p className={styles.carouselTitle}>{book.title}</p>
+                            {book.authors.length > 0 && (
+                              <p className={styles.carouselAuthor}>{book.authors[0]}</p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Bottom: Command panel */}
+                  <div className={styles.commandPanel}>
+                    <p className={styles.commandTitle}>
+                      {selectedForLocation.size === 0
+                        ? 'Seleziona i libri da aggiungere'
+                        : selectedForLocation.size === 1
+                        ? 'Dove va questo libro?'
+                        : `Dove vanno questi ${selectedForLocation.size} libri?`}
+                    </p>
+
+                    {/* Quick chips — last used locations */}
+                    {availableLocations.length > 0 && (
+                      <div className={styles.quickChips}>
+                        {availableLocations.slice(0, 4).map((loc) => (
+                          <button
+                            key={loc}
+                            className={`${styles.chip} ${bulkLocation === loc ? styles.chipActive : ''}`}
+                            onClick={() => setBulkLocation(bulkLocation === loc ? '' : loc)}
+                            disabled={savingBulk}
+                          >
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="9" height="9" aria-hidden="true">
+                              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                            </svg>
+                            {loc}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <LocationInput
+                      value={bulkLocation}
+                      onChange={setBulkLocation}
+                      behindRow={bulkBehindRow}
+                      onBehindRowChange={setBulkBehindRow}
+                      locations={availableLocations}
+                      disabled={savingBulk}
+                    />
+
+                    <div className={styles.commandActions}>
+                      {pendingCount > 0 && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={skipBulkLocation}
+                          disabled={savingBulk}
+                        >
+                          Salta
+                        </button>
+                      )}
+                      <button
+                        className={`btn btn-primary ${styles.saveBtn}`}
+                        onClick={saveBulkWithLocation}
+                        disabled={savingBulk || selectedForLocation.size === 0}
+                      >
+                        {savingBulk ? (
+                          <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" className={styles.spinning}>
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                            </svg>
+                            Salvataggio…
+                          </>
+                        ) : (
+                          `Salva${selectedForLocation.size > 0 ? ` (${selectedForLocation.size})` : ''}`
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -615,15 +702,14 @@ export default function ScanPage() {
           ) : (
             <div className={styles.historyList}>
               {history.map((entry) => (
-                <div 
-                  key={entry._id} 
-                  className={styles.historyEntry} 
+                <div
+                  key={entry._id}
+                  className={styles.historyEntry}
                   onClick={() => loadFromHistory(entry)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && loadFromHistory(entry)}
                 >
-                  {/* Thumbnail */}
                   <div className={styles.historyThumb}>
                     {entry.imageThumbnail ? (
                       <img src={entry.imageThumbnail} alt="Scansione" className={styles.historyThumbImg} />
@@ -637,7 +723,6 @@ export default function ScanPage() {
                     )}
                   </div>
 
-                  {/* Info */}
                   <div className={styles.historyInfo}>
                     <div className={styles.historyMeta}>
                       <span className={styles.historyType}>{scanTypeLabel(entry.scanType)}</span>
@@ -669,81 +754,6 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* ── LOCATION BOTTOM SHEET ── */}
-      {locationStep && result && (
-        <div className={styles.locationOverlay} onClick={(e) => { if (e.target === e.currentTarget) setLocationStep(false) }}>
-          <div className={styles.locationSheet}>
-            <div className={styles.locationSheetHandle} />
-
-            <h2 className={styles.locationSheetTitle}>Dove si trovano?</h2>
-
-            <div className={styles.locationInputWrap}>
-              <LocationInput
-                value={bulkLocation}
-                onChange={setBulkLocation}
-                behindRow={bulkBehindRow}
-                onBehindRowChange={setBulkBehindRow}
-                locations={availableLocations}
-                disabled={savingBulk}
-              />
-            </div>
-
-            <p className={styles.locationBooksLabel}>
-              Libri selezionati
-            </p>
-            <div className={styles.locationBookList}>
-              {result.books.filter((b) => !libraryBookIds.has(b._id)).map((book) => (
-                <label key={book._id} className={styles.locationBookRow}>
-                  <input
-                    type="checkbox"
-                    className={styles.locationCheckbox}
-                    checked={selectedForLocation.has(book._id)}
-                    onChange={(e) => {
-                      setSelectedForLocation((prev) => {
-                        const next = new Set(prev)
-                        if (e.target.checked) next.add(book._id)
-                        else next.delete(book._id)
-                        return next
-                      })
-                    }}
-                    disabled={savingBulk}
-                  />
-                  {book.coverUrl ? (
-                    <img src={book.coverUrl} alt={book.title} className={styles.locationBookCover} />
-                  ) : (
-                    <div className={styles.locationBookCoverPlaceholder}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                      </svg>
-                    </div>
-                  )}
-                  <span className={styles.locationBookTitle}>{book.title}</span>
-                </label>
-              ))}
-            </div>
-
-            <div className={styles.locationActions}>
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={skipBulkLocation}
-                disabled={savingBulk}
-              >
-                Salta
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={saveBulkWithLocation}
-                disabled={savingBulk || selectedForLocation.size === 0}
-              >
-                {savingBulk
-                  ? 'Salvataggio…'
-                  : `Salva${selectedForLocation.size > 0 ? ` (${selectedForLocation.size})` : ''}`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {error && (
         <div className={styles.errorBanner}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16">
@@ -754,7 +764,6 @@ export default function ScanPage() {
         </div>
       )}
 
-      {/* Success toast */}
       {successMsg && (
         <div className="toast-container">
           <div className="toast toast-success">{successMsg}</div>
