@@ -19,8 +19,13 @@ export async function GET(
     }
 
     await connectDB()
-    const book = await Book.findById(id).lean() as any
+    const book = await Book.findById(id) as any
     if (!book) return NextResponse.json({ error: 'Libro non trovato' }, { status: 404 })
+
+    // Restituisci dalla cache se già generato
+    if (book.aiSummary?.summary) {
+      return NextResponse.json({ summary: book.aiSummary, bookId: id, cached: true })
+    }
 
     const prompt = `Sei un esperto letterario. Scrivi un riassunto spoiler-free del libro indicato.
 
@@ -68,7 +73,11 @@ Rispondi SOLO con JSON:
       }
     }
 
-    return NextResponse.json({ summary, bookId: id })
+    // Salva in cache sul documento Book (condiviso tra tutti gli utenti)
+    book.aiSummary = { ...summary, generatedAt: new Date() }
+    await book.save()
+
+    return NextResponse.json({ summary, bookId: id, cached: false })
   } catch (error) {
     console.error('[ai/summary]', error)
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 })

@@ -50,8 +50,8 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | FX-3 | ✅ Nascondi Reading Insights dal profilo (feature sospesa, da riprendere) | P1 | XS | - |
 | FX-4 | ✅ Nascondi Notifiche Smart dal profilo (feature incompleta, non esporre) | P1 | XS | - |
 | FX-4b | ✅ Nascondi Obiettivi di Lettura dal profilo (feature sospesa, da riprendere in Fase 7) | P1 | XS | - |
-| FX-5 | Fix ricerca libreria — expand field troppo stretto + icona "3 layer" incomprensibile | P0 | S | - |
-| FX-6 | Cache summaries spoiler-free sul modello Book (condivisa tra utenti) | P1 | S | - |
+| FX-5 | ✅ Fix ricerca libreria — expand field troppo stretto + icona "3 layer" incomprensibile | P0 | S | - |
+| FX-6 | ✅ Cache summaries spoiler-free sul modello Book (condivisa tra utenti) | P1 | S | - |
 | FX-7 | Profilo Gusti — redesign per renderlo comprensibile (da definire UI) | P1 | M | - |
 | FX-8 | Raccomandazioni — potenziare con AI engine + segnali preferiti/piaciuti | P1 | M | BK-1 |
 | SR-6 | Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query e migliora i risultati) | P1 | M | - |
@@ -143,9 +143,7 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~SO-7 Reading challenges~~
 
 ### Fase 7b — Fix & Revisioni ← IN CORSO
-> ~~FX-1 Nav search restore~~, ~~FX-2 Nascondi book club~~, ~~FX-3 Nascondi reading insights~~,
-> ~~FX-4 Nascondi notifiche smart~~, ~~FX-4b Nascondi obiettivi lettura~~,
-> FX-5 Fix ricerca libreria, FX-6 Cache summaries,
+> ~~FX-1~~, ~~FX-2~~, ~~FX-3~~, ~~FX-4~~, ~~FX-4b~~, ~~FX-5~~, ~~FX-6~~,
 > FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
 > BK-1 Preferiti/Piaciuti, SR-6 Ricerca AI nella pagina search
 
@@ -220,8 +218,8 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 - **FX-3 ✅:** Reading Insights nascosti dal profilo (feature sospesa)
 - **FX-4 ✅:** Notifiche Smart nascoste dal profilo (feature incompleta)
 - **FX-4b ✅:** Obiettivi di Lettura nascosti dal profilo (feature sospesa, da riprendere in Fase 7)
-- **FX-5:** Fix ricerca libreria — campo espanso correttamente + bottone AI Search con label esplicita
-- **FX-6:** Summaries spoiler-free ora cached sul modello Book (condivisi tra utenti, non rigenerati)
+- **FX-5 ✅:** Fix ricerca libreria — campo ora occupa tutta la larghezza disponibile (flex:0 + overflow:hidden su headerTitle.hidden) + bottone AI rinominato "Cerca con AI" con label testuale
+- **FX-6 ✅:** Summaries spoiler-free ora cached nel campo `aiSummary` del modello Book — condivisi tra tutti gli utenti, non rigenerati se già esistenti
 - **FX-7:** Profilo Gusti redesign (da definire)
 - **FX-8:** Raccomandazioni potenziate con segnali preferiti/piaciuti
 - **BK-1:** Preferiti/Piaciuti — cuore sulla scheda libro, persistito nel BookEntry, usato nelle raccomandazioni

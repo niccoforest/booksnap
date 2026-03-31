@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
+export interface IBookSummary {
+  summary: string
+  mood?: string
+  readingTime?: string
+  perfectFor: string[]
+  generatedAt: Date
+}
+
 export interface IBook extends Document {
   isbn?: string
   title: string
@@ -13,6 +21,7 @@ export interface IBook extends Document {
   language?: string
   openLibraryKey?: string
   googleBooksId?: string
+  aiSummary?: IBookSummary
   createdAt: Date
 }
 
@@ -30,6 +39,13 @@ const BookSchema = new Schema<IBook>(
     language: { type: String },
     openLibraryKey: { type: String },
     googleBooksId: { type: String },
+    aiSummary: {
+      summary: { type: String },
+      mood: { type: String },
+      readingTime: { type: String },
+      perfectFor: { type: [String], default: [] },
+      generatedAt: { type: Date },
+    },
   },
   { timestamps: true }
 )

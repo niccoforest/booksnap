@@ -30,6 +30,9 @@
   opacity: 0;
   pointer-events: none;
   transform: translateX(-8px);
+  flex: 0;
+  max-width: 0;
+  overflow: hidden;
 }
 
 .title {
@@ -641,19 +644,23 @@
 
 /* AI Search Controls */
 .aiSearchBtn {
-  width: 38px;
   height: 38px;
-  border-radius: 50%;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
   background: var(--bg-card);
   border: 1px solid var(--accent-dim);
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
   cursor: pointer;
   color: var(--accent);
   flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 0 1px var(--accent-dim);
+  white-space: nowrap;
 }
 
 .aiSearchBtn:hover:not(:disabled) {

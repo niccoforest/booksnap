@@ -200,15 +200,16 @@ export default function LibraryPage() {
                   </button>
                 )}
               </div>
-              <button 
-                className={`${styles.aiSearchBtn} ${isAiSearching ? styles.spinning : ''}`} 
+              <button
+                className={`${styles.aiSearchBtn} ${isAiSearching ? styles.spinning : ''}`}
                 onClick={handleAiSearch}
                 disabled={isAiSearching || !searchQuery.trim()}
-                title="Smart Search AI"
+                aria-label="Cerca con intelligenza artificiale"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14">
+                  <path d="M12 2l2 6h6l-5 3.6L17 18l-5-3.6L7 18l2-6.4L4 8h6z"/>
                 </svg>
+                {isAiSearching ? 'Cerco...' : 'Cerca con AI'}
               </button>
               <button className={styles.searchCloseBtn} onClick={() => setSearchOpen(false)}>
                 Chiudi
