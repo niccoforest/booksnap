@@ -22,7 +22,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     }
 
     const userOid = new mongoose.Types.ObjectId(authUser.userId)
-    const idx = challenge.participants.findIndex(p => p.userId.toString() === authUser.userId)
+    const idx = challenge.participants.findIndex((p: { userId: mongoose.Types.ObjectId }) => p.userId.toString() === authUser.userId)
 
     if (idx >= 0) {
       // Leave
