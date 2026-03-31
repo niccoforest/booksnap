@@ -45,14 +45,16 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | **PREFERITI & INTERAZIONI LIBRO** | | | | |
 | BK-1 | Preferiti / Piaciuti — cuore su ogni libro, usato nelle raccomandazioni | P1 | S | - |
 | **FIX & REVISIONI (Fase 7b)** | | | | |
-| FX-1 | Navigazione — rimettere `/search` al posto di `/community` nel BottomNav | P0 | XS | - |
-| FX-2 | Nascondi domande Book Club dall'UI (API intatta, feature sospesa) | P1 | XS | - |
-| FX-3 | Nascondi Reading Insights dal profilo (feature sospesa, da riprendere) | P1 | XS | - |
-| FX-4 | Nascondi Notifiche Smart dal profilo (feature incompleta, non esporre) | P1 | XS | - |
+| FX-1 | ✅ Navigazione — rimettere `/search` al posto di `/community` nel BottomNav | P0 | XS | - |
+| FX-2 | ✅ Nascondi domande Book Club dall'UI (API intatta, feature sospesa) | P1 | XS | - |
+| FX-3 | ✅ Nascondi Reading Insights dal profilo (feature sospesa, da riprendere) | P1 | XS | - |
+| FX-4 | ✅ Nascondi Notifiche Smart dal profilo (feature incompleta, non esporre) | P1 | XS | - |
+| FX-4b | ✅ Nascondi Obiettivi di Lettura dal profilo (feature sospesa, da riprendere in Fase 7) | P1 | XS | - |
 | FX-5 | Fix ricerca libreria — expand field troppo stretto + icona "3 layer" incomprensibile | P0 | S | - |
 | FX-6 | Cache summaries spoiler-free sul modello Book (condivisa tra utenti) | P1 | S | - |
 | FX-7 | Profilo Gusti — redesign per renderlo comprensibile (da definire UI) | P1 | M | - |
 | FX-8 | Raccomandazioni — potenziare con AI engine + segnali preferiti/piaciuti | P1 | M | BK-1 |
+| SR-6 | Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query e migliora i risultati) | P1 | M | - |
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |
 | UI-2 | ✅ Rec. proattive — filtro libri già in libreria (no duplicati) | P1 | S | RC-2 |
@@ -141,10 +143,11 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~SO-7 Reading challenges~~
 
 ### Fase 7b — Fix & Revisioni ← IN CORSO
-> FX-1 Nav search restore, FX-2 Nascondi book club, FX-3 Nascondi reading insights,
-> FX-4 Nascondi notifiche smart, FX-5 Fix ricerca libreria,
-> FX-6 Cache summaries, FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
-> BK-1 Preferiti/Piaciuti
+> ~~FX-1 Nav search restore~~, ~~FX-2 Nascondi book club~~, ~~FX-3 Nascondi reading insights~~,
+> ~~FX-4 Nascondi notifiche smart~~, ~~FX-4b Nascondi obiettivi lettura~~,
+> FX-5 Fix ricerca libreria, FX-6 Cache summaries,
+> FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
+> BK-1 Preferiti/Piaciuti, SR-6 Ricerca AI nella pagina search
 
 ### Fase 7 — Statistics Redesign
 > ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,
@@ -212,15 +215,17 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 ## Changelog
 
 ### v2.1 — 2026-03-31 (Fix & Revisioni)
-- **FX-1:** Navigazione ripristinata — `/search` al posto di `/community` nel BottomNav
-- **FX-2:** Domande Book Club nascoste dall'UI (API preservata)
-- **FX-3:** Reading Insights nascosti dal profilo (feature sospesa)
-- **FX-4:** Notifiche Smart nascoste dal profilo (feature incompleta)
+- **FX-1 ✅:** Navigazione ripristinata — `/search` al posto di `/community` nel BottomNav
+- **FX-2 ✅:** Domande Book Club nascoste dall'UI (API preservata)
+- **FX-3 ✅:** Reading Insights nascosti dal profilo (feature sospesa)
+- **FX-4 ✅:** Notifiche Smart nascoste dal profilo (feature incompleta)
+- **FX-4b ✅:** Obiettivi di Lettura nascosti dal profilo (feature sospesa, da riprendere in Fase 7)
 - **FX-5:** Fix ricerca libreria — campo espanso correttamente + bottone AI Search con label esplicita
 - **FX-6:** Summaries spoiler-free ora cached sul modello Book (condivisi tra utenti, non rigenerati)
 - **FX-7:** Profilo Gusti redesign (da definire)
 - **FX-8:** Raccomandazioni potenziate con segnali preferiti/piaciuti
 - **BK-1:** Preferiti/Piaciuti — cuore sulla scheda libro, persistito nel BookEntry, usato nelle raccomandazioni
+- **SR-6:** Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query, migliora e arricchisce i risultati)
 - **Community:** ridefinizione concetto — community intima (gruppo/famiglia) pianificata per fase futura; feature Fase 6 nascoste dall'UI ma codice preservato
 
 ### v1.1 — 2026-03-30

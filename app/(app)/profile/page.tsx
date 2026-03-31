@@ -300,35 +300,7 @@ export default function ProfilePage() {
       <div className={styles.aiDashboard}>
         {/* Reading Insights hidden — feature sospesa, da riprendere */}
 
-        {goals.length > 0 && (
-          <div className={styles.aiSection}>
-            <div className={styles.aiSectionHeader}>
-              <h2 className={styles.sectionTitle}>Obiettivi di Lettura</h2>
-              <div className={styles.aiBadge}>AI</div>
-            </div>
-            <div className={styles.goalsList}>
-              {goals.map((goal) => (
-                <div key={goal.id} className={styles.goalCard}>
-                  <div className={styles.goalHeader}>
-                    <p className={styles.goalTitle}>{goal.title}</p>
-                    <span className={`${styles.goalBadge} ${styles[goal.difficulty]}`}>{goal.difficulty}</span>
-                  </div>
-                  <p className={styles.goalDesc}>{goal.description}</p>
-                  <div className={styles.goalProgress}>
-                    <div className={styles.progressLabels}>
-                      <span>{goal.current} / {goal.target} {goal.unit}</span>
-                      <span>{Math.round((goal.current / goal.target) * 100)}%</span>
-                    </div>
-                    <div className={styles.progressBar}>
-                      <div className={styles.progressFill} style={{ width: `${Math.min(100, (goal.current / goal.target) * 100)}%` }} />
-                    </div>
-                  </div>
-                  {goal.tip && <p className={styles.goalTip}>Idea: {goal.tip}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Obiettivi di Lettura hidden — feature sospesa, da riprendere in Fase 7 */}
       </div>
 
       {/* Taste Profile */}
