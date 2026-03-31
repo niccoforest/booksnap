@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './page.module.css'
+import LocationInput from '@/components/LocationInput'
 
 interface ScannedBook {
   _id: string
@@ -48,20 +49,34 @@ export default function ScanPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [libraryBookIds, setLibraryBookIds] = useState<Set<string>>(new Set())
 
-  // Fetch library on mount to check which books are already added
+  // Location step
+  const [locationStep, setLocationStep] = useState(false)
+  const [bulkLocation, setBulkLocation] = useState('')
+  const [bulkBehindRow, setBulkBehindRow] = useState(false)
+  const [selectedForLocation, setSelectedForLocation] = useState<Set<string>>(new Set())
+  const [savingBulk, setSavingBulk] = useState(false)
+  const [availableLocations, setAvailableLocations] = useState<string[]>([])
+
+  // Fetch library + locations on mount
   useEffect(() => {
-    const fetchLib = async () => {
+    const fetchInit = async () => {
       try {
-        const res = await fetch('/api/libraries')
-        if (!res.ok) return
-        const data = await res.json()
-        const def = data.libraries?.find((l: any) => l.isDefault) || data.libraries?.[0]
-        if (def) {
-          setLibraryBookIds(new Set(def.books.map((b: any) => b.bookId._id || b.bookId)))
+        const [libRes, locRes] = await Promise.all([
+          fetch('/api/libraries'),
+          fetch('/api/libraries/locations'),
+        ])
+        if (libRes.ok) {
+          const data = await libRes.json()
+          const def = data.libraries?.find((l: any) => l.isDefault) || data.libraries?.[0]
+          if (def) setLibraryBookIds(new Set(def.books.map((b: any) => b.bookId._id || b.bookId)))
+        }
+        if (locRes.ok) {
+          const locData = await locRes.json()
+          setAvailableLocations(locData.locations || [])
         }
       } catch (e) {}
     }
-    fetchLib()
+    fetchInit()
   }, [])
 
   // History
@@ -181,7 +196,103 @@ export default function ScanPage() {
     setResult(null)
     setPreview(null)
     setError(null)
+    setLocationStep(false)
+    setBulkLocation('')
+    setBulkBehindRow(false)
     if (mode === 'camera') startCamera()
+  }
+
+  const openLocationStep = () => {
+    if (!result) return
+    const pending = result.books.filter((b) => !libraryBookIds.has(b._id)).map((b) => b._id)
+    setSelectedForLocation(new Set(pending))
+    setBulkLocation('')
+    setBulkBehindRow(false)
+    setLocationStep(true)
+  }
+
+  const getDefaultLib = async () => {
+    const libRes = await fetch('/api/libraries')
+    const libData = await libRes.json()
+    return libData.libraries?.find((l: any) => l.isDefault) || libData.libraries?.[0]
+  }
+
+  const saveBulkWithLocation = async () => {
+    if (!result) return
+    setSavingBulk(true)
+    try {
+      const defaultLib = await getDefaultLib()
+      if (!defaultLib) throw new Error('Nessuna libreria trovata')
+
+      const toSave = result.books.filter((b) => selectedForLocation.has(b._id))
+      await Promise.all(
+        toSave.map((b) =>
+          fetch(`/api/libraries/${defaultLib._id}/books`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bookId: b._id,
+              status: 'to_read',
+              location: bulkLocation || undefined,
+              behindRow: bulkBehindRow || undefined,
+            }),
+          })
+        )
+      )
+
+      const saved = new Set(toSave.map((b) => b._id))
+      setLibraryBookIds((prev) => new Set([...prev, ...saved]))
+
+      if (bulkLocation && !availableLocations.some((l) => l.toLowerCase() === bulkLocation.toLowerCase())) {
+        setAvailableLocations((prev) => [...prev, bulkLocation].sort((a, b) => a.localeCompare(b)))
+      }
+
+      // Check if any books still pending
+      const stillPending = result.books.filter((b) => !libraryBookIds.has(b._id) && !saved.has(b._id))
+      if (stillPending.length === 0) {
+        setLocationStep(false)
+        setSuccessMsg(`${toSave.length} ${toSave.length === 1 ? 'libro aggiunto' : 'libri aggiunti'} alla libreria!`)
+        setTimeout(() => setSuccessMsg(null), 3000)
+      } else {
+        // Reset for next batch
+        setSelectedForLocation(new Set(stillPending.map((b) => b._id)))
+        setBulkLocation('')
+        setBulkBehindRow(false)
+      }
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSavingBulk(false)
+    }
+  }
+
+  const skipBulkLocation = async () => {
+    if (!result) return
+    setSavingBulk(true)
+    try {
+      const defaultLib = await getDefaultLib()
+      if (!defaultLib) throw new Error('Nessuna libreria trovata')
+
+      const pending = result.books.filter((b) => !libraryBookIds.has(b._id))
+      await Promise.all(
+        pending.map((b) =>
+          fetch(`/api/libraries/${defaultLib._id}/books`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookId: b._id, status: 'to_read' }),
+          })
+        )
+      )
+
+      setLibraryBookIds((prev) => new Set([...prev, ...pending.map((b) => b._id)]))
+      setLocationStep(false)
+      setSuccessMsg(`${pending.length} ${pending.length === 1 ? 'libro aggiunto' : 'libri aggiunti'} alla libreria!`)
+      setTimeout(() => setSuccessMsg(null), 3000)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSavingBulk(false)
+    }
   }
 
   // ── Add to library ───────────────────────────────────────
@@ -452,6 +563,15 @@ export default function ScanPage() {
                   <p>Prova con un&apos;altra angolazione o carica un&apos;immagine più nitida.</p>
                 </div>
               )}
+
+              {result.books.some((b) => !libraryBookIds.has(b._id)) && (
+                <button className={styles.bulkAddBtn} onClick={openLocationStep}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Aggiungi alla libreria
+                </button>
+              )}
             </div>
           )}
         </>
@@ -546,6 +666,81 @@ export default function ScanPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── LOCATION BOTTOM SHEET ── */}
+      {locationStep && result && (
+        <div className={styles.locationOverlay} onClick={(e) => { if (e.target === e.currentTarget) setLocationStep(false) }}>
+          <div className={styles.locationSheet}>
+            <div className={styles.locationSheetHandle} />
+
+            <h2 className={styles.locationSheetTitle}>Dove si trovano?</h2>
+
+            <div className={styles.locationInputWrap}>
+              <LocationInput
+                value={bulkLocation}
+                onChange={setBulkLocation}
+                behindRow={bulkBehindRow}
+                onBehindRowChange={setBulkBehindRow}
+                locations={availableLocations}
+                disabled={savingBulk}
+              />
+            </div>
+
+            <p className={styles.locationBooksLabel}>
+              Libri selezionati
+            </p>
+            <div className={styles.locationBookList}>
+              {result.books.filter((b) => !libraryBookIds.has(b._id)).map((book) => (
+                <label key={book._id} className={styles.locationBookRow}>
+                  <input
+                    type="checkbox"
+                    className={styles.locationCheckbox}
+                    checked={selectedForLocation.has(book._id)}
+                    onChange={(e) => {
+                      setSelectedForLocation((prev) => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(book._id)
+                        else next.delete(book._id)
+                        return next
+                      })
+                    }}
+                    disabled={savingBulk}
+                  />
+                  {book.coverUrl ? (
+                    <img src={book.coverUrl} alt={book.title} className={styles.locationBookCover} />
+                  ) : (
+                    <div className={styles.locationBookCoverPlaceholder}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                      </svg>
+                    </div>
+                  )}
+                  <span className={styles.locationBookTitle}>{book.title}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className={styles.locationActions}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={skipBulkLocation}
+                disabled={savingBulk}
+              >
+                Salta
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveBulkWithLocation}
+                disabled={savingBulk || selectedForLocation.size === 0}
+              >
+                {savingBulk
+                  ? 'Salvataggio…'
+                  : `Salva${selectedForLocation.size > 0 ? ` (${selectedForLocation.size})` : ''}`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

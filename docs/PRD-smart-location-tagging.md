@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** In implementazione — Fase 3 completata
+**Stato:** In implementazione — Fase 4 completata
 **Feature ID:** LT-1
 
 ---
@@ -228,21 +228,21 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ---
 
-### Fase 4 — Integrazione Scan (bulk assignment)
+### Fase 4 — Integrazione Scan (bulk assignment) ✅
 
 **Obiettivo:** Dopo una scansione, l'utente assegna la posizione a tutti i libri riconosciuti prima di salvarli.
 
-1. In `app/(app)/scan/page.tsx`:
+1. ✅ In `app/(app)/scan/page.tsx`:
    - Nuovo stato: `locationStep` (boolean), `bulkLocation`, `bulkBehindRow`, `selectedForLocation` (Set di bookId)
-   - Dopo scan, mostrare step intermedio con:
+   - Dopo scan, bottone "Aggiungi alla libreria" apre bottom sheet con:
      - Lista libri con checkbox (tutti preselezionati)
      - `LocationInput` per posizione condivisa
      - Toggle "Fila posteriore"
-     - Pulsanti "Salva con posizione" e "Salta"
-   - "Salva" → per ogni libro selezionato, POST con location/behindRow
-   - "Salta" → POST senza location (comportamento attuale)
-   - Fetch locations al mount dello step
-2. Stili in `page.module.css`
+     - Pulsanti "Salta" e "Salva (N)"
+   - "Salva" → POST libri selezionati con location/behindRow; ciclo multi-posizione per i deselezionati
+   - "Salta" → POST tutti i rimanenti senza location
+   - Fetch locations al mount (in parallelo con fetch library)
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** Scansionare libri → step location appare → selezionare posizione → tutti i libri salvati con quella location. Verificare anche "Salta" che mantiene il flusso attuale.
 

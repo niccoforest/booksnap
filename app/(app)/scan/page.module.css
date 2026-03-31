@@ -550,6 +550,169 @@
   animation: spin 1s linear infinite;
 }
 
+/* ── BULK ADD BUTTON ── */
+.bulkAddBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  box-shadow: var(--shadow-accent);
+}
+
+.bulkAddBtn:hover { background: var(--accent-hover); }
+.bulkAddBtn:active { transform: scale(0.99); }
+
+/* ── LOCATION BOTTOM SHEET ── */
+.locationOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-overlay);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.locationSheet {
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  padding: var(--spacing-md) var(--spacing-md) calc(var(--spacing-xl) + var(--safe-area-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-height: 85dvh;
+  overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.locationSheetHandle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-full);
+  margin: 0 auto var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.locationSheetTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-align: center;
+}
+
+.locationInputWrap {
+  flex-shrink: 0;
+}
+
+.locationBooksLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.locationBookList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.locationBookRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  min-height: 52px;
+  transition: background 0.15s;
+}
+
+.locationBookRow:has(input:checked) {
+  background: var(--accent-dim);
+  border-color: var(--border-focus);
+}
+
+.locationCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.locationBookCover {
+  width: 28px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.locationBookCoverPlaceholder {
+  width: 28px;
+  height: 42px;
+  background: var(--bg-placeholder);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.locationBookTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.locationActions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: var(--spacing-xs);
+  flex-shrink: 0;
+}
+
+.locationActions .btn-primary {
+  flex: 1;
+}
+
 @keyframes spin {
   from { transform: rotate(0); }
   to { transform: rotate(360deg); }
