@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** In implementazione — Fase 4 completata
+**Stato:** Completato ✅ — tutte le fasi implementate
 **Feature ID:** LT-1
 
 ---
@@ -248,15 +248,15 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ---
 
-### Fase 5 — Visualizzazione in Library + Filtro
+### Fase 5 — Visualizzazione in Library + Filtro ✅
 
 **Obiettivo:** Le location sono visibili nella libreria e filtrabili.
 
-1. In `app/(app)/library/page.tsx`:
-   - Mostrare badge location sulle card dei libri (sia grid che list view)
-   - Indicatore visivo per `behindRow`
-   - Aggiungere filtro per location nel pannello filtri esistente
-2. Stili in `page.module.css`
+1. ✅ In `app/(app)/library/page.tsx`:
+   - Badge location (icona pin + testo) sulle card in grid view e list view
+   - Indicatore visivo `↩` per `behindRow`
+   - Select "📍 Tutte / [location]" visibile solo se la libreria ha almeno una location usata
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** I libri con location mostrano il badge. Filtrando per "Soggiorno" appaiono solo i libri in quella posizione.
 
