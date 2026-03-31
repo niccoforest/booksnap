@@ -43,7 +43,7 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | PR-2 | ✅ Override manuale generi preferiti | P2 | S | PR-1 |
 
 | **PREFERITI & INTERAZIONI LIBRO** | | | | |
-| BK-1 | Preferiti / Piaciuti — cuore su ogni libro, usato nelle raccomandazioni | P1 | S | - |
+| BK-1 | ✅ Preferiti / Piaciuti — due stati separati (`liked` cuore, `favorite` stella) su BookEntry; filtri dedicati in libreria | P1 | S | - |
 | **FIX & REVISIONI (Fase 7b)** | | | | |
 | FX-1 | ✅ Navigazione — rimettere `/search` al posto di `/community` nel BottomNav | P0 | XS | - |
 | FX-2 | ✅ Nascondi domande Book Club dall'UI (API intatta, feature sospesa) | P1 | XS | - |
@@ -143,9 +143,9 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 > ~~SO-7 Reading challenges~~
 
 ### Fase 7b — Fix & Revisioni ← IN CORSO
-> ~~FX-1~~, ~~FX-2~~, ~~FX-3~~, ~~FX-4~~, ~~FX-4b~~, ~~FX-5~~, ~~FX-6~~,
+> ~~FX-1~~, ~~FX-2~~, ~~FX-3~~, ~~FX-4~~, ~~FX-4b~~, ~~FX-5~~, ~~FX-6~~, ~~BK-1~~,
 > FX-7 Profilo gusti redesign, FX-8 Raccomandazioni AI potenziato,
-> BK-1 Preferiti/Piaciuti, SR-6 Ricerca AI nella pagina search
+> SR-6 Ricerca AI nella pagina search
 
 ### Fase 7 — Statistics Redesign
 > ST-4 Dedicated stats page, ST-5 Reading heatmap, ST-6 Genre radar chart,
@@ -222,7 +222,7 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 - **FX-6 ✅:** Summaries spoiler-free ora cached nel campo `aiSummary` del modello Book — condivisi tra tutti gli utenti, non rigenerati se già esistenti
 - **FX-7:** Profilo Gusti redesign (da definire)
 - **FX-8:** Raccomandazioni potenziate con segnali preferiti/piaciuti
-- **BK-1:** Preferiti/Piaciuti — cuore sulla scheda libro, persistito nel BookEntry, usato nelle raccomandazioni
+- **BK-1 ✅:** Preferiti/Piaciuti — due stati booleani separati (`liked` + `favorite`) su BookEntry; bottoni cuore/stella nella scheda libro; filtri "Piaciuti" e "Preferiti" nella libreria; segnali usabili dal motore di raccomandazione
 - **SR-6:** Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query, migliora e arricchisce i risultati)
 - **Community:** ridefinizione concetto — community intima (gruppo/famiglia) pianificata per fase futura; feature Fase 6 nascoste dall'UI ma codice preservato
 

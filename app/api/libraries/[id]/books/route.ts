@@ -80,7 +80,7 @@ export async function PATCH(
 
     const oldStatus = entry.status
     const oldRating = entry.rating
-    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast']
+    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast', 'liked', 'favorite']
     const now = new Date()
 
     allowedFields.forEach((field) => {

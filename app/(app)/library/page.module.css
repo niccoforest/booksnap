@@ -344,6 +344,36 @@
   color: white;
 }
 
+.filterChipReaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.filterLiked {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.filterFavorite {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #f59e0b;
+}
+
+:global([data-theme='dark']) .filterLiked {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+:global([data-theme='dark']) .filterFavorite {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
 /* ─── Grid ─────────────────────── */
 .grid {
   display: grid;

@@ -36,6 +36,8 @@ interface BookEntry {
   status: ReadingStatus
   rating?: number
   addedAt: string
+  liked?: boolean
+  favorite?: boolean
 }
 
 interface Library {
@@ -59,6 +61,7 @@ export default function LibraryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [isAiSearching, setIsAiSearching] = useState(false)
   const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null)
+  const [reactionFilter, setReactionFilter] = useState<'all' | 'liked' | 'favorite'>('all')
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -122,13 +125,17 @@ export default function LibraryPage() {
     (currentLib?.books || [])
     .filter((b) => {
       const matchesStatus = statusFilter === 'all' || b.status === statusFilter
+      const matchesReaction =
+        reactionFilter === 'all' ||
+        (reactionFilter === 'liked' && b.liked) ||
+        (reactionFilter === 'favorite' && b.favorite)
       const q = searchQuery.trim()
-      if (!q) return matchesStatus
+      if (!q) return matchesStatus && matchesReaction
 
       const titleMatch = isFuzzyMatch(b.bookId.title, q)
       const authorMatch = b.bookId.authors?.some((a) => isFuzzyMatch(a, q))
 
-      return matchesStatus && (titleMatch || authorMatch)
+      return matchesStatus && matchesReaction && (titleMatch || authorMatch)
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -283,12 +290,30 @@ export default function LibraryPage() {
           {STATUS_FILTERS.map((s) => (
             <button
               key={s}
-              className={`${styles.filterChip} ${statusFilter === s ? styles.active : ''}`}
-              onClick={() => setStatusFilter(s)}
+              className={`${styles.filterChip} ${statusFilter === s && reactionFilter === 'all' ? styles.active : ''}`}
+              onClick={() => { setStatusFilter(s); setReactionFilter('all') }}
             >
               {s === 'all' ? 'Tutti' : STATUS_CONFIG[s].label}
             </button>
           ))}
+          <button
+            className={`${styles.filterChip} ${styles.filterChipReaction} ${reactionFilter === 'liked' ? styles.filterLiked : ''}`}
+            onClick={() => { setReactionFilter(reactionFilter === 'liked' ? 'all' : 'liked'); setStatusFilter('all') }}
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" fill={reactionFilter === 'liked' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            Piaciuti
+          </button>
+          <button
+            className={`${styles.filterChip} ${styles.filterChipReaction} ${reactionFilter === 'favorite' ? styles.filterFavorite : ''}`}
+            onClick={() => { setReactionFilter(reactionFilter === 'favorite' ? 'all' : 'favorite'); setStatusFilter('all') }}
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" fill={reactionFilter === 'favorite' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Preferiti
+          </button>
         </div>
         <div className={styles.sortRow}>
           <select
