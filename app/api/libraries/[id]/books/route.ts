@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Library, BookEntry } from '@/models/Library'
 import { logActivity } from '@/lib/activities'
 import mongoose from 'mongoose'
+import { normalizeLocation } from '@/lib/locationUtils'
 
 // POST /api/libraries/[id]/books - Add book to library
 export async function POST(
@@ -28,6 +29,8 @@ export async function POST(
     const existing = library.books.find((b: BookEntry) => b.bookId.toString() === bookId)
     if (existing) return NextResponse.json({ error: 'Libro già presente in questa libreria' }, { status: 409 })
 
+    const normalizedLocation = location !== undefined ? normalizeLocation(location) : undefined
+
     const now = new Date()
     const entry: any = {
       bookId: new mongoose.Types.ObjectId(bookId),
@@ -35,7 +38,7 @@ export async function POST(
       tags: [],
       addedAt: now,
       readInPast,
-      ...(location !== undefined && { location }),
+      ...(normalizedLocation !== undefined && normalizedLocation !== '' && { location: normalizedLocation }),
       ...(behindRow !== undefined && { behindRow }),
     }
 
@@ -84,6 +87,11 @@ export async function PATCH(
     const oldRating = entry.rating
     const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast', 'liked', 'favorite', 'location', 'behindRow']
     const now = new Date()
+
+    // Normalize location before applying
+    if (updates.location !== undefined) {
+      updates.location = normalizeLocation(updates.location) || undefined
+    }
 
     allowedFields.forEach((field) => {
       if (updates[field] !== undefined) {

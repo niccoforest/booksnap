@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import styles from './LocationInput.module.css'
+import { normalizeLocation } from '@/lib/locationUtils'
 
 interface LocationInputProps {
   value: string
@@ -11,6 +12,55 @@ interface LocationInputProps {
   locations: string[]
   placeholder?: string
   disabled?: boolean
+}
+
+/** Levenshtein edit distance between two strings. */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  if (m === 0) return n
+  if (n === 0) return m
+  const prev = Array.from({ length: n + 1 }, (_, i) => i)
+  const curr = new Array(n + 1).fill(0)
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1])
+    }
+    prev.splice(0, prev.length, ...curr)
+  }
+  return curr[n]
+}
+
+/**
+ * Returns true if `query` fuzzy-matches `candidate`.
+ * Order of checks (most to least strict):
+ *   1. Substring match (case-insensitive)
+ *   2. Word-level Levenshtein ≤ tolerance (scales with query length)
+ */
+function fuzzyMatch(query: string, candidate: string): boolean {
+  const q = query.toLowerCase().trim()
+  const c = candidate.toLowerCase()
+  if (!q) return true
+  if (c.includes(q)) return true
+  // Typo tolerance: 0 for ≤3 chars, 1 for 4–6, 2 for 7+
+  const maxDist = q.length <= 3 ? 0 : q.length <= 6 ? 1 : 2
+  if (maxDist > 0) {
+    for (const word of c.split(/\s+/)) {
+      if (levenshtein(q, word) <= maxDist) return true
+    }
+  }
+  return false
+}
+
+/** Lower score = shown first in dropdown. */
+function matchScore(query: string, candidate: string): number {
+  const q = query.toLowerCase().trim()
+  const c = candidate.toLowerCase()
+  if (c.startsWith(q)) return 0
+  if (c.includes(q)) return 1
+  return 2
 }
 
 export default function LocationInput({
@@ -25,9 +75,9 @@ export default function LocationInput({
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const suggestions = locations.filter(
-    (l) => l.toLowerCase().startsWith(value.toLowerCase()) && l.toLowerCase() !== value.toLowerCase()
-  )
+  const suggestions = locations
+    .filter((l) => l.toLowerCase() !== value.toLowerCase() && fuzzyMatch(value, l))
+    .sort((a, b) => matchScore(value, a) - matchScore(value, b))
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -42,6 +92,13 @@ export default function LocationInput({
   function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
     onChange(e.target.value)
     setOpen(true)
+  }
+
+  function handleBlur() {
+    const normalized = normalizeLocation(value)
+    if (normalized !== value) onChange(normalized)
+    // Close dropdown after a short delay so click on suggestion still registers
+    setTimeout(() => setOpen(false), 150)
   }
 
   function handleSelect(loc: string) {
@@ -66,6 +123,7 @@ export default function LocationInput({
           value={value}
           onChange={handleInput}
           onFocus={() => setOpen(true)}
+          onBlur={handleBlur}
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
