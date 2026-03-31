@@ -55,14 +55,14 @@ Trasformare BookSnap da semplice catalogo di libri a piattaforma intelligente ch
 | FX-7 | Profilo Gusti — redesign per renderlo comprensibile (da definire UI) | P1 | M | - |
 | FX-8 | Raccomandazioni — potenziare con AI engine + segnali preferiti/piaciuti | P1 | M | BK-1 |
 | FX-9 | ✅ Scheda libro — cuore (liked) e stella (favorite) visibili sopra lo stato di lettura | P0 | S | BK-1 |
-| FX-10 | Libreria — multi-filtri combinabili (es. "piaciuti" + "completati") | P1 | M | BK-1 |
+| FX-10 | ✅ Libreria — multi-filtri combinabili (piaciuti + completati simultanei; filtri status e reaction ora indipendenti) | P1 | M | BK-1 |
 | FX-11 | ✅ Libreria — rimosso pulsante "Cerca con AI" (l'AI è già integrata nei risultati della pagina /search) | P0 | XS | SR-6 |
-| FX-12 | Book card — aggiungere azione like (cuoricino) in basso a destra sulla card | P1 | S | BK-1 |
+| FX-12 | ✅ Book card — azione like (cuoricino) in basso a destra sulla card griglia e inline nella vista lista; toggle ottimistico con PATCH `/api/libraries/[id]/books` | P1 | S | BK-1 |
 | FX-13 | ✅ Bug libreria — header ristrutturato: titolo sempre visibile, barra di ricerca in riga dedicata sopra al contatore, no più spazio bianco | P0 | S | - |
 | FX-14 | ✅ Home — rimossa icona "Aggiorna consigliati per te" | P1 | XS | - |
 | FX-15 | ✅ Bug scansione — alert errore ora condizionale (solo se error != null) + chiudibile | P0 | S | - |
 | FX-16 | ✅ Scansione immersiva — BottomNav nascosta con classe `camera-active` su body quando fotocamera attiva | P1 | S | - |
-| IM-4 | Inserimento manuale libro — form per aggiungere un libro non trovato dalle API (titolo, autore, ISBN opzionale) | P1 | M | - |
+| IM-4 | ✅ Inserimento manuale libro — bottom sheet in libreria con form (titolo, autore, ISBN opzionale); POST `/api/books` + aggiunta automatica alla libreria corrente | P1 | M | - |
 | SR-6 | Pagina Ricerca — ottimizzazione liste + AI Search (LLM interpreta la query e migliora i risultati) | P1 | M | - |
 | **UI/UX IMPROVEMENTS** | | | | |
 | UI-1 | ✅ Rec. proattive — card book-card style (copertina + titolo + autore) | P1 | S | RC-2 |

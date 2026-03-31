@@ -61,6 +61,11 @@ export default function LibraryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null)
   const [reactionFilter, setReactionFilter] = useState<'all' | 'liked' | 'favorite'>('all')
+  const [showManualEntry, setShowManualEntry] = useState(false)
+  const [manualTitle, setManualTitle] = useState('')
+  const [manualAuthor, setManualAuthor] = useState('')
+  const [manualIsbn, setManualIsbn] = useState('')
+  const [manualSaving, setManualSaving] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -97,6 +102,58 @@ export default function LibraryPage() {
   const clearSearch = () => {
     setSearchQuery('')
     setAiSearchResults(null)
+  }
+
+  const toggleLike = async (entry: BookEntry, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!selectedLib) return
+    const newLiked = !entry.liked
+    setLibraries(prev => prev.map(lib => {
+      if (lib._id !== selectedLib) return lib
+      return { ...lib, books: lib.books.map(b => b.bookId._id === entry.bookId._id ? { ...b, liked: newLiked } : b) }
+    }))
+    try {
+      await fetch(`/api/libraries/${selectedLib}/books`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: entry.bookId._id, liked: newLiked }),
+      })
+    } catch {
+      setLibraries(prev => prev.map(lib => {
+        if (lib._id !== selectedLib) return lib
+        return { ...lib, books: lib.books.map(b => b.bookId._id === entry.bookId._id ? { ...b, liked: !newLiked } : b) }
+      }))
+    }
+  }
+
+  const handleManualSave = async () => {
+    if (!manualTitle.trim() || !manualAuthor.trim()) return
+    setManualSaving(true)
+    try {
+      const bookRes = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: manualTitle.trim(), authors: [manualAuthor.trim()], isbn: manualIsbn.trim() || undefined }),
+      })
+      if (!bookRes.ok) throw new Error()
+      const { book } = await bookRes.json()
+      const libId = selectedLib || libraries.find(l => l.isDefault)?._id
+      await fetch(`/api/libraries/${libId}/books`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookId: book._id }),
+      })
+      await fetchLibraries()
+      setShowManualEntry(false)
+      setManualTitle('')
+      setManualAuthor('')
+      setManualIsbn('')
+    } catch {
+      // silent error — user can retry
+    } finally {
+      setManualSaving(false)
+    }
   }
 
   const filteredBooks = aiSearchResults ? 
@@ -148,11 +205,21 @@ export default function LibraryPage() {
       <div className={styles.header}>
         <div className={styles.headerRow}>
           <h1 className={styles.title}>La mia Libreria</h1>
-          <button
-            className={styles.searchIconBtn}
-            onClick={() => setSearchOpen(!searchOpen)}
-            aria-label={searchOpen ? 'Chiudi ricerca' : 'Cerca'}
-          >
+          <div className={styles.headerActions}>
+            <button
+              className={styles.addManualBtn}
+              onClick={() => setShowManualEntry(true)}
+              aria-label="Aggiungi libro manualmente"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
+            <button
+              className={styles.searchIconBtn}
+              onClick={() => setSearchOpen(!searchOpen)}
+              aria-label={searchOpen ? 'Chiudi ricerca' : 'Cerca'}
+            >
             {searchOpen ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -163,6 +230,7 @@ export default function LibraryPage() {
               </svg>
             )}
           </button>
+          </div>
         </div>
 
         {searchOpen && (
@@ -256,15 +324,15 @@ export default function LibraryPage() {
           {STATUS_FILTERS.map((s) => (
             <button
               key={s}
-              className={`${styles.filterChip} ${statusFilter === s && reactionFilter === 'all' ? styles.active : ''}`}
-              onClick={() => { setStatusFilter(s); setReactionFilter('all') }}
+              className={`${styles.filterChip} ${statusFilter === s ? styles.active : ''}`}
+              onClick={() => setStatusFilter(s)}
             >
               {s === 'all' ? 'Tutti' : STATUS_CONFIG[s].label}
             </button>
           ))}
           <button
             className={`${styles.filterChip} ${styles.filterChipReaction} ${reactionFilter === 'liked' ? styles.filterLiked : ''}`}
-            onClick={() => { setReactionFilter(reactionFilter === 'liked' ? 'all' : 'liked'); setStatusFilter('all') }}
+            onClick={() => setReactionFilter(reactionFilter === 'liked' ? 'all' : 'liked')}
           >
             <svg viewBox="0 0 24 24" width="12" height="12" fill={reactionFilter === 'liked' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
@@ -273,7 +341,7 @@ export default function LibraryPage() {
           </button>
           <button
             className={`${styles.filterChip} ${styles.filterChipReaction} ${reactionFilter === 'favorite' ? styles.filterFavorite : ''}`}
-            onClick={() => { setReactionFilter(reactionFilter === 'favorite' ? 'all' : 'favorite'); setStatusFilter('all') }}
+            onClick={() => setReactionFilter(reactionFilter === 'favorite' ? 'all' : 'favorite')}
           >
             <svg viewBox="0 0 24 24" width="12" height="12" fill={reactionFilter === 'favorite' ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
@@ -347,6 +415,15 @@ export default function LibraryPage() {
                     </div>
                   )}
                   <div className={styles.coverGradient} />
+                  <button
+                    className={`${styles.likeBtn} ${entry.liked ? styles.likeBtnActive : ''}`}
+                    onClick={(e) => toggleLike(entry, e)}
+                    aria-label={entry.liked ? 'Rimuovi dai piaciuti' : 'Aggiungi ai piaciuti'}
+                  >
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill={entry.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                  </button>
                 </div>
                 <div className={styles.bookMeta}>
                   <p className={styles.bookTitle}>{entry.bookId.title}</p>
@@ -385,6 +462,15 @@ export default function LibraryPage() {
                     </p>
                   )}
                 </div>
+                <button
+                  className={`${styles.listLikeBtn} ${entry.liked ? styles.listLikeBtnActive : ''}`}
+                  onClick={(e) => toggleLike(entry, e)}
+                  aria-label={entry.liked ? 'Rimuovi dai piaciuti' : 'Aggiungi ai piaciuti'}
+                >
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill={entry.liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
+                </button>
                 <span className={`${styles.listStatus} ${STATUS_CONFIG[entry.status as ReadingStatus].className}`} />
               </Link>
             ))}
@@ -436,6 +522,42 @@ export default function LibraryPage() {
               Cancella ricerca
             </button>
           )}
+        </div>
+      )}
+
+      {showManualEntry && (
+        <div className={styles.modalOverlay} onClick={() => setShowManualEntry(false)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>Aggiungi libro manualmente</h2>
+              <button onClick={() => setShowManualEntry(false)} aria-label="Chiudi">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="16" height="16">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.formGroup}>
+                <label>Titolo *</label>
+                <input value={manualTitle} onChange={e => setManualTitle(e.target.value)} placeholder="Es. Il nome della rosa" />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Autore *</label>
+                <input value={manualAuthor} onChange={e => setManualAuthor(e.target.value)} placeholder="Es. Umberto Eco" />
+              </div>
+              <div className={styles.formGroup}>
+                <label>ISBN (opzionale)</label>
+                <input value={manualIsbn} onChange={e => setManualIsbn(e.target.value)} placeholder="Es. 9788845927737" inputMode="numeric" />
+              </div>
+              <button
+                className={styles.modalSaveBtn}
+                onClick={handleManualSave}
+                disabled={!manualTitle.trim() || !manualAuthor.trim() || manualSaving}
+              >
+                {manualSaving ? 'Salvataggio...' : 'Aggiungi alla libreria'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

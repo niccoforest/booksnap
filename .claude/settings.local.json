@@ -16,7 +16,8 @@
       "Bash(mkdir -p \"c:/Users/nicco/OneDrive/Desktop/booksnap/app/api/challenges/[id]/join\")",
       "Bash(grep -r \"book-club\\\\|book club\\\\|bookClub\\\\|book_club\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
       "Bash(grep -r \"smart.*notif\\\\|smart notif\\\\|smartNotif\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
-      "Bash(grep -n \"prompts\\\\|loadingPrompts\\\\|book-club\\\\|BookClub\" /workspaces/booksnap/app/\\\\\\(app\\\\\\)/book/[id]/page.tsx)"
+      "Bash(grep -n \"prompts\\\\|loadingPrompts\\\\|book-club\\\\|BookClub\" /workspaces/booksnap/app/\\\\\\(app\\\\\\)/book/[id]/page.tsx)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
