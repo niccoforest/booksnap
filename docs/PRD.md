@@ -181,7 +181,7 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 - Gli altri membri possono **cercare libri nelle librerie condivise** → trovano dove è fisicamente il libro e chi ce l'ha
 - Sistema di **prestito fisico**: "Marco ha questo libro → posso chiederlo in prestito"
 - I libri prestati usano lo status `lent` già esistente nel modello Library
-- **Rating e recensioni del gruppo** visibili sulla scheda libro (non rating globale anonimo)
+- **Rating e recensioni del gruppo** visibili sulla scheda libro (avremo 2 rating quello del gruppo e quello globale)
 
 **Stato attuale del codice Fase 6:**
 - Feed globale, trending, challenges → **nascondere dall'UI** (non eliminare il codice)
@@ -192,8 +192,8 @@ La community di BookSnap deve essere **ristretta e familiare**, non pubblica e g
 **Punti aperti da approfondire:**
 - Come invitare qualcuno in un gruppo (link, codice, ricerca per username)?
 - Privacy: le librerie condivise nel gruppo mostrano tutto o solo certi scaffali?
-- Notifiche prestito: "Hai restituito X a Marco?"
-- Quanti gruppi può avere un utente?
+- Notifiche prestito: "Hai restituito X a Marco?" (nota da approfondire possiamo pensare di fare un reminder periodico per quando è imprestato, imprestato può essere anche fuori dal gruppo)
+- Quanti gruppi può avere un utente? (iniziamo con 2 poi valutaimo)
 
 ---
 
