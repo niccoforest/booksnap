@@ -56,43 +56,6 @@ interface AIGoal {
   tip?: string
 }
 
-function DonutChart({ completed, reading, toRead, total }: { completed: number; reading: number; toRead: number; total: number }) {
-  const r = 40
-  const cx = 60
-  const cy = 60
-  const circ = 2 * Math.PI * r
-  const gap = 3
-  const completedLen = total > 0 ? Math.max(0, (completed / total) * circ - gap) : 0
-  const readingLen = total > 0 ? Math.max(0, (reading / total) * circ - gap) : 0
-  const toReadLen = total > 0 ? Math.max(0, (toRead / total) * circ - gap) : 0
-  const completedOffset = 0
-  const readingOffset = -(completedLen + gap)
-  const toReadOffset = -(completedLen + gap + readingLen + gap)
-
-  return (
-    <svg viewBox="0 0 120 120" width="110" height="110" aria-label="Distribuzione libri">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bg-secondary)" strokeWidth="13" />
-      {total > 0 && (
-        <>
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#22c55e" strokeWidth="13"
-            strokeDasharray={`${completedLen} ${circ}`} strokeDashoffset={completedOffset}
-            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--status-reading, #3b82f6)" strokeWidth="13"
-            strokeDasharray={`${readingLen} ${circ}`} strokeDashoffset={readingOffset}
-            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f59e0b" strokeWidth="13"
-            strokeDasharray={`${toReadLen} ${circ}`} strokeDashoffset={toReadOffset}
-            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
-        </>
-      )}
-      <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle"
-        fontSize="18" fontWeight="800" fill="var(--text-primary)">{total}</text>
-      <text x={cx} y={cy + 10} textAnchor="middle" dominantBaseline="middle"
-        fontSize="9" fontWeight="600" fill="var(--text-muted)">libri</text>
-    </svg>
-  )
-}
-
 function RadarChart({ genres }: { genres: Array<{ genre: string; score: number }> }) {
   const top = genres.slice(0, 6)
   if (top.length < 3) return null
@@ -136,13 +99,6 @@ function RadarChart({ genres }: { genres: Array<{ genre: string; score: number }
   )
 }
 
-function getBarColor(score: number): string {
-  if (score >= 70) return '#22c55e'
-  if (score >= 50) return 'var(--accent)'
-  if (score >= 30) return '#f59e0b'
-  return '#ef4444'
-}
-
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null)
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null)
@@ -151,6 +107,7 @@ export default function ProfilePage() {
   const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [editGenres, setEditGenres] = useState(false)
+  const [archetype, setArchetype] = useState<string | null>(null)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -158,9 +115,17 @@ export default function ProfilePage() {
   const router = useRouter()
 
   useEffect(() => {
-    Promise.all([fetchUser(), fetchStats(), fetchTasteProfile(), fetchAIContent()])
+    Promise.all([fetchUser(), fetchStats(), fetchTasteProfile(), fetchAIContent(), fetchArchetype()])
     checkNotificationStatus()
   }, [])
+
+  const fetchArchetype = async () => {
+    try {
+      const res = await fetch('/api/profile/archetype')
+      const data = await res.json()
+      if (data.archetype) setArchetype(data.archetype)
+    } catch {}
+  }
 
   const fetchUser = async () => {
     try {
@@ -355,11 +320,28 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats */}
-      <div className={styles.statsRow}>
-        {tasteProfile?.stats.avgPace && (
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span className={styles.statValue}>{readingStats.total}</span>
+          <span className={styles.statLabel}>Totale</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statValue}>{readingStats.completed}</span>
+          <span className={styles.statLabel}>Letti</span>
+        </div>
+        <div className={styles.statCard}>
+          <span className={styles.statValue}>{readingStats.reading}</span>
+          <span className={styles.statLabel}>In lettura</span>
+        </div>
+        {tasteProfile?.stats.avgPace ? (
           <div className={styles.statCard}>
             <span className={styles.statValue}>{tasteProfile.stats.avgPace}</span>
-            <span className={styles.statLabel}>Giorni/Libro</span>
+            <span className={styles.statLabel}>Giorni/libro</span>
+          </div>
+        ) : (
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{readingStats.to_read}</span>
+            <span className={styles.statLabel}>Da leggere</span>
           </div>
         )}
         {tasteProfile?.stats.streak !== undefined && (
@@ -386,40 +368,29 @@ export default function ProfilePage() {
       {/* Taste Profile */}
       {tasteProfile && tasteProfile.stats.totalBooks > 0 && (
         <div className={styles.tasteProfile}>
-          <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
-
-          {/* Donut — distribuzione stati */}
-          <div className={styles.donutSection}>
-            <DonutChart
-              completed={readingStats.completed}
-              reading={readingStats.reading}
-              toRead={readingStats.to_read}
-              total={readingStats.total}
-            />
-            <div className={styles.donutLegend}>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: '#22c55e' }} />
-                <span className={styles.legendLabel}>Letti</span>
-                <span className={styles.legendPct}>
-                  {readingStats.total > 0 ? Math.round((readingStats.completed / readingStats.total) * 100) : 0}%
-                </span>
-              </div>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: 'var(--status-reading, #3b82f6)' }} />
-                <span className={styles.legendLabel}>In lettura</span>
-                <span className={styles.legendPct}>
-                  {readingStats.total > 0 ? Math.round((readingStats.reading / readingStats.total) * 100) : 0}%
-                </span>
-              </div>
-              <div className={styles.legendItem}>
-                <span className={styles.legendDot} style={{ background: '#f59e0b' }} />
-                <span className={styles.legendLabel}>Da leggere</span>
-                <span className={styles.legendPct}>
-                  {readingStats.total > 0 ? Math.round((readingStats.to_read / readingStats.total) * 100) : 0}%
-                </span>
-              </div>
-            </div>
+          <div className={styles.dnaHeader}>
+            <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
+            {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
+              <span className={styles.reactionMeta}>
+                {(tasteProfile.likedCount ?? 0) > 0 && (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true" style={{ color: '#ef4444' }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    {tasteProfile.likedCount}
+                  </>
+                )}
+                {(tasteProfile.likedCount ?? 0) > 0 && (tasteProfile.favoriteCount ?? 0) > 0 && <span>·</span>}
+                {(tasteProfile.favoriteCount ?? 0) > 0 && (
+                  <>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true" style={{ color: '#eab308' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    {tasteProfile.favoriteCount}
+                  </>
+                )}
+              </span>
+            )}
           </div>
+          {archetype && (
+            <p className={styles.archetypePhrase}>{archetype}</p>
+          )}
 
           {/* Generi */}
           {tasteProfile.genreAffinities.length > 0 && (
@@ -475,7 +446,7 @@ export default function ProfilePage() {
                     <div className={styles.barTrack}>
                       <div
                         className={styles.barFill}
-                        style={{ width: `${g.score}%`, background: getBarColor(g.score) }}
+                        style={{ width: `${g.score}%`, opacity: 0.35 + (g.score / 100) * 0.65 }}
                       />
                     </div>
                   </div>
@@ -508,26 +479,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Reazioni liked/favorite */}
-          {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
-            <div className={styles.tasteSection}>
-              <p className={styles.subTitle}>Le tue reazioni</p>
-              <div className={styles.reactionChips}>
-                {(tasteProfile.likedCount ?? 0) > 0 && (
-                  <div className={styles.reactionChip}>
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className={styles.heartIcon} aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    <span>{tasteProfile.likedCount} piaciuti</span>
-                  </div>
-                )}
-                {(tasteProfile.favoriteCount ?? 0) > 0 && (
-                  <div className={`${styles.reactionChip} ${styles.reactionChipStar}`}>
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className={styles.starIconYellow} aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    <span>{tasteProfile.favoriteCount} preferiti</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
