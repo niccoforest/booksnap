@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/auth'
-import { buildTasteProfile } from '@/lib/tasteProfile'
+import { buildTasteProfile, TasteProfile } from '@/lib/tasteProfile'
 import { callLLM } from '@/lib/llm'
 import { enrichBookMetadata } from '@/lib/bookMetadata'
 import { Book } from '@/models/Book'
 import { Library } from '@/models/Library'
+import { User } from '@/models/User'
 import '@/models/Book'
 import { connectDB } from '@/lib/mongodb'
+
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 ore
+
+function computeProfileHash(profile: TasteProfile): string {
+  return [
+    profile.genreAffinities.slice(0, 5).map(g => `${g.genre}:${g.score}`).join(','),
+    profile.favoriteTitles.join(','),
+    profile.likedTitles.join(','),
+    profile.stats.totalBooks,
+  ].join('|')
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,12 +27,23 @@ export async function GET(request: NextRequest) {
 
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === 'true'
 
-    // We can use a simple memory cache or rely on client-side caching if no DB cache is implemented
-    // For now, let's compute it. In production, we'd cache this in MongoDB.
-    
     // 1. Get taste profile
     await connectDB()
     const profile = await buildTasteProfile(user.userId)
+    const profileHash = computeProfileHash(profile)
+
+    // 2. Check MongoDB cache (skip on forceRefresh)
+    if (!forceRefresh) {
+      const dbUser = await User.findById(user.userId).select('aiCache.recommendations').lean() as any
+      const cached = dbUser?.aiCache?.recommendations
+      if (
+        cached?.data?.length > 0 &&
+        cached.profileHash === profileHash &&
+        cached.expiresAt > new Date()
+      ) {
+        return NextResponse.json({ recommendations: cached.data, fromCache: true })
+      }
+    }
 
     // Get IDs of books already in user's library
     const userLibraries = await Library.find({ userId: user.userId }).populate('books.bookId')
@@ -136,6 +159,17 @@ Rispondi SOLO con un JSON valido con questa struttura esatta, senza markdown o a
     )
 
     const filtered = enriched.filter(Boolean)
+
+    // Save to cache + increment usageStats
+    await User.updateOne({ _id: user.userId }, {
+      'aiCache.recommendations': {
+        data: filtered,
+        expiresAt: new Date(Date.now() + CACHE_TTL_MS),
+        profileHash,
+      },
+      $inc: { 'usageStats.aiQueries': 1 },
+    })
+
     return NextResponse.json({ recommendations: filtered })
 
   } catch (error) {

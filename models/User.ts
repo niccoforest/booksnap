@@ -19,6 +19,7 @@ export interface IUser extends Document {
   aiCache?: {
     insights?: { data: any[]; expiresAt: Date }
     goals?: { data: any[]; expiresAt: Date }
+    recommendations?: { data: any[]; expiresAt: Date; profileHash: string }
   }
   isPublic: boolean
   followers: mongoose.Types.ObjectId[]
@@ -47,6 +48,7 @@ const UserSchema = new Schema<IUser>(
     aiCache: {
       insights: { data: [Schema.Types.Mixed], expiresAt: Date },
       goals: { data: [Schema.Types.Mixed], expiresAt: Date },
+      recommendations: { data: [Schema.Types.Mixed], expiresAt: Date, profileHash: String },
     },
     isPublic: { type: Boolean, default: true },
     followers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
