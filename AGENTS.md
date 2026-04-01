@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Project Context
 
-BookSnap is a mobile-first Italian-language PWA for book library management with AI-powered scanning and recommendations. The app runs on Next.js 16 App Router with MongoDB, JWT auth, and dual LLM support (Ollama local / OpenRouter cloud).
+BookSnap is a mobile-first Italian-language PWA for book library management with AI-powered scanning and recommendations. The app runs on Next.js 16 App Router with MongoDB, JWT auth, and dual LLM support (Ollama local / OpenRouter cloud). Dark mode is fully implemented via `[data-theme="dark"]` CSS variables. Push notifications are supported via Service Worker (`public/sw.js`).
 
 ## Critical Rules
 
@@ -37,6 +37,14 @@ BookSnap is a mobile-first Italian-language PWA for book library management with
 - Book deduplication: check by `isbn` first, then by `title + authors` match before creating new Book documents.
 - Library's `books` array contains embedded `BookEntry` subdocuments (not separate collection).
 - User passwords: bcrypt with salt rounds 12. Never return `passwordHash` in API responses.
+- **Reaction system:** BookEntry uses two separate booleans — `liked` (heart, light signal) and `favorite` (star, strong signal). These feed into the Taste Profile Engine for recommendation scoring.
+- **Taste Profile Engine:** `lib/tasteProfile.ts` builds a weighted genre/author affinity profile from the user's library. `liked`/`favorite` signals boost scoring. This profile is the primary input for all AI recommendations (assistant, proactive recs, similar books).
+
+### Silent Usage Tracking
+- **Every new AI or Scanner endpoint MUST increment usage counters** on the User document: `usageStats.aiQueries` and/or `usageStats.scans`. This is a hard rule — no exceptions.
+- The counters are silent (not exposed to the user yet). They will be used in Phase 10 (Monetization) for freemium gating.
+- Implementation: after a successful AI call or scan, run `User.updateOne({ _id: userId }, { $inc: { 'usageStats.aiQueries': 1 } })` (or `.scans` for scan endpoints).
+- Do NOT add the `usageStats` field to User schema until the first endpoint that needs it — Mongoose will create it on first `$inc` automatically.
 
 ### LLM Integration
 - Use `callLLM(prompt, imageBase64?)` from `lib/llm.ts`. Do not call Ollama or OpenRouter directly.

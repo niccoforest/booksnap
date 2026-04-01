@@ -26,7 +26,9 @@ public/           → Static assets + PWA manifest
 - **Auth flow:** JWT in HttpOnly cookie (`booksnap_token`), 30-day expiry. `getAuthUser(req)` extracts user from cookie. API routes check auth manually; client pages redirect on 401.
 - **LLM abstraction:** `lib/llm.ts` exports `callLLM(prompt, imageBase64?)` — auto-selects Ollama (dev) or OpenRouter (prod) based on `OPENROUTER_API_KEY` presence.
 - **Book enrichment:** `lib/bookMetadata.ts` provides `fetchBookMetadata()` and `enrichBookMetadata()`. Google Books API is the primary source (covers, descriptions, categories, ratings), with Open Library as fallback. Results are upserted into MongoDB.
-- **Styling:** CSS Modules per page + `globals.css` design system. CSS variables for colors, spacing, radii. No CSS framework.
+- **Taste Profile:** `lib/tasteProfile.ts` builds weighted genre/author affinities from user's library. `liked`/`favorite` booleans on BookEntry feed into scoring. Primary input for AI recommendations.
+- **Styling:** CSS Modules per page + `globals.css` design system. CSS variables for colors, spacing, radii. Dark mode fully implemented via `[data-theme="dark"]`. No CSS framework.
+- **Push Notifications:** Service Worker (`public/sw.js`) handles push events. Smart AI notifications for inactive users.
 - **Language:** UI is entirely in Italian. No i18n library yet.
 
 ## Database Models
@@ -34,8 +36,8 @@ public/           → Static assets + PWA manifest
 | Model | Key Fields | Notes |
 |-------|-----------|-------|
 | **User** | email, username, passwordHash, preferences (favoriteGenres, language, theme) | bcrypt salt 12, theme field exists but dark mode not implemented |
-| **Book** | isbn, title, authors[], coverUrl, description, genres, googleBooksId, openLibraryKey | Text index on title+authors |
-| **Library** | userId, name, emoji, isDefault, books[] (embedded BookEntry) | BookEntry has status, rating, review, tags, notes, lentTo |
+| **Book** | isbn, title, authors[], coverUrl, description, genres, googleBooksId, openLibraryKey, aiSummary | Text index on title+authors; aiSummary cached spoiler-free (shared across users) |
+| **Library** | userId, name, emoji, isDefault, books[] (embedded BookEntry) | BookEntry has status, rating, review, tags, notes, lentTo, liked, favorite, location, behindRow |
 
 ### Reading statuses
 `to_read` · `reading` · `completed` · `abandoned` · `lent`
@@ -96,8 +98,7 @@ npm run lint    # ESLint check
 - No image size validation on scan endpoint
 - No book deletion from library
 - No library edit/delete
-- No dark mode (DB field exists, UI not implemented)
-- No service worker / offline support
 - PWA icons missing (manifest references `/icon.svg`)
 - No error boundaries
 - All strings hardcoded in Italian (no i18n)
+- No usage tracking on AI/scan endpoints yet (planned for Phase 10 monetization)
