@@ -27,6 +27,16 @@ const ASSISTANT_PROMPT = (
       ? `\nL'utente possiede già questi libri nella sua libreria:\n${userBooks.map((t) => `- ${t}`).join('\n')}\nNON consigliare libri già in questa lista. Usa questa lista per capire i gusti dell'utente.\n`
       : ''
 
+  // FX-8: reaction signal lines
+  const reactionLines = [
+    profile.favoriteTitles.length > 0
+      ? `- Libri "preferiti" ⭐ (segnale forte — dai massima priorità ai loro generi/autori): ${profile.favoriteTitles.map(t => `"${t}"`).join(', ')}`
+      : '',
+    profile.likedTitles.length > 0
+      ? `- Libri "piaciuti" ❤️ (segnale secondario): ${profile.likedTitles.map(t => `"${t}"`).join(', ')}`
+      : '',
+  ].filter(Boolean).join('\n')
+
   const profileBlock = `
 PROFILO LETTORE:
 - Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.score})`).join(', ')}
@@ -35,7 +45,7 @@ PROFILO LETTORE:
 - Letture recenti completate: ${profile.recentlyCompleted.map(l => `"${l.title}"`).join(', ')}
 - Sta leggendo: ${profile.currentlyReading.map(l => `"${l.title}"`).join(', ')}
 - Statistiche: ${profile.stats.totalBooks} libri totali, rating medio dato ${profile.stats.avgRating}, preferisce libri ${profile.stats.preferredPageRange}
-
+${reactionLines ? '\nSEGNALI DI GRADIMENTO:\n' + reactionLines + '\n' : ''}
 REGOLE PERSONALIZZAZIONE:
 - Favorisci raccomandazioni nei generi con score alto, MA suggerisci anche 1 libro "fuori zona" se pertinente alla query
 - Se l'utente chiede genericamente "cosa leggere", usa il profilo per guidare i suggerimenti

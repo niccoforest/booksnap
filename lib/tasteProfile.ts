@@ -35,6 +35,11 @@ export interface TasteProfile {
     avgPace?: number // avg days to finish a book
     streak?: number  // active days in last 30 days
   }
+  // FX-8: reaction signals
+  likedCount: number
+  favoriteCount: number
+  likedTitles: string[]    // top liked book titles (for LLM prompts)
+  favoriteTitles: string[] // top favorite book titles (for LLM prompts)
 }
 
 export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
@@ -79,6 +84,12 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
   // Lists
   let completedList: Array<{ entry: BookEntry, book: IBook }> = []
   let readingList: Array<{ entry: BookEntry, book: IBook }> = []
+
+  // FX-8: reaction tracking
+  let likedCount = 0
+  let favoriteCount = 0
+  const likedBooks: Array<{ title: string, addedAt: Date }> = []
+  const favoriteBooks: Array<{ title: string, addedAt: Date }> = []
 
   const now = new Date()
 
@@ -129,6 +140,25 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
       entryWeight = 0.3
     } else if (entry.status === 'lent') {
       entryWeight = 1.5
+    }
+
+    // FX-8: reaction multipliers (applied on top of status weight)
+    if (entry.liked && entry.favorite) {
+      entryWeight *= 2.5
+    } else if (entry.favorite) {
+      entryWeight *= 2.0
+    } else if (entry.liked) {
+      entryWeight *= 1.5
+    }
+
+    // FX-8: track reaction counts and titles
+    if (entry.liked) {
+      likedCount++
+      likedBooks.push({ title: book.title, addedAt: entry.addedAt })
+    }
+    if (entry.favorite) {
+      favoriteCount++
+      favoriteBooks.push({ title: book.title, addedAt: entry.addedAt })
     }
 
     // Recency bonus: last 3 months
@@ -228,6 +258,17 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
 
   const topGenres = genreAffinities.slice(0, 3).map(g => g.genre)
 
+  // FX-8: top 5 liked/favorite titles (most recent first)
+  const likedTitles = likedBooks
+    .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
+    .slice(0, 5)
+    .map(b => b.title)
+
+  const favoriteTitles = favoriteBooks
+    .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
+    .slice(0, 5)
+    .map(b => b.title)
+
   return {
     genreAffinities,
     favoriteAuthors,
@@ -241,7 +282,11 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
       topGenres,
       avgPace: calculateAvgPace(completedList),
       streak: calculateActivityStreak(allBooks)
-    }
+    },
+    likedCount,
+    favoriteCount,
+    likedTitles,
+    favoriteTitles
   }
 }
 

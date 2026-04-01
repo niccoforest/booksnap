@@ -46,13 +46,24 @@ export async function GET(request: NextRequest) {
 
     // 2. Build prompt — include exclusion list so LLM doesn't suggest them
     const alreadyRead = profile.recentlyCompleted.map(b => `"${b.title}" di ${b.author}`).join(', ')
+
+    // FX-8: liked/favorite signal blocks
+    const reactionBlock = [
+      profile.favoriteTitles.length > 0
+        ? `- Libri "preferiti" ⭐ (segnale forte): ${profile.favoriteTitles.map(t => `"${t}"`).join(', ')}`
+        : '',
+      profile.likedTitles.length > 0
+        ? `- Libri "piaciuti" ❤️ (segnale secondario): ${profile.likedTitles.map(t => `"${t}"`).join(', ')}`
+        : '',
+    ].filter(Boolean).join('\n')
+
     const prompt = `
 Sei un libraio esperto. Dato questo profilo lettore:
 - Generi preferiti: ${profile.genreAffinities.slice(0, 3).map(g => `${g.genre} (score: ${g.score})`).join(', ')}
 - Autori preferiti: ${profile.favoriteAuthors.slice(0, 3).map(a => a.name).join(', ')}
-- Libri già letti/in libreria (NON suggerire questi): ${alreadyRead}
+${reactionBlock ? reactionBlock + '\n' : ''}- Libri già letti/in libreria (NON suggerire questi): ${alreadyRead}
 
-Suggerisci 5 libri DIVERSI da quelli già letti che l'utente potrebbe amare.
+${reactionBlock ? 'Dai MASSIMA PRIORITÀ ai generi e agli autori dei libri "preferiti" ⭐. I libri "piaciuti" ❤️ sono un segnale secondario ma significativo.\n' : ''}Suggerisci 5 libri DIVERSI da quelli già letti che l'utente potrebbe amare.
 3 nei suoi generi preferiti, 1 scoperta in un genere adiacente, 1 classico che potrebbe non conoscere.
 
 Rispondi SOLO con un JSON valido con questa struttura esatta, senza markdown o altro testo:
