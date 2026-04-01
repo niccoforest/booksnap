@@ -56,6 +56,93 @@ interface AIGoal {
   tip?: string
 }
 
+function DonutChart({ completed, reading, toRead, total }: { completed: number; reading: number; toRead: number; total: number }) {
+  const r = 40
+  const cx = 60
+  const cy = 60
+  const circ = 2 * Math.PI * r
+  const gap = 3
+  const completedLen = total > 0 ? Math.max(0, (completed / total) * circ - gap) : 0
+  const readingLen = total > 0 ? Math.max(0, (reading / total) * circ - gap) : 0
+  const toReadLen = total > 0 ? Math.max(0, (toRead / total) * circ - gap) : 0
+  const completedOffset = 0
+  const readingOffset = -(completedLen + gap)
+  const toReadOffset = -(completedLen + gap + readingLen + gap)
+
+  return (
+    <svg viewBox="0 0 120 120" width="110" height="110" aria-label="Distribuzione libri">
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--bg-secondary)" strokeWidth="13" />
+      {total > 0 && (
+        <>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#22c55e" strokeWidth="13"
+            strokeDasharray={`${completedLen} ${circ}`} strokeDashoffset={completedOffset}
+            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--status-reading, #3b82f6)" strokeWidth="13"
+            strokeDasharray={`${readingLen} ${circ}`} strokeDashoffset={readingOffset}
+            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f59e0b" strokeWidth="13"
+            strokeDasharray={`${toReadLen} ${circ}`} strokeDashoffset={toReadOffset}
+            transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round" />
+        </>
+      )}
+      <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle"
+        fontSize="18" fontWeight="800" fill="var(--text-primary)">{total}</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" dominantBaseline="middle"
+        fontSize="9" fontWeight="600" fill="var(--text-muted)">libri</text>
+    </svg>
+  )
+}
+
+function RadarChart({ genres }: { genres: Array<{ genre: string; score: number }> }) {
+  const top = genres.slice(0, 6)
+  if (top.length < 3) return null
+  const cx = 100, cy = 100, maxR = 72
+  const n = top.length
+  const getPoint = (i: number, r: number) => {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) }
+  }
+  const gridLevels = [0.33, 0.66, 1.0]
+  const dataPoints = top.map((g, i) => {
+    const p = getPoint(i, maxR * (g.score / 100))
+    return `${p.x},${p.y}`
+  }).join(' ')
+
+  return (
+    <svg viewBox="0 0 200 200" width="100%" style={{ maxWidth: 200, margin: '0 auto', display: 'block' }} aria-label="Radar generi">
+      {gridLevels.map((lvl, li) => (
+        <polygon key={li}
+          points={Array.from({ length: n }, (_, i) => { const p = getPoint(i, maxR * lvl); return `${p.x},${p.y}` }).join(' ')}
+          fill="none" stroke="var(--border)" strokeWidth={li === 2 ? 1.5 : 1} />
+      ))}
+      {top.map((_, i) => {
+        const end = getPoint(i, maxR)
+        return <line key={i} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="var(--border)" strokeWidth="1" />
+      })}
+      <polygon points={dataPoints} fill="var(--accent)" fillOpacity="0.2" stroke="var(--accent)" strokeWidth="2" />
+      {top.map((g, i) => {
+        const p = getPoint(i, maxR * (g.score / 100))
+        return <circle key={i} cx={p.x} cy={p.y} r="3.5" fill="var(--accent)" />
+      })}
+      {top.map((g, i) => {
+        const lp = getPoint(i, maxR + 16)
+        const truncated = g.genre.length > 12 ? g.genre.slice(0, 11) + '…' : g.genre
+        return (
+          <text key={i} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle"
+            fontSize="8.5" fill="var(--text-secondary)" fontWeight="600">{truncated}</text>
+        )
+      })}
+    </svg>
+  )
+}
+
+function getBarColor(score: number): string {
+  if (score >= 70) return '#22c55e'
+  if (score >= 50) return 'var(--accent)'
+  if (score >= 30) return '#f59e0b'
+  return '#ef4444'
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null)
   const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null)
@@ -63,6 +150,7 @@ export default function ProfilePage() {
   const [goals, setGoals] = useState<AIGoal[]>([])
   const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
+  const [editGenres, setEditGenres] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
   const [loading, setLoading] = useState(true)
@@ -267,23 +355,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats */}
-      <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{readingStats.total}</span>
-          <span className={styles.statLabel}>Totale</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{readingStats.completed}</span>
-          <span className={styles.statLabel}>Letti</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{readingStats.reading}</span>
-          <span className={styles.statLabel}>In lettura</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statValue}>{readingStats.to_read}</span>
-          <span className={styles.statLabel}>Da leggere</span>
-        </div>
+      <div className={styles.statsRow}>
         {tasteProfile?.stats.avgPace && (
           <div className={styles.statCard}>
             <span className={styles.statValue}>{tasteProfile.stats.avgPace}</span>
@@ -296,6 +368,12 @@ export default function ProfilePage() {
             <span className={styles.statLabel}>Giorni attivi</span>
           </div>
         )}
+        {tasteProfile?.stats.avgRating ? (
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{tasteProfile.stats.avgRating.toFixed(1)}</span>
+            <span className={styles.statLabel}>Voto medio</span>
+          </div>
+        ) : null}
       </div>
 
       {/* AI Insights & Goals */}
@@ -310,45 +388,105 @@ export default function ProfilePage() {
         <div className={styles.tasteProfile}>
           <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
 
+          {/* Donut — distribuzione stati */}
+          <div className={styles.donutSection}>
+            <DonutChart
+              completed={readingStats.completed}
+              reading={readingStats.reading}
+              toRead={readingStats.to_read}
+              total={readingStats.total}
+            />
+            <div className={styles.donutLegend}>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: '#22c55e' }} />
+                <span className={styles.legendLabel}>Letti</span>
+                <span className={styles.legendPct}>
+                  {readingStats.total > 0 ? Math.round((readingStats.completed / readingStats.total) * 100) : 0}%
+                </span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: 'var(--status-reading, #3b82f6)' }} />
+                <span className={styles.legendLabel}>In lettura</span>
+                <span className={styles.legendPct}>
+                  {readingStats.total > 0 ? Math.round((readingStats.reading / readingStats.total) * 100) : 0}%
+                </span>
+              </div>
+              <div className={styles.legendItem}>
+                <span className={styles.legendDot} style={{ background: '#f59e0b' }} />
+                <span className={styles.legendLabel}>Da leggere</span>
+                <span className={styles.legendPct}>
+                  {readingStats.total > 0 ? Math.round((readingStats.to_read / readingStats.total) * 100) : 0}%
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Generi */}
           {tasteProfile.genreAffinities.length > 0 && (
             <div className={styles.tasteSection}>
-              <p className={styles.subTitle}>I tuoi generi</p>
+              <div className={styles.subTitleRow}>
+                <p className={styles.subTitle}>I tuoi generi</p>
+                <button
+                  className={`${styles.editToggle} ${editGenres ? styles.editToggleActive : ''}`}
+                  onClick={() => setEditGenres(v => !v)}
+                  title="Personalizza i pesi dei generi"
+                  aria-label="Modifica preferenze generi"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  {editGenres ? 'Fatto' : 'Modifica'}
+                </button>
+              </div>
+
+              {tasteProfile.genreAffinities.length >= 3 && (
+                <div className={styles.radarWrap}>
+                  <RadarChart genres={tasteProfile.genreAffinities} />
+                </div>
+              )}
+
               <div className={styles.genreBars}>
                 {tasteProfile.genreAffinities.slice(0, 6).map(g => (
                   <div key={g.genre} className={styles.genreRow}>
                     <div className={styles.genreLabels}>
                       <span className={styles.genreName}>{g.genre}</span>
-                      <div className={styles.genreActions}>
-                        <button
-                          className={styles.gActionText}
-                          onClick={() => handleOverride(g.genre, 'suppress')}
-                          title="Ricevi meno consigli di questo genere"
-                        >
-                          − Meno
-                        </button>
-                        <button
-                          className={`${styles.gActionText} ${styles.gActionBoost}`}
-                          onClick={() => handleOverride(g.genre, 'boost')}
-                          title="Ricevi più consigli di questo genere"
-                        >
-                          + Di più
-                        </button>
-                      </div>
+                      {editGenres ? (
+                        <div className={styles.genreActions}>
+                          <button
+                            className={styles.gActionText}
+                            onClick={() => handleOverride(g.genre, 'suppress')}
+                            title="Ricevi meno consigli di questo genere"
+                          >
+                            − Meno
+                          </button>
+                          <button
+                            className={`${styles.gActionText} ${styles.gActionBoost}`}
+                            onClick={() => handleOverride(g.genre, 'boost')}
+                            title="Ricevi più consigli di questo genere"
+                          >
+                            + Di più
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={styles.barPct}>{g.score}%</span>
+                      )}
                     </div>
-                    <div className={styles.barRow}>
-                      <div className={styles.barTrack}>
-                        <div className={styles.barFill} style={{ width: `${g.score}%` }} />
-                      </div>
-                      <span className={styles.barCount}>{g.bookCount} {g.bookCount === 1 ? 'libro' : 'libri'}</span>
+                    <div className={styles.barTrack}>
+                      <div
+                        className={styles.barFill}
+                        style={{ width: `${g.score}%`, background: getBarColor(g.score) }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-              <p className={styles.tasteHint}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                I pulsanti guidano i consigli del Bibliotecario AI
-              </p>
+              {editGenres && (
+                <p className={styles.tasteHint}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  I pulsanti guidano i consigli del Bibliotecario AI
+                </p>
+              )}
             </div>
           )}
 

@@ -63,24 +63,26 @@
   line-height: 1.5;
 }
 
-/* Stats grid */
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* Stats row */
+.statsRow {
+  display: flex;
+  justify-content: center;
   gap: var(--spacing-sm);
   padding: 0 var(--spacing-md) var(--spacing-lg);
+  flex-wrap: wrap;
 }
 
 .statCard {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-md) var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   box-shadow: var(--shadow-sm);
+  min-width: 80px;
 }
 
 .statValue {
@@ -131,17 +133,103 @@
   color: var(--accent);
 }
 
+/* Donut chart section */
+.donutSection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--spacing-md);
+}
+
+.donutLegend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  flex: 1;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.legendPct {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+/* Radar chart */
+.radarWrap {
+  margin: var(--spacing-sm) auto var(--spacing-md);
+  max-width: 200px;
+  width: 100%;
+}
+
+/* Section header with edit toggle */
+.subTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+
+.editToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.editToggle:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.editToggleActive {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Genre bars */
 .genreBars {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .genreRow {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .genreLabels {
@@ -161,6 +249,12 @@
   gap: 6px;
 }
 
+.barPct {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 .gActionText {
   font-size: 0.7rem;
   font-weight: 600;
@@ -172,6 +266,7 @@
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .gActionText:hover {
@@ -190,36 +285,18 @@
   border-color: var(--accent);
 }
 
-.barRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .barTrack {
-  flex: 1;
-  height: 8px;
+  height: 9px;
   background: var(--bg-secondary);
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .barFill {
   height: 100%;
-  background: var(--accent);
-  border-radius: 4px;
+  border-radius: 5px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 4px;
-}
-
-.barCount {
-  flex-shrink: 0;
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-  min-width: 48px;
-  text-align: right;
 }
 
 .tasteHint {
