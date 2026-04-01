@@ -141,15 +141,18 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const saveLocation = async (newLocation: string, newBehindRow: boolean) => {
-    // Normalize via LLM to deduplicate typos/semantic variants
-    const finalLocation = newLocation.trim()
-      ? await normalizeLocationLLM(newLocation, availableLocations)
-      : newLocation
-    // Update input to show the normalized value (so UI matches what is saved)
-    setLocation(finalLocation)
-    await updateEntry({ location: finalLocation, behindRow: newBehindRow })
-    if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
-      setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
+    setSaving(true)  // show feedback immediately, before the LLM call
+    try {
+      const finalLocation = newLocation.trim()
+        ? await normalizeLocationLLM(newLocation, availableLocations)
+        : newLocation
+      setLocation(finalLocation)
+      await updateEntry({ location: finalLocation, behindRow: newBehindRow })
+      if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
+        setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
+      }
+    } finally {
+      setSaving(false)
     }
   }
 

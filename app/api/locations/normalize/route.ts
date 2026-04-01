@@ -6,14 +6,15 @@ import { callLLM } from '@/lib/llm'
 function buildPrompt(rawLocation: string, existingLocations: string[]): string {
   const existingList = existingLocations.length > 0 ? existingLocations.join(', ') : '(nessuna)'
   return (
-    `L'utente ha digitato "${rawLocation}". ` +
-    `Le sue location esistenti sono: ${existingList}. ` +
-    `Se l'input contiene errori di battitura o è semanticamente identico a una location esistente ` +
-    `(es. "sx" e "sinistra", "comodino del leto" e "Comodino Del Letto"), ` +
-    `restituisci ESATTAMENTE la stringa esistente. ` +
-    `Se è una location veramente nuova, restituisci l'input corretto grammaticalmente ` +
-    `con la prima lettera di ogni parola maiuscola. ` +
-    `Rispondi SOLO con la stringa normalizzata, senza virgolette né spiegazioni.`
+    `Sei un correttore di location per un database di libri. Esegui questi due passi in ordine:\n` +
+    `1. CORREGGI eventuali errori ortografici nell'input (lettere ripetute, omesse o invertite). ` +
+    `Es: "Scrivaniiia" → "Scrivania", "comodino del leto" → "Comodino Del Letto".\n` +
+    `2. Se la stringa corretta è semanticamente identica a una delle location esistenti ` +
+    `(es. "sx"/"sinistra", varianti minuscole/maiuscole), usa ESATTAMENTE quella esistente.\n\n` +
+    `Input: "${rawLocation}"\n` +
+    `Location esistenti: ${existingList}\n\n` +
+    `Rispondi SOLO con la stringa risultante (prima lettera di ogni parola maiuscola), ` +
+    `senza virgolette né spiegazioni.`
   )
 }
 
