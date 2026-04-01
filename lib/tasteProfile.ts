@@ -11,10 +11,16 @@ export interface TasteProfile {
     bookCount: number
     avgRating: number
   }>
+  genreOverrides: Record<string, string>
   favoriteAuthors: Array<{
     name: string
     bookCount: number
     avgRating: number
+  }>
+  favoriteBooks: Array<{
+    title: string
+    author: string
+    coverUrl?: string
   }>
   recentlyCompleted: Array<{
     title: string
@@ -32,14 +38,13 @@ export interface TasteProfile {
     avgRating: number
     preferredPageRange: string
     topGenres: string[]
-    avgPace?: number // avg days to finish a book
-    streak?: number  // active days in last 30 days
+    avgPace?: number
+    streak?: number
   }
-  // FX-8: reaction signals
   likedCount: number
   favoriteCount: number
-  likedTitles: string[]    // top liked book titles (for LLM prompts)
-  favoriteTitles: string[] // top favorite book titles (for LLM prompts)
+  likedTitles: string[]
+  favoriteTitles: string[]
 }
 
 export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
@@ -89,7 +94,7 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
   let likedCount = 0
   let favoriteCount = 0
   const likedBooks: Array<{ title: string, addedAt: Date }> = []
-  const favoriteBooks: Array<{ title: string, addedAt: Date }> = []
+  const favoriteBooks: Array<{ title: string, author: string, coverUrl?: string, addedAt: Date }> = []
 
   const now = new Date()
 
@@ -158,7 +163,7 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
     }
     if (entry.favorite) {
       favoriteCount++
-      favoriteBooks.push({ title: book.title, addedAt: entry.addedAt })
+      favoriteBooks.push({ title: book.title, author: book.authors[0] || '', coverUrl: book.coverUrl, addedAt: entry.addedAt })
     }
 
     // Recency bonus: last 3 months
@@ -269,9 +274,16 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
     .slice(0, 5)
     .map(b => b.title)
 
+  const favoriteBooksTop = favoriteBooks
+    .sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime())
+    .slice(0, 8)
+    .map(b => ({ title: b.title, author: b.author, coverUrl: b.coverUrl }))
+
   return {
     genreAffinities,
+    genreOverrides: genreOverrides ? Object.fromEntries(genreOverrides) : {},
     favoriteAuthors,
+    favoriteBooks: favoriteBooksTop,
     recentlyCompleted,
     currentlyReading,
     stats: {

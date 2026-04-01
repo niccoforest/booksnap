@@ -17,13 +17,13 @@ interface User {
 
 interface TasteProfile {
   genreAffinities: Array<{ genre: string; score: number; bookCount: number; avgRating: number }>
+  genreOverrides: Record<string, 'boost' | 'suppress'>
   favoriteAuthors: Array<{ name: string; bookCount: number; avgRating: number }>
+  favoriteBooks: Array<{ title: string; author: string; coverUrl?: string }>
   recentlyCompleted: Array<{ title: string; author: string; rating?: number }>
   stats: {
     totalBooks: number
     completedBooks: number
-    readingBooks?: number
-    toReadBooks?: number
     avgRating: number
     preferredPageRange: string
     topGenres: string[]
@@ -107,6 +107,7 @@ export default function ProfilePage() {
   const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
   const [editGenres, setEditGenres] = useState(false)
+  const [localOverrides, setLocalOverrides] = useState<Record<string, 'boost' | 'suppress'>>({})
   const [archetype, setArchetype] = useState<string | null>(null)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
@@ -146,6 +147,7 @@ export default function ProfilePage() {
       const data = await res.json()
       if (data.profile) {
         setTasteProfile(data.profile)
+        setLocalOverrides(data.profile.genreOverrides || {})
       }
     } catch {}
   }
@@ -246,14 +248,24 @@ export default function ProfilePage() {
     })
   }
 
-  const handleOverride = async (genre: string, type: 'boost' | 'suppress' | null) => {
+  const handleOverride = async (genre: string, type: 'boost' | 'suppress') => {
+    // Toggle off if same type already active
+    const effective = localOverrides[genre] === type ? null : type
+    // Optimistic update
+    setLocalOverrides(prev => {
+      const next = { ...prev }
+      if (effective === null) delete next[genre]
+      else next[genre] = effective
+      return next
+    })
     try {
-      await fetch('/api/profile/taste/overrides', {
+      const res = await fetch('/api/profile/taste/overrides', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ genre, type }),
+        body: JSON.stringify({ genre, type: effective }),
       })
-      // Refresh taste profile
+      const data = await res.json()
+      if (data.overrides) setLocalOverrides(data.overrides)
       fetchTasteProfile()
     } catch {}
   }
@@ -401,7 +413,15 @@ export default function ProfilePage() {
                 {tasteProfile.genreAffinities.slice(0, 6).map(g => (
                   <div key={g.genre} className={styles.genreRow}>
                     <div className={styles.genreLabels}>
-                      <span className={styles.genreName}>{g.genre}</span>
+                      <span className={styles.genreName}>
+                        {g.genre}
+                        {localOverrides[g.genre] === 'boost' && (
+                          <span className={styles.overrideBadge} style={{ color: 'var(--accent)' }} title="Boost attivo">↑</span>
+                        )}
+                        {localOverrides[g.genre] === 'suppress' && (
+                          <span className={styles.overrideBadge} style={{ color: 'var(--text-muted)' }} title="Soppresso">↓</span>
+                        )}
+                      </span>
                       <span className={styles.barPct}>{g.score}%</span>
                     </div>
                     <div className={styles.barTrack}>
@@ -413,14 +433,14 @@ export default function ProfilePage() {
                     {editGenres && (
                       <div className={styles.genreOverrides}>
                         <button
-                          className={styles.gActionText}
+                          className={`${styles.gActionText} ${localOverrides[g.genre] === 'suppress' ? styles.gActionActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'suppress')}
                           title="Ricevi meno consigli di questo genere"
                         >
                           − Meno
                         </button>
                         <button
-                          className={`${styles.gActionText} ${styles.gActionBoost}`}
+                          className={`${styles.gActionText} ${styles.gActionBoost} ${localOverrides[g.genre] === 'boost' ? styles.gActionActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'boost')}
                           title="Ricevi più consigli di questo genere"
                         >
@@ -458,29 +478,28 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Reazioni */}
-          {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
+          {/* Preferiti */}
+          {tasteProfile.favoriteBooks?.length > 0 && (
             <div className={styles.tasteSection}>
-              <p className={styles.subTitle}>Le tue reazioni</p>
-              <div className={styles.reactionCard}>
-                {(tasteProfile.likedCount ?? 0) > 0 && (
-                  <div className={styles.reactionStat}>
-                    <span className={styles.reactionIcon}>❤️</span>
-                    <div className={styles.reactionInfo}>
-                      <span className={styles.reactionCount}>{tasteProfile.likedCount}</span>
-                      <span className={styles.reactionLabel}>Piaciuti</span>
+              <p className={styles.subTitle}>⭐ Preferiti</p>
+              <div className={styles.favBooksRow}>
+                {tasteProfile.favoriteBooks.map((b, i) => (
+                  <div key={i} className={styles.favBookCard}>
+                    {b.coverUrl ? (
+                      <img src={b.coverUrl} alt={b.title} className={styles.favBookCover} />
+                    ) : (
+                      <div className={styles.favBookPlaceholder}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="22" height="22" aria-hidden="true">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                      </div>
+                    )}
+                    <div className={styles.favBookInfo}>
+                      <span className={styles.favBookTitle}>{b.title}</span>
+                      <span className={styles.favBookAuthor}>{b.author}</span>
                     </div>
                   </div>
-                )}
-                {(tasteProfile.favoriteCount ?? 0) > 0 && (
-                  <div className={styles.reactionStat}>
-                    <span className={styles.reactionIcon}>⭐</span>
-                    <div className={styles.reactionInfo}>
-                      <span className={styles.reactionCount}>{tasteProfile.favoriteCount}</span>
-                      <span className={styles.reactionLabel}>Preferiti</span>
-                    </div>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
           )}

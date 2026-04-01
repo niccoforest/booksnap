@@ -290,49 +290,80 @@
   margin-top: 4px;
 }
 
-/* Reaction card */
-.reactionCard {
-  display: flex;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-xs);
+/* Override badge */
+.overrideBadge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-left: 4px;
 }
 
-.reactionStat {
-  flex: 1;
+/* Active override button */
+.gActionActive {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* Favorite books row */
+.favBooksRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.favBookCard {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 12px;
+  padding: 8px 10px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
-.reactionIcon {
-  font-size: 1.1rem;
-  line-height: 1;
+.favBookCover {
+  width: 36px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 3px;
   flex-shrink: 0;
 }
 
-.reactionInfo {
+.favBookPlaceholder {
+  width: 36px;
+  height: 54px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.favBookInfo {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
+  overflow: hidden;
 }
 
-.reactionCount {
-  font-size: 1rem;
-  font-weight: 800;
+.favBookTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
   color: var(--text-primary);
-  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.reactionLabel {
-  font-size: 0.7rem;
+.favBookAuthor {
+  font-size: 0.775rem;
   color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tasteHint {

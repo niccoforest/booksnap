@@ -23,12 +23,15 @@ export async function POST(request: NextRequest) {
       user.preferences.genreOverrides = new Map()
     }
 
-    if (type === null) {
+    const current = user.preferences.genreOverrides.get(genre)
+    if (type === null || current === type) {
+      // Toggle off: remove the override
       user.preferences.genreOverrides.delete(genre)
     } else {
       user.preferences.genreOverrides.set(genre, type)
     }
 
+    user.markModified('preferences.genreOverrides')
     await user.save()
     return NextResponse.json({ success: true, overrides: Object.fromEntries(user.preferences.genreOverrides) })
   } catch (error) {
