@@ -24,7 +24,8 @@
       "Bash(git push:*)",
       "Bash(tail -30 /workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
       "Bash(/workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
-      "Bash(wc -l /workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)"
+      "Bash(wc -l /workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
+      "Bash(gh pr create --base main --head feature/smart-location-tagging --title 'feat\\(LT-1\\): Smart Location Tagging' --body ':*)"
     ]
   }
 }
