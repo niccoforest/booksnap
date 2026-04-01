@@ -28,8 +28,15 @@ async function llmNormalize(rawLocation: string, existingLocations: string[]): P
   const apiKey = process.env.OPENROUTER_API_KEY
 
   if (apiKey) {
-    // Prod: OpenRouter with a small, cheap model dedicated to normalization
-    const model = process.env.OPENROUTER_NORMALIZE_MODEL || 'google/gemma-2-9b-it:free'
+    // Use OPENROUTER_NORMALIZE_MODEL if set, otherwise fall back to the main
+    // OPENROUTER_MODEL (the one that already works for scan/assistant)
+    const model =
+      process.env.OPENROUTER_NORMALIZE_MODEL ||
+      process.env.OPENROUTER_MODEL ||
+      'google/gemini-flash-1.5'
+
+    console.log(`[locations/normalize] model=${model} input="${rawLocation}" existing=[${existingLocations.join(', ')}]`)
+
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -45,14 +52,22 @@ async function llmNormalize(rawLocation: string, existingLocations: string[]): P
         temperature: 0,
       }),
     })
-    if (!res.ok) throw new Error(`OpenRouter error: ${res.status} ${await res.text()}`)
+
+    if (!res.ok) {
+      const errBody = await res.text()
+      throw new Error(`OpenRouter error: ${res.status} ${errBody}`)
+    }
+
     const data = await res.json()
     const raw: string = data.choices?.[0]?.message?.content?.trim() ?? ''
+    console.log(`[locations/normalize] llm_raw="${raw}"`)
     return cleanLLMOutput(raw, normalizeLocation(rawLocation))
   }
 
   // Dev: fallback to Ollama via the shared callLLM abstraction
+  console.log(`[locations/normalize] no OpenRouter key — using Ollama, input="${rawLocation}"`)
   const response = await callLLM(prompt)
+  console.log(`[locations/normalize] ollama_raw="${response.content}"`)
   return cleanLLMOutput(response.content, normalizeLocation(rawLocation))
 }
 
@@ -72,7 +87,7 @@ export async function POST(request: NextRequest) {
       const normalized = await llmNormalize(rawLocation.trim(), existingLocations)
       return NextResponse.json({ normalized })
     } catch (err) {
-      console.error('[locations/normalize] LLM error, using local fallback:', err)
+      console.error('[locations/normalize] LLM error, fallback locale:', err)
       return NextResponse.json({ normalized: normalizeLocation(rawLocation) })
     }
   } catch (error) {
