@@ -22,7 +22,7 @@ interface TasteProfile {
   stats: {
     totalBooks: number
     completedBooks: number
-    readingBooks?: number 
+    readingBooks?: number
     toReadBooks?: number
     avgRating: number
     preferredPageRange: string
@@ -30,6 +30,8 @@ interface TasteProfile {
     avgPace?: number
     streak?: number
   }
+  likedCount?: number
+  favoriteCount?: number
 }
 
 interface AIInsight {
@@ -306,67 +308,86 @@ export default function ProfilePage() {
       {/* Taste Profile */}
       {tasteProfile && tasteProfile.stats.totalBooks > 0 && (
         <div className={styles.tasteProfile}>
-          <h2 className={styles.sectionTitle}>Il tuo Profilo Gusti</h2>
-          
-          {tasteProfile.stats.topGenres && tasteProfile.stats.topGenres.length > 0 && (
-            <p className={styles.tasteSummary}>
-              Sei un lettore con una preferenza per <strong>{tasteProfile.stats.topGenres.join(', ')}</strong>, leggi in media {tasteProfile.stats.preferredPageRange} e valuti i libri con {tasteProfile.stats.avgRating} stelle.
-            </p>
-          )}
+          <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
 
-          <div className={styles.tasteDashboard}>
-            <div className={styles.chartSection}>
-              {/* CSS Donut Chart */}
-              <div 
-                className={styles.donutChart}
-                style={{
-                   background: `conic-gradient(
-                     var(--accent) 0% ${tasteProfile.genreAffinities[0]?.score || 0}%,
-                     #3b82f6 ${tasteProfile.genreAffinities[0]?.score || 0}% ${(tasteProfile.genreAffinities[0]?.score || 0) + (tasteProfile.genreAffinities[1]?.score || 0) * 0.5}%,
-                     #a855f7 ${(tasteProfile.genreAffinities[0]?.score || 0) + (tasteProfile.genreAffinities[1]?.score || 0) * 0.5}% 100%
-                   )`
-                }}
-              >
-                <div className={styles.donutCenter}>
-                  <span className={styles.donutVal}>{tasteProfile.stats.completedBooks}</span>
-                  <span className={styles.donutLabel}>Letti</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.genreBars}>
-              {tasteProfile.genreAffinities.slice(0, 5).map(g => (
-                <div key={g.genre} className={styles.genreRow}>
-                  <div className={styles.genreLabels}>
-                    <span className={styles.genreName}>{g.genre}</span>
-                    <div className={styles.genreActions}>
-                      <button className={styles.gAction} onClick={() => handleOverride(g.genre, 'suppress')} aria-label="Nascondi">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                      <button className={styles.gAction} onClick={() => handleOverride(g.genre, 'boost')} aria-label="Più di questo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12"><polyline points="18 15 12 9 6 15"/></svg>
-                      </button>
+          {/* Generi */}
+          {tasteProfile.genreAffinities.length > 0 && (
+            <div className={styles.tasteSection}>
+              <p className={styles.subTitle}>I tuoi generi</p>
+              <div className={styles.genreBars}>
+                {tasteProfile.genreAffinities.slice(0, 6).map(g => (
+                  <div key={g.genre} className={styles.genreRow}>
+                    <div className={styles.genreLabels}>
+                      <span className={styles.genreName}>{g.genre}</span>
+                      <div className={styles.genreActions}>
+                        <button
+                          className={styles.gActionText}
+                          onClick={() => handleOverride(g.genre, 'suppress')}
+                          title="Ricevi meno consigli di questo genere"
+                        >
+                          − Meno
+                        </button>
+                        <button
+                          className={`${styles.gActionText} ${styles.gActionBoost}`}
+                          onClick={() => handleOverride(g.genre, 'boost')}
+                          title="Ricevi più consigli di questo genere"
+                        >
+                          + Di più
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.barRow}>
+                      <div className={styles.barTrack}>
+                        <div className={styles.barFill} style={{ width: `${g.score}%` }} />
+                      </div>
+                      <span className={styles.barCount}>{g.bookCount} {g.bookCount === 1 ? 'libro' : 'libri'}</span>
                     </div>
                   </div>
-                  <div className={styles.barWrap}>
-                    <div className={styles.barFill} style={{ width: `${g.score}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <p className={styles.tasteHint}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                I pulsanti guidano i consigli del Bibliotecario AI
+              </p>
             </div>
-          </div>
+          )}
 
-          {tasteProfile.favoriteAuthors && tasteProfile.favoriteAuthors.length > 0 && (
+          {/* Autori */}
+          {tasteProfile.favoriteAuthors.length > 0 && (
             <div className={styles.tasteSection}>
               <p className={styles.subTitle}>I tuoi autori preferiti</p>
               <ul className={styles.authorList}>
                 {tasteProfile.favoriteAuthors.slice(0, 5).map(a => (
                   <li key={a.name} className={styles.authorItem}>
-                    <span className={styles.authorName}>{a.name}</span>
-                    <span className={styles.authorMeta}>{a.bookCount} libri • {a.avgRating.toFixed(1)} ★</span>
+                    <span className={styles.authorName}>
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14" className={styles.starIcon} aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      {a.name}
+                    </span>
+                    <span className={styles.authorMeta}>{a.bookCount} {a.bookCount === 1 ? 'libro' : 'libri'}</span>
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Reazioni liked/favorite */}
+          {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
+            <div className={styles.tasteSection}>
+              <p className={styles.subTitle}>Le tue reazioni</p>
+              <div className={styles.reactionChips}>
+                {(tasteProfile.likedCount ?? 0) > 0 && (
+                  <div className={styles.reactionChip}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className={styles.heartIcon} aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    <span>{tasteProfile.likedCount} piaciuti</span>
+                  </div>
+                )}
+                {(tasteProfile.favoriteCount ?? 0) > 0 && (
+                  <div className={`${styles.reactionChip} ${styles.reactionChipStar}`}>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" className={styles.starIconYellow} aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span>{tasteProfile.favoriteCount} preferiti</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

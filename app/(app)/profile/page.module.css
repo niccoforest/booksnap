@@ -131,81 +131,24 @@
   color: var(--accent);
 }
 
-/* Taste Dashboard Layout */
-.tasteDashboard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-@media (min-width: 600px) {
-  .tasteDashboard {
-    flex-direction: row;
-    align-items: center;
-  }
-}
-
-.chartSection {
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  padding: var(--spacing-md) 0;
-}
-
-.donutChart {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  transition: all 0.5s ease;
-  box-shadow: var(--shadow-sm);
-}
-
-.donutCenter {
-  width: 90px;
-  height: 90px;
-  background: var(--bg-card);
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.donutVal {
-  font-size: 1.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-}
-
-.donutLabel {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
-
+/* Genre bars */
 .genreBars {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .genreRow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .genreLabels {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
@@ -215,41 +158,118 @@
 
 .genreActions {
   display: flex;
-  gap: 4px;
+  gap: 6px;
 }
 
-.gAction {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.gActionText {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.gAction:hover {
+.gActionText:hover {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.gActionBoost {
+  color: var(--text-secondary);
+}
+
+.gActionBoost:hover {
   background: var(--accent-dim);
   color: var(--accent);
   border-color: var(--accent);
 }
 
-.barWrap {
-  height: 6px;
+.barRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.barTrack {
+  flex: 1;
+  height: 8px;
   background: var(--bg-secondary);
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .barFill {
   height: 100%;
   background: var(--accent);
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 4px;
+}
+
+.barCount {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 48px;
+  text-align: right;
+}
+
+.tasteHint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border);
+}
+
+/* Reaction chips */
+.reactionChips {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.reactionChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.reactionChipStar {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.25);
+}
+
+.heartIcon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.starIcon {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.starIconYellow {
+  color: #eab308;
+  flex-shrink: 0;
 }
 
 /* Favorite Authors */
