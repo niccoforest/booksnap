@@ -179,17 +179,16 @@
 .editToggle {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 20px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
-  font-family: inherit;
+  flex-shrink: 0;
 }
 
 .editToggle:hover {
@@ -279,9 +278,61 @@
 
 .barFill {
   height: 100%;
+  background: var(--accent);
   border-radius: 5px;
   transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 4px;
+}
+
+.genreOverrides {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* Reaction card */
+.reactionCard {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.reactionStat {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.reactionIcon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.reactionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.reactionCount {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.reactionLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .tasteHint {

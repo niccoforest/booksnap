@@ -368,26 +368,7 @@ export default function ProfilePage() {
       {/* Taste Profile */}
       {tasteProfile && tasteProfile.stats.totalBooks > 0 && (
         <div className={styles.tasteProfile}>
-          <div className={styles.dnaHeader}>
-            <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
-            {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
-              <span className={styles.reactionMeta}>
-                {(tasteProfile.likedCount ?? 0) > 0 && (
-                  <>
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true" style={{ color: '#ef4444' }}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.72-8.72 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    {tasteProfile.likedCount}
-                  </>
-                )}
-                {(tasteProfile.likedCount ?? 0) > 0 && (tasteProfile.favoriteCount ?? 0) > 0 && <span>·</span>}
-                {(tasteProfile.favoriteCount ?? 0) > 0 && (
-                  <>
-                    <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true" style={{ color: '#eab308' }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    {tasteProfile.favoriteCount}
-                  </>
-                )}
-              </span>
-            )}
-          </div>
+          <h2 className={styles.sectionTitle}>Il tuo DNA da lettore</h2>
           {archetype && (
             <p className={styles.archetypePhrase}>{archetype}</p>
           )}
@@ -400,14 +381,13 @@ export default function ProfilePage() {
                 <button
                   className={`${styles.editToggle} ${editGenres ? styles.editToggleActive : ''}`}
                   onClick={() => setEditGenres(v => !v)}
-                  title="Personalizza i pesi dei generi"
+                  title={editGenres ? 'Chiudi modifica' : 'Personalizza i pesi dei generi'}
                   aria-label="Modifica preferenze generi"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
-                  {editGenres ? 'Fatto' : 'Modifica'}
                 </button>
               </div>
 
@@ -422,26 +402,7 @@ export default function ProfilePage() {
                   <div key={g.genre} className={styles.genreRow}>
                     <div className={styles.genreLabels}>
                       <span className={styles.genreName}>{g.genre}</span>
-                      {editGenres ? (
-                        <div className={styles.genreActions}>
-                          <button
-                            className={styles.gActionText}
-                            onClick={() => handleOverride(g.genre, 'suppress')}
-                            title="Ricevi meno consigli di questo genere"
-                          >
-                            − Meno
-                          </button>
-                          <button
-                            className={`${styles.gActionText} ${styles.gActionBoost}`}
-                            onClick={() => handleOverride(g.genre, 'boost')}
-                            title="Ricevi più consigli di questo genere"
-                          >
-                            + Di più
-                          </button>
-                        </div>
-                      ) : (
-                        <span className={styles.barPct}>{g.score}%</span>
-                      )}
+                      <span className={styles.barPct}>{g.score}%</span>
                     </div>
                     <div className={styles.barTrack}>
                       <div
@@ -449,6 +410,24 @@ export default function ProfilePage() {
                         style={{ width: `${g.score}%`, opacity: 0.35 + (g.score / 100) * 0.65 }}
                       />
                     </div>
+                    {editGenres && (
+                      <div className={styles.genreOverrides}>
+                        <button
+                          className={styles.gActionText}
+                          onClick={() => handleOverride(g.genre, 'suppress')}
+                          title="Ricevi meno consigli di questo genere"
+                        >
+                          − Meno
+                        </button>
+                        <button
+                          className={`${styles.gActionText} ${styles.gActionBoost}`}
+                          onClick={() => handleOverride(g.genre, 'boost')}
+                          title="Ricevi più consigli di questo genere"
+                        >
+                          + Di più
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -476,6 +455,33 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Reazioni */}
+          {((tasteProfile.likedCount ?? 0) > 0 || (tasteProfile.favoriteCount ?? 0) > 0) && (
+            <div className={styles.tasteSection}>
+              <p className={styles.subTitle}>Le tue reazioni</p>
+              <div className={styles.reactionCard}>
+                {(tasteProfile.likedCount ?? 0) > 0 && (
+                  <div className={styles.reactionStat}>
+                    <span className={styles.reactionIcon}>❤️</span>
+                    <div className={styles.reactionInfo}>
+                      <span className={styles.reactionCount}>{tasteProfile.likedCount}</span>
+                      <span className={styles.reactionLabel}>Piaciuti</span>
+                    </div>
+                  </div>
+                )}
+                {(tasteProfile.favoriteCount ?? 0) > 0 && (
+                  <div className={styles.reactionStat}>
+                    <span className={styles.reactionIcon}>⭐</span>
+                    <div className={styles.reactionInfo}>
+                      <span className={styles.reactionCount}>{tasteProfile.favoriteCount}</span>
+                      <span className={styles.reactionLabel}>Preferiti</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
