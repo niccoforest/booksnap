@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-03-31
-**Stato:** Draft — in attesa approvazione prima di implementare
+**Stato:** Completato ✅ — tutte le fasi implementate (incl. refactoring UX split-screen scan)
 **Feature ID:** LT-1
 
 ---
@@ -185,78 +185,78 @@ Aggiungere sezione "Posizione" nella scheda libro (`app/(app)/book/[id]/page.tsx
 
 ## Piano a fasi (step-by-step)
 
-### Fase 1 — Schema DB + API (backend puro, testabile subito)
+### Fase 1 — Schema DB + API (backend puro, testabile subito) ✅
 
 **Obiettivo:** I campi esistono nel DB e l'API li accetta/restituisce.
 
-1. Aggiornare `models/Library.ts`: aggiungere `location` e `behindRow` a interface e schema
-2. Aggiornare `app/api/libraries/[id]/books/route.ts`:
+1. ✅ Aggiornare `models/Library.ts`: aggiungere `location` e `behindRow` a interface e schema
+2. ✅ Aggiornare `app/api/libraries/[id]/books/route.ts`:
    - POST: leggere `location` e `behindRow` dal body, includerli nel nuovo BookEntry
    - PATCH: aggiungere `'location'` e `'behindRow'` a `allowedFields`
-3. Creare `app/api/libraries/locations/route.ts`: GET che aggrega le location distinte dell'utente
+3. ✅ Creare `app/api/libraries/locations/route.ts`: GET che aggrega le location distinte dell'utente
 
 **Verifica:** Testabile via curl/Postman — POST un libro con location, PATCH per modificarla, GET locations per confermare che appare nella lista.
 
 ---
 
-### Fase 2 — Componente LocationInput (UI riutilizzabile, isolato)
+### Fase 2 — Componente LocationInput (UI riutilizzabile, isolato) ✅
 
 **Obiettivo:** Componente autocompletamento funzionante, utilizzabile ovunque.
 
-1. Creare `components/LocationInput.tsx`:
+1. ✅ Creare `components/LocationInput.tsx`:
    - Props: `value`, `onChange`, `behindRow`, `onBehindRowChange`, `locations` (array suggerimenti)
    - Input con dropdown suggerimenti filtrati client-side
    - Toggle "Fila posteriore" integrato
-2. Creare `components/LocationInput.module.css` con stili coerenti con il design system (CSS vars da globals.css)
+2. ✅ Creare `components/LocationInput.module.css` con stili coerenti con il design system (CSS vars da globals.css)
 
 **Verifica:** Componente visibile e funzionante in isolamento (può essere testato montandolo temporaneamente in qualsiasi pagina).
 
 ---
 
-### Fase 3 — Integrazione Book Detail (singolo libro)
+### Fase 3 — Integrazione Book Detail (singolo libro) ✅
 
 **Obiettivo:** L'utente può assegnare/modificare la posizione di un libro dalla sua scheda.
 
-1. In `app/(app)/book/[id]/page.tsx`:
+1. ✅ In `app/(app)/book/[id]/page.tsx`:
    - Fetch locations al mount (`GET /api/libraries/locations`)
    - Aggiungere sezione "Posizione" con `LocationInput`
    - Salvataggio via PATCH (pattern identico a rating/review)
    - Aggiornamento ottimistico dello stato locale
-2. Stili in `page.module.css`
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** Aprire un libro → impostare location → ricaricare pagina → la location persiste. Autocompletamento funziona con location già esistenti.
 
 ---
 
-### Fase 4 — Integrazione Scan (bulk assignment)
+### Fase 4 — Integrazione Scan (bulk assignment) ✅
 
 **Obiettivo:** Dopo una scansione, l'utente assegna la posizione a tutti i libri riconosciuti prima di salvarli.
 
-1. In `app/(app)/scan/page.tsx`:
+1. ✅ In `app/(app)/scan/page.tsx`:
    - Nuovo stato: `locationStep` (boolean), `bulkLocation`, `bulkBehindRow`, `selectedForLocation` (Set di bookId)
-   - Dopo scan, mostrare step intermedio con:
+   - Dopo scan, bottone "Aggiungi alla libreria" apre bottom sheet con:
      - Lista libri con checkbox (tutti preselezionati)
      - `LocationInput` per posizione condivisa
      - Toggle "Fila posteriore"
-     - Pulsanti "Salva con posizione" e "Salta"
-   - "Salva" → per ogni libro selezionato, POST con location/behindRow
-   - "Salta" → POST senza location (comportamento attuale)
-   - Fetch locations al mount dello step
-2. Stili in `page.module.css`
+     - Pulsanti "Salta" e "Salva (N)"
+   - "Salva" → POST libri selezionati con location/behindRow; ciclo multi-posizione per i deselezionati
+   - "Salta" → POST tutti i rimanenti senza location
+   - Fetch locations al mount (in parallelo con fetch library)
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** Scansionare libri → step location appare → selezionare posizione → tutti i libri salvati con quella location. Verificare anche "Salta" che mantiene il flusso attuale.
 
 ---
 
-### Fase 5 — Visualizzazione in Library + Filtro
+### Fase 5 — Visualizzazione in Library + Filtro ✅
 
 **Obiettivo:** Le location sono visibili nella libreria e filtrabili.
 
-1. In `app/(app)/library/page.tsx`:
-   - Mostrare badge location sulle card dei libri (sia grid che list view)
-   - Indicatore visivo per `behindRow`
-   - Aggiungere filtro per location nel pannello filtri esistente
-2. Stili in `page.module.css`
+1. ✅ In `app/(app)/library/page.tsx`:
+   - Badge location (icona pin + testo) sulle card in grid view e list view
+   - Indicatore visivo `↩` per `behindRow`
+   - Select "📍 Tutte / [location]" visibile solo se la libreria ha almeno una location usata
+2. ✅ Stili in `page.module.css`
 
 **Verifica:** I libri con location mostrano il badge. Filtrando per "Soggiorno" appaiono solo i libri in quella posizione.
 

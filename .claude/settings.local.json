@@ -17,7 +17,15 @@
       "Bash(grep -r \"book-club\\\\|book club\\\\|bookClub\\\\|book_club\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
       "Bash(grep -r \"smart.*notif\\\\|smart notif\\\\|smartNotif\" /workspaces/booksnap --include=*.tsx --include=*.ts)",
       "Bash(grep -n \"prompts\\\\|loadingPrompts\\\\|book-club\\\\|BookClub\" /workspaces/booksnap/app/\\\\\\(app\\\\\\)/book/[id]/page.tsx)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(tail -30 /workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
+      "Bash(/workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
+      "Bash(wc -l /workspaces/booksnap/app/\\\\\\(app\\\\\\)/library/page.module.css)",
+      "Bash(gh pr create --base main --head feature/smart-location-tagging --title 'feat\\(LT-1\\): Smart Location Tagging' --body ':*)"
     ]
   }
 }

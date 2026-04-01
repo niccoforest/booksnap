@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import styles from './page.module.css'
+import LocationInput from '@/components/LocationInput'
+import { normalizeLocationLLM } from '@/lib/locationUtils'
 
 type ReadingStatus = 'to_read' | 'reading' | 'completed' | 'abandoned' | 'lent'
 
@@ -40,6 +42,8 @@ interface LibraryEntry {
   readInPast?: boolean
   liked?: boolean
   favorite?: boolean
+  location?: string
+  behindRow?: boolean
 }
 
 export default function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -61,6 +65,9 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const [prompts, setPrompts] = useState<any[]>([])
   const [loadingPrompts, setLoadingPrompts] = useState(false)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [location, setLocation] = useState('')
+  const [behindRow, setBehindRow] = useState(false)
+  const [availableLocations, setAvailableLocations] = useState<string[]>([])
   const router = useRouter()
 
   useEffect(() => {
@@ -94,6 +101,14 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
         const foundEntry = found.books.find((b: any) => (b.bookId?._id || b.bookId).toString() === id)
         setEntry({ ...foundEntry, libraryId: found._id, bookId: id })
         setReview(foundEntry.review || '')
+        setLocation(foundEntry.location || '')
+        setBehindRow(foundEntry.behindRow || false)
+      }
+
+      const locRes = await fetch('/api/libraries/locations')
+      if (locRes.ok) {
+        const locData = await locRes.json()
+        setAvailableLocations(locData.locations || [])
       }
 
       // Fetch similar books
@@ -123,6 +138,22 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   const saveReview = () => {
     updateEntry({ review })
     setShowReview(false)
+  }
+
+  const saveLocation = async (newLocation: string, newBehindRow: boolean) => {
+    setSaving(true)  // show feedback immediately, before the LLM call
+    try {
+      const finalLocation = newLocation.trim()
+        ? await normalizeLocationLLM(newLocation, availableLocations)
+        : newLocation
+      setLocation(finalLocation)
+      await updateEntry({ location: finalLocation, behindRow: newBehindRow })
+      if (finalLocation && !availableLocations.some((l) => l.toLowerCase() === finalLocation.toLowerCase())) {
+        setAvailableLocations((prev) => [...prev, finalLocation].sort((a, b) => a.localeCompare(b)))
+      }
+    } finally {
+      setSaving(false)
+    }
   }
 
   const addToLibrary = async () => {
@@ -397,6 +428,33 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Posizione */}
+        {entry && (
+          <div className={styles.locationSection}>
+            <p className={styles.sectionLabel}>Posizione</p>
+            <LocationInput
+              value={location}
+              onChange={setLocation}
+              behindRow={behindRow}
+              onBehindRowChange={(val) => {
+                setBehindRow(val)
+                saveLocation(location, val)
+              }}
+              locations={availableLocations}
+              disabled={saving}
+            />
+            {(location !== (entry.location || '') || behindRow !== (entry.behindRow || false)) && (
+              <button
+                className={`btn btn-primary btn-sm ${styles.locationSaveBtn}`}
+                onClick={() => saveLocation(location, behindRow)}
+                disabled={saving}
+              >
+                {saving ? 'Salvataggio…' : 'Salva posizione'}
+              </button>
+            )}
           </div>
         )}
 

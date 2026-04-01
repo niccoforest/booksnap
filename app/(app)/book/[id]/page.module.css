@@ -210,7 +210,7 @@
 }
 
 /* ─── Sections ─────────────────────── */
-.statusSection, .ratingSection, .reactionsSection, .reviewSection, .description, .details {
+.statusSection, .ratingSection, .reactionsSection, .reviewSection, .locationSection, .description, .details {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -654,6 +654,11 @@
   line-height: 1.5;
   color: var(--text-primary);
   font-weight: 500;
+}
+
+.locationSaveBtn {
+  margin-top: var(--spacing-sm);
+  align-self: flex-start;
 }
 
 .checkboxLabel {

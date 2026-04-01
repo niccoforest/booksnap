@@ -16,6 +16,8 @@ export interface BookEntry {
   notes?: string
   liked?: boolean    // "Piaciuto" — segnale leggero, cuore
   favorite?: boolean // "Preferito" — segnale forte, stella
+  location?: string  // Posizione fisica, es. "Soggiorno", "Scaffale camera"
+  behindRow?: boolean // true = libro nascosto dietro un'altra fila
 }
 
 export interface ILibrary extends Document {
@@ -46,6 +48,8 @@ const BookEntrySchema = new Schema<BookEntry>(
     notes: { type: String },
     liked: { type: Boolean, default: false },
     favorite: { type: Boolean, default: false },
+    location: { type: String, trim: true, maxlength: 100 },
+    behindRow: { type: Boolean, default: false },
   },
   { _id: false }
 )

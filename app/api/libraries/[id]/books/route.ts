@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Library, BookEntry } from '@/models/Library'
 import { logActivity } from '@/lib/activities'
 import mongoose from 'mongoose'
+import { normalizeLocation } from '@/lib/locationUtils'
 
 // POST /api/libraries/[id]/books - Add book to library
 export async function POST(
@@ -15,7 +16,7 @@ export async function POST(
     if (!user) return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
 
     const { id } = await ctx.params
-    const { bookId, status = 'to_read', readInPast = false } = await request.json()
+    const { bookId, status = 'to_read', readInPast = false, location, behindRow } = await request.json()
 
     if (!bookId) return NextResponse.json({ error: 'bookId obbligatorio' }, { status: 400 })
 
@@ -28,13 +29,17 @@ export async function POST(
     const existing = library.books.find((b: BookEntry) => b.bookId.toString() === bookId)
     if (existing) return NextResponse.json({ error: 'Libro già presente in questa libreria' }, { status: 409 })
 
+    const normalizedLocation = location !== undefined ? normalizeLocation(location) : undefined
+
     const now = new Date()
     const entry: any = {
       bookId: new mongoose.Types.ObjectId(bookId),
       status,
       tags: [],
       addedAt: now,
-      readInPast
+      readInPast,
+      ...(normalizedLocation !== undefined && normalizedLocation !== '' && { location: normalizedLocation }),
+      ...(behindRow !== undefined && { behindRow }),
     }
 
     if (status === 'reading') entry.startedAt = now
@@ -80,8 +85,13 @@ export async function PATCH(
 
     const oldStatus = entry.status
     const oldRating = entry.rating
-    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast', 'liked', 'favorite']
+    const allowedFields = ['status', 'rating', 'review', 'tags', 'startedAt', 'finishedAt', 'lentTo', 'notes', 'readInPast', 'liked', 'favorite', 'location', 'behindRow']
     const now = new Date()
+
+    // Normalize location before applying
+    if (updates.location !== undefined) {
+      updates.location = normalizeLocation(updates.location) || undefined
+    }
 
     allowedFields.forEach((field) => {
       if (updates[field] !== undefined) {

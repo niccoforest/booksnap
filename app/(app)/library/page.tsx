@@ -38,6 +38,8 @@ interface BookEntry {
   addedAt: string
   liked?: boolean
   favorite?: boolean
+  location?: string
+  behindRow?: boolean
 }
 
 interface Library {
@@ -61,6 +63,7 @@ export default function LibraryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [aiSearchResults, setAiSearchResults] = useState<any[] | null>(null)
   const [reactionFilter, setReactionFilter] = useState<'all' | 'liked' | 'favorite'>('all')
+  const [locationFilter, setLocationFilter] = useState<string>('')
   const [showManualEntry, setShowManualEntry] = useState(false)
   const [manualTitle, setManualTitle] = useState('')
   const [manualAuthor, setManualAuthor] = useState('')
@@ -156,8 +159,16 @@ export default function LibraryPage() {
     }
   }
 
-  const filteredBooks = aiSearchResults ? 
-    aiSearchResults : 
+  const allLocations = Array.from(
+    new Set(
+      (currentLib?.books || [])
+        .map((b) => b.location)
+        .filter((l): l is string => !!l)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'it'))
+
+  const filteredBooks = aiSearchResults ?
+    aiSearchResults :
     (currentLib?.books || [])
     .filter((b) => {
       const matchesStatus = statusFilter === 'all' || b.status === statusFilter
@@ -165,13 +176,14 @@ export default function LibraryPage() {
         reactionFilter === 'all' ||
         (reactionFilter === 'liked' && b.liked) ||
         (reactionFilter === 'favorite' && b.favorite)
+      const matchesLocation = !locationFilter || b.location === locationFilter
       const q = searchQuery.trim()
-      if (!q) return matchesStatus && matchesReaction
+      if (!q) return matchesStatus && matchesReaction && matchesLocation
 
       const titleMatch = isFuzzyMatch(b.bookId.title, q)
       const authorMatch = b.bookId.authors?.some((a) => isFuzzyMatch(a, q))
 
-      return matchesStatus && matchesReaction && (titleMatch || authorMatch)
+      return matchesStatus && matchesReaction && matchesLocation && (titleMatch || authorMatch)
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -350,6 +362,19 @@ export default function LibraryPage() {
           </button>
         </div>
         <div className={styles.sortRow}>
+          {allLocations.length > 0 && (
+            <select
+              className={styles.sortSelect}
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              aria-label="Filtra per posizione"
+            >
+              <option value="">📍 Tutte</option>
+              {allLocations.map((loc) => (
+                <option key={loc} value={loc}>📍 {loc}</option>
+              ))}
+            </select>
+          )}
           <select
             className={styles.sortSelect}
             value={sortBy}
@@ -433,6 +458,15 @@ export default function LibraryPage() {
                       {'★'.repeat(entry.rating)}<span>{'★'.repeat(5 - entry.rating)}</span>
                     </p>
                   )}
+                  {entry.location && (
+                    <p className={styles.locationBadge}>
+                      <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                      </svg>
+                      {entry.location}
+                      {entry.behindRow && <span className={styles.behindRowTag}>↩</span>}
+                    </p>
+                  )}
                 </div>
               </Link>
             ))}
@@ -459,6 +493,15 @@ export default function LibraryPage() {
                   {entry.rating && (
                     <p className={styles.bookRating}>
                       {'★'.repeat(entry.rating)}<span>{'★'.repeat(5 - entry.rating)}</span>
+                    </p>
+                  )}
+                  {entry.location && (
+                    <p className={styles.locationBadge}>
+                      <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor" aria-hidden="true">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                      </svg>
+                      {entry.location}
+                      {entry.behindRow && <span className={styles.behindRowTag}>↩</span>}
                     </p>
                   )}
                 </div>
