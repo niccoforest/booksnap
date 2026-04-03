@@ -2,7 +2,7 @@
 
 **Versione:** 1.0
 **Data:** 2026-04-01
-**Stato:** Pianificato — copre i task aperti SR-6 e FX-7 (+ FX-8)
+**Stato:** Completato — SR-6, FX-7, FX-8 implementati
 **Feature ID:** SR-6, FX-7, FX-8
 
 ---

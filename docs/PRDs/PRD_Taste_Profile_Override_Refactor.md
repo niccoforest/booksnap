@@ -1,7 +1,7 @@
 # PRD — Taste Profile Override Refactor
 **Progetto:** BookSnap  
 **Feature:** Refactor sistema boost/downgrade generi  
-**Stato:** Validato  
+**Stato:** Completato  
 **Data:** 2026-04-03  
 
 ***

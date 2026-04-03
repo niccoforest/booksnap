@@ -42,6 +42,10 @@ function SearchContent() {
   const [pagesMax, setPagesMax] = useState('')
   const [sortBy, setSortBy] = useState('relevance')
 
+  // AI Search state
+  const [isAiSearch, setIsAiSearch] = useState(false)
+  const [aiParsedParams, setAiParsedParams] = useState<Record<string, unknown> | null>(null)
+
   // Discovery data
   const [discoveryData, setDiscoveryData] = useState<any[]>([])
   const [discoveryLoading, setDiscoveryLoading] = useState(false)
@@ -66,6 +70,14 @@ function SearchContent() {
     } finally {
       setDiscoveryLoading(false)
     }
+  }
+
+  // Rileva se la query è in linguaggio naturale (>3 parole o contiene termini descrittivi)
+  const isNaturalLanguageQuery = (q: string): boolean => {
+    const words = q.trim().split(/\s+/)
+    if (words.length > 3) return true
+    const descriptiveTerms = ['ambientato', 'come', 'simile', 'tipo', 'scritto', 'ispirato', 'stile', 'atmosfera', 'genere', 'racconta', 'storia', 'anni', 'recente', 'antico', 'breve', 'lungo', 'leggero', 'pesante', 'dark', 'romantico', 'distopico', 'storico', 'fantasy', 'thriller', 'giallo', 'horror']
+    return descriptiveTerms.some(t => q.toLowerCase().includes(t))
   }
 
   // Autocomplete logic
@@ -103,35 +115,52 @@ function SearchContent() {
 
   const performSearch = async (overrideQuery?: string) => {
     const q = overrideQuery !== undefined ? overrideQuery : query
-    
+
     setLoading(true)
     if (page === 1) setResults([])
-    
+
+    // Filtri manuali attivi → forza ricerca classica
+    const hasManualFilters = genre || yearFrom || yearTo || lang || pagesMin || pagesMax
+    const useAI = !hasManualFilters && page === 1 && isNaturalLanguageQuery(q)
+    setIsAiSearch(useAI)
+
     try {
-      const params = new URLSearchParams()
-      if (q) params.set('q', q)
-      if (genre) params.set('genre', genre)
-      if (yearFrom) params.set('yearFrom', yearFrom)
-      if (yearTo) params.set('yearTo', yearTo)
-      if (lang) params.set('lang', lang)
-      if (pagesMin) params.set('pagesMin', pagesMin)
-      if (pagesMax) params.set('pagesMax', pagesMax)
-      params.set('sortBy', sortBy)
-      params.set('page', page.toString())
-      params.set('limit', '20')
-      
-      const res = await fetch(`/api/books?${params.toString()}`)
-      const data = await res.json()
-      
-      if (page === 1) {
+      if (useAI) {
+        const res = await fetch('/api/search/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q }),
+        })
+        const data = await res.json()
         setResults(data.books || [])
+        setAiParsedParams(data.parsedParams || null)
+        setHasMore(false) // AI search non ha paginazione
       } else {
-        setResults(prev => [...prev, ...(data.books || [])])
+        setAiParsedParams(null)
+        const params = new URLSearchParams()
+        if (q) params.set('q', q)
+        if (genre) params.set('genre', genre)
+        if (yearFrom) params.set('yearFrom', yearFrom)
+        if (yearTo) params.set('yearTo', yearTo)
+        if (lang) params.set('lang', lang)
+        if (pagesMin) params.set('pagesMin', pagesMin)
+        if (pagesMax) params.set('pagesMax', pagesMax)
+        params.set('sortBy', sortBy)
+        params.set('page', page.toString())
+        params.set('limit', '20')
+
+        const res = await fetch(`/api/books?${params.toString()}`)
+        const data = await res.json()
+
+        if (page === 1) {
+          setResults(data.books || [])
+        } else {
+          setResults(prev => [...prev, ...(data.books || [])])
+        }
+
+        if (!data.books || data.books.length < 20) setHasMore(false)
+        else setHasMore(true)
       }
-      
-      if (!data.books || data.books.length < 20) setHasMore(false)
-      else setHasMore(true)
-      
     } catch (err) {
       console.error(err)
     } finally {
@@ -203,6 +232,23 @@ function SearchContent() {
             )}
           </button>
         </div>
+
+        {isAiSearch && !loading && results.length > 0 && (
+          <div className={styles.aiSearchBadge}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+            Ricerca AI
+          </div>
+        )}
+        {loading && isAiSearch && (
+          <div className={styles.aiSearchBadge}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+            Ricerca AI in corso...
+          </div>
+        )}
 
         <div className={styles.toggles}>
           <button className={`${styles.filterToggle} ${showFilters ? styles.active : ''}`} onClick={() => setShowFilters(!showFilters)}>
