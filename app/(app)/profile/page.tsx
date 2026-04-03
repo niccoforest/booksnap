@@ -396,8 +396,21 @@ export default function ProfilePage() {
               )}
 
               <div className={styles.genreBars}>
-                {tasteProfile.genreAffinities.slice(0, 6).map(g => (
-                  <div key={g.genre} className={styles.genreRow}>
+                {(() => {
+                  const top6 = tasteProfile.genreAffinities.slice(0, 6)
+                  const knownGenres = new Set(tasteProfile.genreAffinities.map(g => g.genre))
+                  const top6Genres = new Set(top6.map(g => g.genre))
+                  // generi con override fuori dalla top 6 ma ancora in libreria
+                  const overrideExtras = tasteProfile.genreAffinities.filter(
+                    g => !top6Genres.has(g.genre) && localOverrides[g.genre]
+                  )
+                  // generi con override che non esistono più in libreria (fantasma)
+                  const ghostOverrides = Object.keys(localOverrides)
+                    .filter(genre => !knownGenres.has(genre))
+                    .map(genre => ({ genre, score: 0, scoreRanking: 0, bookCount: 0, avgRating: 0, ghost: true }))
+                  return [...top6, ...overrideExtras, ...ghostOverrides]
+                })().map((g: typeof tasteProfile.genreAffinities[0] & { ghost?: boolean }) => (
+                  <div key={g.genre} className={`${styles.genreRow} ${g.ghost ? styles.genreRowGhost : ''}`}>
                     <div className={styles.genreLabels}>
                       <span className={styles.genreNameRow}>
                         <span className={styles.genreName}>{g.genre}</span>
@@ -428,14 +441,16 @@ export default function ProfilePage() {
                           </svg>
                         </button>
                       </span>
-                      <span className={styles.barPct}>{g.score}%</span>
+                      {!g.ghost && <span className={styles.barPct}>{g.score}%</span>}
                     </div>
-                    <div className={styles.barTrack}>
-                      <div
-                        className={styles.barFill}
-                        style={{ width: `${g.score}%`, opacity: 0.35 + (g.score / 100) * 0.65 }}
-                      />
-                    </div>
+                    {!g.ghost && (
+                      <div className={styles.barTrack}>
+                        <div
+                          className={styles.barFill}
+                          style={{ width: `${g.score}%`, opacity: 0.35 + (g.score / 100) * 0.65 }}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

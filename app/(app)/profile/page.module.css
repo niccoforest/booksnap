@@ -182,6 +182,10 @@
   gap: 5px;
 }
 
+.genreRowGhost {
+  opacity: 0.55;
+}
+
 .genreLabels {
   display: flex;
   justify-content: space-between;
