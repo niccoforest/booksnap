@@ -8,6 +8,7 @@ export interface TasteProfile {
   genreAffinities: Array<{
     genre: string
     score: number
+    scoreRanking: number
     bookCount: number
     avgRating: number
   }>
@@ -176,6 +177,9 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
       }
     }
 
+    // Cap per evitare che un singolo libro domini un genere
+    entryWeight = Math.min(entryWeight, 8.0)
+
     // Process Genres
     book.genres.forEach(g => {
       const genre = g.trim()
@@ -194,35 +198,34 @@ export async function buildTasteProfile(userId: string): Promise<TasteProfile> {
     })
   })
 
-  // Normalize Genre Scores
+  // Normalize Genre Scores (without overrides — score reflects real data only)
   let maxWeight = 0
   const genreAffinitiesRaw: Array<{ genre: string, score: number, bookCount: number, avgRating: number }> = []
 
   for (const [genre, stat] of genreStats.entries()) {
-    let finalWeight = stat.weightSum
-    
-    // Apply user overrides (PR-2 logic)
-    if (genreOverrides.has(genre)) {
-      const override = genreOverrides.get(genre)
-      if (override === 'boost') finalWeight *= 2.0
-      else if (override === 'suppress') finalWeight *= 0.1
-    }
+    if (stat.weightSum > maxWeight) maxWeight = stat.weightSum
 
-    if (finalWeight > maxWeight) maxWeight = finalWeight
-    
     genreAffinitiesRaw.push({
       genre,
-      score: finalWeight, // raw weight for now
+      score: stat.weightSum,
       bookCount: stat.count,
       avgRating: stat.ratedCount > 0 ? (stat.ratingSum / stat.ratedCount) : 0
     })
   }
 
-  // Normalize to 0-100
-  const genreAffinities = genreAffinitiesRaw.map(g => ({
-    ...g,
-    score: maxWeight > 0 ? Math.round((g.score / maxWeight) * 100) : 0
-  })).sort((a, b) => b.score - a.score)
+  // Normalize to 0-100, then apply overrides as scoreRanking (post-normalization)
+  const genreAffinities = genreAffinitiesRaw.map(g => {
+    const normalizedScore = maxWeight > 0 ? Math.round((g.score / maxWeight) * 100) : 0
+    const override = genreOverrides.get(g.genre)
+    let multiplier = 1.0
+    if (override === 'boost') multiplier = 2.0
+    else if (override === 'suppress') multiplier = 0.3
+    return {
+      ...g,
+      score: normalizedScore,
+      scoreRanking: Math.round(normalizedScore * multiplier)
+    }
+  }).sort((a, b) => b.scoreRanking - a.scoreRanking)
 
   // Favorite Authors (rating >= 4 or books >= 4)
   const favoriteAuthors = Array.from(authorStats.entries()).map(([name, stat]) => ({

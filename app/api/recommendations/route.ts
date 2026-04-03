@@ -13,7 +13,7 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 ore
 
 function computeProfileHash(profile: TasteProfile): string {
   return [
-    profile.genreAffinities.slice(0, 5).map(g => `${g.genre}:${g.score}`).join(','),
+    profile.genreAffinities.slice(0, 5).map(g => `${g.genre}:${g.scoreRanking}`).join(','),
     profile.favoriteTitles.join(','),
     profile.likedTitles.join(','),
     profile.stats.totalBooks,
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
 
     const prompt = `
 Sei un libraio esperto. Dato questo profilo lettore:
-- Generi preferiti: ${profile.genreAffinities.slice(0, 3).map(g => `${g.genre} (score: ${g.score})`).join(', ')}
+- Generi preferiti: ${profile.genreAffinities.slice(0, 3).map(g => `${g.genre} (score: ${g.scoreRanking})`).join(', ')}
 - Autori preferiti: ${profile.favoriteAuthors.slice(0, 3).map(a => a.name).join(', ')}
 ${reactionBlock ? reactionBlock + '\n' : ''}- Libri già letti/in libreria (NON suggerire questi): ${alreadyRead}
 

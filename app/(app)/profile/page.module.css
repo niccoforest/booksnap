@@ -168,40 +168,6 @@
   width: 100%;
 }
 
-/* Section header with edit toggle */
-.subTitleRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-sm);
-}
-
-.editToggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.editToggle:hover {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
-.editToggleActive {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
-}
 
 /* Genre bars */
 .genreBars {
@@ -230,7 +196,8 @@
 
 .genreActions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
 }
 
 .barPct {
@@ -239,34 +206,46 @@
   color: var(--text-muted);
 }
 
-.gActionText {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-muted);
+/* Genre override toggle icons */
+.genreOverrideIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
   cursor: pointer;
   transition: all 0.2s;
-  white-space: nowrap;
-  font-family: inherit;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.gActionText:hover {
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.gActionBoost {
+.genreOverrideIcon:hover {
   color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
-.gActionBoost:hover {
-  background: var(--accent-dim);
+.genreOverrideBoostActive {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.genreOverrideBoostActive:hover {
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.genreOverrideSuppressActive {
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+}
+
+.genreOverrideSuppressActive:hover {
+  color: var(--text-muted);
+  background: var(--bg-secondary);
 }
 
 .barTrack {
@@ -284,25 +263,6 @@
   min-width: 4px;
 }
 
-.genreOverrides {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-/* Override badge */
-.overrideBadge {
-  font-size: 0.75rem;
-  font-weight: 800;
-  margin-left: 4px;
-}
-
-/* Active override button */
-.gActionActive {
-  background: var(--accent-dim) !important;
-  color: var(--accent) !important;
-  border-color: var(--accent) !important;
-}
 
 /* Favorite books row */
 .favBooksRow {
@@ -367,14 +327,10 @@
 }
 
 .tasteHint {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
-  border-top: 1px solid var(--border);
+  font-size: 0.7rem;
+  color: var(--text-faint);
+  margin-top: var(--spacing-md);
+  text-align: center;
 }
 
 /* Reaction chips */

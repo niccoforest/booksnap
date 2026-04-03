@@ -16,7 +16,7 @@ interface User {
 }
 
 interface TasteProfile {
-  genreAffinities: Array<{ genre: string; score: number; bookCount: number; avgRating: number }>
+  genreAffinities: Array<{ genre: string; score: number; scoreRanking: number; bookCount: number; avgRating: number }>
   genreOverrides: Record<string, 'boost' | 'suppress'>
   favoriteAuthors: Array<{ name: string; bookCount: number; avgRating: number }>
   favoriteBooks: Array<{ title: string; author: string; coverUrl?: string }>
@@ -106,7 +106,6 @@ export default function ProfilePage() {
   const [goals, setGoals] = useState<AIGoal[]>([])
   const [readingStats, setReadingStats] = useState({ total: 0, completed: 0, reading: 0, to_read: 0 })
   const [theme, setTheme] = useState<'dark' | 'light'>('light')
-  const [editGenres, setEditGenres] = useState(false)
   const [localOverrides, setLocalOverrides] = useState<Record<string, 'boost' | 'suppress'>>({})
   const [archetype, setArchetype] = useState<string | null>(null)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
@@ -388,20 +387,7 @@ export default function ProfilePage() {
           {/* Generi */}
           {tasteProfile.genreAffinities.length > 0 && (
             <div className={styles.tasteSection}>
-              <div className={styles.subTitleRow}>
-                <p className={styles.subTitle}>I tuoi generi</p>
-                <button
-                  className={`${styles.editToggle} ${editGenres ? styles.editToggleActive : ''}`}
-                  onClick={() => setEditGenres(v => !v)}
-                  title={editGenres ? 'Chiudi modifica' : 'Personalizza i pesi dei generi'}
-                  aria-label="Modifica preferenze generi"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                </button>
-              </div>
+              <p className={styles.subTitle}>I tuoi generi</p>
 
               {tasteProfile.genreAffinities.length >= 3 && (
                 <div className={styles.radarWrap}>
@@ -413,16 +399,30 @@ export default function ProfilePage() {
                 {tasteProfile.genreAffinities.slice(0, 6).map(g => (
                   <div key={g.genre} className={styles.genreRow}>
                     <div className={styles.genreLabels}>
-                      <span className={styles.genreName}>
-                        {g.genre}
-                        {localOverrides[g.genre] === 'boost' && (
-                          <span className={styles.overrideBadge} style={{ color: 'var(--accent)' }} title="Boost attivo">↑</span>
-                        )}
-                        {localOverrides[g.genre] === 'suppress' && (
-                          <span className={styles.overrideBadge} style={{ color: 'var(--text-muted)' }} title="Soppresso">↓</span>
-                        )}
-                      </span>
-                      <span className={styles.barPct}>{g.score}%</span>
+                      <span className={styles.genreName}>{g.genre}</span>
+                      <div className={styles.genreActions}>
+                        <button
+                          className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'boost' ? styles.genreOverrideBoostActive : ''}`}
+                          onClick={() => handleOverride(g.genre, 'boost')}
+                          title="Più consigli di questo genere"
+                          aria-label={`Boost ${g.genre}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" aria-hidden="true">
+                            <polyline points="18 15 12 9 6 15"/>
+                          </svg>
+                        </button>
+                        <button
+                          className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'suppress' ? styles.genreOverrideSuppressActive : ''}`}
+                          onClick={() => handleOverride(g.genre, 'suppress')}
+                          title="Meno consigli di questo genere"
+                          aria-label={`Downgrade ${g.genre}`}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" aria-hidden="true">
+                            <polyline points="6 9 12 15 18 9"/>
+                          </svg>
+                        </button>
+                        <span className={styles.barPct}>{g.score}%</span>
+                      </div>
                     </div>
                     <div className={styles.barTrack}>
                       <div
@@ -430,33 +430,12 @@ export default function ProfilePage() {
                         style={{ width: `${g.score}%`, opacity: 0.35 + (g.score / 100) * 0.65 }}
                       />
                     </div>
-                    {editGenres && (
-                      <div className={styles.genreOverrides}>
-                        <button
-                          className={`${styles.gActionText} ${localOverrides[g.genre] === 'suppress' ? styles.gActionActive : ''}`}
-                          onClick={() => handleOverride(g.genre, 'suppress')}
-                          title="Ricevi meno consigli di questo genere"
-                        >
-                          − Meno
-                        </button>
-                        <button
-                          className={`${styles.gActionText} ${styles.gActionBoost} ${localOverrides[g.genre] === 'boost' ? styles.gActionActive : ''}`}
-                          onClick={() => handleOverride(g.genre, 'boost')}
-                          title="Ricevi più consigli di questo genere"
-                        >
-                          + Di più
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
-              {editGenres && (
-                <p className={styles.tasteHint}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  I pulsanti guidano i consigli del Bibliotecario AI
-                </p>
-              )}
+              <p className={styles.tasteHint}>
+                ↑ boost e ↓ downgrade guidano i consigli del Bibliotecario AI
+              </p>
             </div>
           )}
 

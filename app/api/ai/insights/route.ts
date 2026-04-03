@@ -39,7 +39,7 @@ PROFILO LETTORE:
 - Completati: ${profile.stats.completedBooks}
 - In lettura: ${profile.currentlyReading.length}
 - Rating medio dato: ${profile.stats.avgRating}/5
-- Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.score}, rating medio ${g.avgRating.toFixed(1)})`).join(', ')}
+- Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.scoreRanking}, rating medio ${g.avgRating.toFixed(1)})`).join(', ')}
 - Autori preferiti: ${profile.favoriteAuthors.slice(0, 3).map(a => `${a.name} (${a.bookCount} libri, rating ${a.avgRating.toFixed(1)})`).join(', ')}
 - Ritmo medio: ${profile.stats.avgPace ? `${profile.stats.avgPace} giorni per libro` : 'non calcolabile'}
 - Lunghezza preferita: ${profile.stats.preferredPageRange}

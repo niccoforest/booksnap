@@ -39,8 +39,8 @@ const ASSISTANT_PROMPT = (
 
   const profileBlock = `
 PROFILO LETTORE:
-- Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.score})`).join(', ')}
-- Generi meno apprezzati: ${profile.genreAffinities.slice(-3).map(g => `${g.genre} (score ${g.score})`).join(', ')}
+- Generi preferiti: ${profile.genreAffinities.slice(0, 5).map(g => `${g.genre} (score ${g.scoreRanking})`).join(', ')}
+- Generi meno apprezzati: ${profile.genreAffinities.slice(-3).map(g => `${g.genre} (score ${g.scoreRanking})`).join(', ')}
 - Autori preferiti: ${profile.favoriteAuthors.slice(0, 3).map(a => `${a.name} (rating ${a.avgRating.toFixed(1)})`).join(', ')}
 - Letture recenti completate: ${profile.recentlyCompleted.map(l => `"${l.title}"`).join(', ')}
 - Sta leggendo: ${profile.currentlyReading.map(l => `"${l.title}"`).join(', ')}
