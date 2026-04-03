@@ -13,7 +13,7 @@ Chiudere i tre task rimasti della Fase 7b:
 
 1. **SR-6 — AI Search:** La pagina `/search` deve supportare query in linguaggio naturale. L'LLM interpreta l'intento dell'utente, estrae parametri di filtro strutturati, e la ricerca avviene via query MongoDB — non via embeddings.
 2. **FX-7 — Taste Profile Redesign:** Il profilo gusti attuale (donut + barre %) non e' comprensibile. Servono una UI leggibile e un motore che integri i segnali `liked`/`favorite`.
-3. **FX-8 — Raccomandazioni potenziate:** Le raccomandazioni proattive devono pesare i segnali di reazione (`liked`, `favorite`) oltre a status e rating.
+3. **FX-8 — Raccomandazioni potenziate:** Le raccomandazioni proattive devono pesare i segnali di reazione (`liked`, `favorite`) oltre a status e rating. 
 
 ---
 
