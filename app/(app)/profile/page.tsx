@@ -399,32 +399,36 @@ export default function ProfilePage() {
                 {tasteProfile.genreAffinities.slice(0, 6).map(g => (
                   <div key={g.genre} className={styles.genreRow}>
                     <div className={styles.genreLabels}>
-                      <span className={styles.genreName}>{g.genre}</span>
-                      <div className={styles.genreActions}>
+                      <span className={styles.genreNameRow}>
+                        <span className={styles.genreName}>{g.genre}</span>
                         <button
-                          className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'boost' ? styles.genreOverrideBoostActive : ''}`}
+                          className={`${styles.rocketBtn} ${localOverrides[g.genre] === 'boost' ? styles.rocketActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'boost')}
-                          title="Voglio più consigli di questo genere"
+                          title="Più consigli di questo genere"
                           aria-label={`Boost ${g.genre}`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
-                            <path d="M12 19V5"/>
-                            <path d="M5 12l7-7 7 7"/>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 3 0 3 0"/>
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-3 0-3"/>
                           </svg>
                         </button>
                         <button
-                          className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'suppress' ? styles.genreOverrideSuppressActive : ''}`}
+                          className={`${styles.rocketBtn} ${styles.rocketDown} ${localOverrides[g.genre] === 'suppress' ? styles.rocketActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'suppress')}
-                          title="Voglio meno consigli di questo genere"
+                          title="Meno consigli di questo genere"
                           aria-label={`Downgrade ${g.genre}`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
-                            <path d="M12 5v14"/>
-                            <path d="M19 12l-7 7-7-7"/>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
+                            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+                            <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 3 0 3 0"/>
+                            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-3 0-3"/>
                           </svg>
                         </button>
-                        <span className={styles.barPct}>{g.score}%</span>
-                      </div>
+                      </span>
+                      <span className={styles.barPct}>{g.score}%</span>
                     </div>
                     <div className={styles.barTrack}>
                       <div
@@ -436,7 +440,7 @@ export default function ProfilePage() {
                 ))}
               </div>
               <p className={styles.tasteHint}>
-                Le % riflettono le tue letture reali. Le frecce indicano al Bibliotecario AI di darti più o meno consigli su quel genere.
+                I razzi indicano al Bibliotecario AI di darti più o meno consigli su quel genere
               </p>
             </div>
           )}

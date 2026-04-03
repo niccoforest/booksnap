@@ -190,6 +190,12 @@
   font-weight: 600;
 }
 
+.genreNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .genreName {
   color: var(--text-primary);
 }
@@ -206,51 +212,29 @@
   color: var(--text-muted);
 }
 
-/* Genre override toggle icons */
-.genreOverrideIcon {
+/* Rocket override buttons */
+.rocketBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 1.5px solid transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
-.genreOverrideIcon:hover {
-  color: var(--text-secondary);
-  background: var(--bg-secondary);
-  border-color: var(--border);
+.rocketDown {
+  transform: rotate(180deg);
 }
 
-.genreOverrideBoostActive {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.12);
-  border-color: rgba(34, 197, 94, 0.35);
-}
-
-.genreOverrideBoostActive:hover {
-  color: #22c55e;
-  background: rgba(34, 197, 94, 0.18);
-  border-color: rgba(34, 197, 94, 0.45);
-}
-
-.genreOverrideSuppressActive {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.genreOverrideSuppressActive:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.4);
+.rocketActive {
+  color: var(--accent);
 }
 
 .barTrack {
