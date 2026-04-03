@@ -404,21 +404,23 @@ export default function ProfilePage() {
                         <button
                           className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'boost' ? styles.genreOverrideBoostActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'boost')}
-                          title="Più consigli di questo genere"
+                          title="Voglio più consigli di questo genere"
                           aria-label={`Boost ${g.genre}`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" aria-hidden="true">
-                            <polyline points="18 15 12 9 6 15"/>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                            <path d="M12 19V5"/>
+                            <path d="M5 12l7-7 7 7"/>
                           </svg>
                         </button>
                         <button
                           className={`${styles.genreOverrideIcon} ${localOverrides[g.genre] === 'suppress' ? styles.genreOverrideSuppressActive : ''}`}
                           onClick={() => handleOverride(g.genre, 'suppress')}
-                          title="Meno consigli di questo genere"
+                          title="Voglio meno consigli di questo genere"
                           aria-label={`Downgrade ${g.genre}`}
                         >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14" aria-hidden="true">
-                            <polyline points="6 9 12 15 18 9"/>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="15" height="15" aria-hidden="true">
+                            <path d="M12 5v14"/>
+                            <path d="M19 12l-7 7-7-7"/>
                           </svg>
                         </button>
                         <span className={styles.barPct}>{g.score}%</span>
@@ -434,7 +436,7 @@ export default function ProfilePage() {
                 ))}
               </div>
               <p className={styles.tasteHint}>
-                ↑ boost e ↓ downgrade guidano i consigli del Bibliotecario AI
+                Le % riflettono le tue letture reali. Le frecce indicano al Bibliotecario AI di darti più o meno consigli su quel genere.
               </p>
             </div>
           )}

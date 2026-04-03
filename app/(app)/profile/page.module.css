@@ -211,10 +211,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
   background: transparent;
   color: var(--text-faint);
   cursor: pointer;
@@ -226,26 +226,31 @@
 .genreOverrideIcon:hover {
   color: var(--text-secondary);
   background: var(--bg-secondary);
+  border-color: var(--border);
 }
 
 .genreOverrideBoostActive {
-  color: var(--accent);
-  background: var(--accent-dim);
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
 }
 
 .genreOverrideBoostActive:hover {
-  color: var(--accent);
-  background: var(--accent-dim);
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.45);
 }
 
 .genreOverrideSuppressActive {
-  color: var(--text-muted);
-  background: var(--bg-secondary);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .genreOverrideSuppressActive:hover {
-  color: var(--text-muted);
-  background: var(--bg-secondary);
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 .barTrack {
