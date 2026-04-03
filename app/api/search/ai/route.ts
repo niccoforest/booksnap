@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
   let parsedParams: ParsedSearchParams = { intent: 'discovery' }
   try {
     const raw = await callLLM(`${SEARCH_PARSER_PROMPT}\n\nQuery utente: "${query.trim()}"`)
-    const cleaned = raw.replace(/```json|```/g, '').trim()
+    const cleaned = raw.content.replace(/```json|```/g, '').trim()
     parsedParams = JSON.parse(cleaned)
   } catch {
     // Fallback: treat as keyword search
@@ -121,7 +121,7 @@ Rispondi SOLO con JSON array, senza markdown.
 Esempio: [{"title":"Nome libro","author":"Nome Autore","year":2015}]`
 
       const raw = await callLLM(fallbackPrompt)
-      const cleaned = raw.replace(/```json|```/g, '').trim()
+      const cleaned = raw.content.replace(/```json|```/g, '').trim()
       const suggestions: Array<{ title: string; author: string; year?: number }> = JSON.parse(cleaned)
 
       // Enrich with metadata (covers, genres, etc.)
